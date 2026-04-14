@@ -1,0 +1,53 @@
+name: Android CI
+
+on:
+  workflow_dispatch:   # শুধু manual run
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Create local.properties
+        run: |
+          echo "api=${{ secrets.API }}" >> local.properties
+          echo "tafsir=${{ secrets.TAFSIR }}" >> local.properties
+          echo "text=${{ secrets.TEXT }}" >> local.properties
+          echo "pdf=${{ secrets.PDF }}" >> local.properties
+          echo "boyan=${{ secrets.BOYAN }}" >> local.properties
+          echo "blogid=${{ secrets.BLOGID }}" >> local.properties
+          echo "api2=${{ secrets.API2 }}" >> local.properties
+          echo "textapi=${{ secrets.TEXTAPI }}" >> local.properties
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/book.jks
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: islamipedia-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload Release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: islamipedia-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab

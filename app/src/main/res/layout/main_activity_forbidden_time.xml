@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:cardMaxElevation="5dp"
+    android:elevation="10dp"
+    android:layout_margin="10dp"
+    app:cardElevation="5dp"
+    android:layout_height="wrap_content">
+
+
+
+
+    <!-- Nisiddho somoy -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bggg"
+        android:padding="20dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fontFamily="@font/solaimanlipi"
+            android:text="@string/today_forbidden_time_bn"
+            android:textAlignment="center"
+            android:textColor="@color/light_color4"
+            android:textSize="20dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginBottom="10dp"
+            android:background="@color/danger_color4" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="3">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="@string/morning_bn"
+                android:textSize="17dp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color4"
+                android:layout_weight="2"
+                android:gravity="center_vertical"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="সম্ভাব্য নিষিদ্ধ সময়"
+                android:textSize="17sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color4"
+                android:layout_weight="1"
+                android:textAlignment="textEnd"
+                android:id="@+id/textMorningForbiddenTime"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="3"
+            android:layout_marginTop="5dp">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="@string/noon_bn"
+                android:textSize="17dp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color4"
+                android:layout_weight="2"
+                android:gravity="center_vertical"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="সম্ভাব্য নিষিদ্ধ সময়"
+                android:textSize="17sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color4"
+                android:layout_weight="1"
+                android:textAlignment="textEnd"
+                android:id="@+id/textNoonForbiddenTime"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="3"
+            android:layout_marginTop="5dp">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="@string/evening_bn"
+                android:textSize="17dp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color4"
+                android:layout_weight="2"
+                android:gravity="center_vertical"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="সম্ভাব্য নিষিদ্ধ সময়"
+                android:textSize="17sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color4"
+                android:layout_weight="1"
+                android:textAlignment="textEnd"
+                android:id="@+id/textEveningForbiddenTime"/>
+        </LinearLayout>
+    </LinearLayout>
+    <!-- End -->
+
+</androidx.cardview.widget.CardView>

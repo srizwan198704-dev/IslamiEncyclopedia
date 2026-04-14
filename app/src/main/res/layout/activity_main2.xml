@@ -1,0 +1,476 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:elevation="10dp"
+    android:fitsSystemWindows="true"
+    android:layout_height="match_parent"
+    android:background="@drawable/back1ground"
+    tools:context=".MainActivity2">
+  <com.google.android.material.card.MaterialCardView
+      android:layout_width="match_parent"
+      android:id="@+id/ttt"
+      app:cardBackgroundColor="@color/purple_500"
+      android:layout_height="wrap_content">
+      <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:id="@+id/tt"
+          android:weightSum="20"
+          android:orientation="horizontal">
+
+
+
+          <com.google.android.material.appbar.MaterialToolbar
+              android:id="@+id/topAppBar"
+              android:layout_weight="6"
+              android:layout_width="match_parent"
+              android:layout_height="?attr/actionBarSize"
+              app:menu="@menu/top_app_bar"
+              android:background="@color/purple_500"
+              app:navigationIconTint="@color/white"
+              app:navigationIcon="?attr/homeAsUpIndicator"
+              app:titleTextColor="@color/white"
+              app:title="নামাযের সময়সূচি"
+              />
+
+
+
+          <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:layout_weight="14"
+              app:navigationIconTint="?attr/colorPrimary"
+              android:layout_gravity="center"
+              android:gravity="center">
+              <LinearLayout
+                  android:id="@+id/buttonChangeLocation"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:background="@drawable/rounded_shape"
+                  android:padding="10dp">
+                  <ImageView
+                      android:layout_width="18dp"
+                      android:layout_height="18dp"
+                      android:src="@drawable/baseline_location_on_24"
+                      app:tint="?attr/colorPrimary"/>
+                  <TextView
+                      android:id="@+id/textCurrentLocation"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="ঢাকা"
+                      android:fontFamily="@font/solaimanlipi"
+                      android:textColor="?attr/colorPrimary"
+                      android:textSize="17sp"
+                      android:paddingStart="6dp"
+                      android:paddingEnd="6dp"/>
+              </LinearLayout>
+          </LinearLayout>
+      </LinearLayout>
+
+
+  </com.google.android.material.card.MaterialCardView>
+
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_below="@id/ttt"
+        android:layout_above="@id/botton"
+        android:layout_height="match_parent"
+        android:background="@drawable/back1ground"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+     >
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+           >
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_margin="10dp"
+                app:cardMaxElevation="5dp"
+                android:elevation="10dp"
+                app:cardElevation="5dp"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="fill_parent"
+                    android:layout_height="100dp"
+                    android:id="@+id/top"
+                    android:weightSum="30"
+                    android:background="@drawable/ima"
+                    android:orientation="horizontal"
+                    >
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_weight="8"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:layout_height="match_parent">
+
+                        <TextView
+                            android:id="@+id/textEnglishDate"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="english date"
+
+                            android:fontFamily="@font/solaimanlipi"
+                            android:textSize="17dp"
+                            android:textColor="@color/white" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=""
+                            android:gravity="center"
+                            android:layout_gravity="center"
+                            android:fontFamily="@font/solaimanlipi"
+                            android:textSize="17sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/white"
+                            android:id="@+id/textHizriDate"/>
+
+
+
+                    </LinearLayout>
+<View
+    android:layout_width="0.3dp"
+      android:layout_marginTop="7dp"
+    android:layout_marginBottom="7dp"
+    android:layout_height="match_parent"
+    android:background="#B1A8A8"/>
+                    <ImageView
+                        android:layout_width="fill_parent"
+                        android:layout_weight="12"
+                        android:src="@drawable/sunny"
+                        android:layout_gravity="center"
+                        android:layout_marginStart="9dp"
+                        android:layout_height="40dp"/>
+
+
+                    <LinearLayout
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="11"
+                        android:gravity="center"
+                        android:layout_gravity="center"
+                        android:orientation="vertical">
+
+
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:weightSum="2"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="50dp"
+                                android:layout_height="19dp"
+                                android:layout_gravity="center"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="সূর্যোদয়"
+                                android:textColor="#FFFFFF" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:text="সূর্যাস্ত"
+                                android:textColor="@color/white"
+                                android:layout_weight="1"
+                                android:layout_gravity="center"
+                                android:gravity="center"
+                                android:layout_height="wrap_content"/>
+
+                        </LinearLayout>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="4dp"
+                            android:weightSum="2"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/textSunriseTime"
+                                android:layout_width="wrap_content"
+                                android:text="ফজর"
+                                android:layout_weight="1"
+                                android:layout_gravity="center"
+                                android:gravity="center"
+                                android:textColor="#FFFFFF"
+                                android:layout_height="wrap_content"/>
+                            <TextView
+                                android:textColor="@color/white"
+                                android:id="@+id/textSunsetTime"
+                                android:layout_width="wrap_content"
+                                android:text="ফজর"
+                                android:layout_weight="1"
+                                android:layout_gravity="center"
+                                android:gravity="center"
+                                android:layout_height="wrap_content"/>
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+
+
+
+
+
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+         <androidx.cardview.widget.CardView
+              android:layout_width="match_parent"
+              android:layout_marginLeft="10dp"
+             android:layout_marginRight="10dp"
+             android:layout_marginTop="5dp"
+             app:cardMaxElevation="5dp"
+             android:elevation="10dp"
+             app:cardElevation="5dp"
+              android:layout_height="wrap_content">
+
+              <LinearLayout
+                  android:id="@+id/top1"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_below="@id/top"
+                  android:paddingLeft="20dp"
+                  android:paddingRight="20dp"
+                  android:background="@drawable/bggg"
+                  android:orientation="horizontal">
+                 <LinearLayout
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="12"
+    android:layout_gravity="center"
+    android:gravity="bottom|center"
+    android:orientation="vertical">
+
+
+
+
+
+
+
+</LinearLayout>
+
+                  <LinearLayout
+                      android:layout_width="fill_parent"
+                      android:layout_height="match_parent"
+                      android:layout_gravity="center"
+                      android:gravity="center"
+                      android:orientation="vertical">
+
+                      <TextView
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:textAlignment="center"
+                          android:textSize="25sp"
+                          android:padding="5dp"
+                          android:text="আজকের নামাযের সময়সূচি"/>
+                      <View
+                          android:layout_width="match_parent"
+                          android:layout_height="1dp"
+                          android:layout_margin="3dp"
+                          android:background="@color/danger_color4" />
+
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:weightSum="1"
+                          android:padding="4dp"
+                          android:orientation="horizontal">
+
+                          <TextView
+                              android:layout_width="wrap_content"
+                              android:text="ফজর"
+                              android:textSize="19sp"
+                             android:textColor="#457E00"
+                              android:layout_height="wrap_content"/>
+                          <TextView
+                              android:id="@+id/textFazarTime"
+                              android:layout_width="wrap_content"
+                              android:text="ফজর"
+                              android:textSize="18sp"
+                              android:layout_gravity="center"
+                              android:layout_weight="1"
+                              android:gravity="end"
+                              android:layout_height="wrap_content"/>
+
+                      </LinearLayout>
+                      <View
+                          android:layout_width="match_parent"
+                          android:layout_height="1dp"
+                          android:layout_margin="3dp"
+                          android:background="@color/danger_color4" />
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:weightSum="1"
+                          android:padding="4dp"
+                          android:orientation="horizontal">
+
+                          <TextView
+                              android:layout_width="wrap_content"
+                              android:text="যোহর"
+                              android:textSize="19sp"
+                              android:textColor="#457E00"
+                              android:layout_height="wrap_content"/>
+                          <TextView
+                              android:id="@+id/textJaharTime"
+                              android:layout_width="wrap_content"
+                              android:text="যোহর"
+                              android:textSize="18sp"
+                              android:layout_gravity="center"
+                              android:layout_weight="1"
+                              android:gravity="end"
+                              android:layout_height="wrap_content"/>
+
+                      </LinearLayout>
+                      <View
+                          android:layout_width="match_parent"
+                          android:layout_height="1dp"
+                          android:layout_margin="3dp"
+                          android:background="@color/danger_color4" />
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:weightSum="1"
+                          android:padding="4dp"
+                          android:orientation="horizontal">
+
+                          <TextView
+                              android:layout_width="wrap_content"
+                              android:text="আসর"
+                              android:textSize="19sp"
+                              android:textColor="#457E00"
+                              android:layout_height="wrap_content"/>
+                          <TextView
+                              android:id="@+id/textAshrTime"
+                              android:layout_width="wrap_content"
+                              android:text="আসর"
+                              android:textSize="18sp"
+                              android:layout_gravity="center"
+                              android:layout_weight="1"
+                              android:gravity="end"
+                              android:layout_height="wrap_content"/>
+
+                      </LinearLayout>
+                      <View
+                          android:layout_width="match_parent"
+                          android:layout_height="1dp"
+                          android:layout_margin="3dp"
+                          android:background="@color/danger_color4" />
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:weightSum="1"
+                          android:padding="4dp"
+                          android:orientation="horizontal">
+
+                          <TextView
+                              android:layout_width="wrap_content"
+                              android:text="মাগরিব"
+                              android:textSize="19sp"
+                              android:textColor="#457E00"
+                              android:layout_height="wrap_content"/>
+                          <TextView
+                              android:id="@+id/textMagribhTime"
+                              android:layout_width="wrap_content"
+                              android:text="মাগরিব"
+                              android:textSize="18sp"
+                              android:layout_gravity="center"
+                              android:layout_weight="1"
+                              android:gravity="end"
+                              android:layout_height="wrap_content"/>
+
+                      </LinearLayout>
+                      <View
+                          android:layout_width="match_parent"
+                          android:layout_height="1dp"
+                          android:layout_margin="3dp"
+                          android:background="@color/danger_color4" />
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:weightSum="1"
+                          android:padding="4dp"
+                          android:orientation="horizontal">
+
+                          <TextView
+                              android:layout_width="wrap_content"
+                              android:text="এশা"
+                              android:textSize="19sp"
+                              android:textColor="#457E00"
+                              android:layout_height="wrap_content"/>
+                          <TextView
+                              android:id="@+id/textEshaTime"
+                              android:layout_width="wrap_content"
+                              android:text="এশা"
+                              android:textSize="18sp"
+                              android:layout_gravity="center"
+                              android:layout_weight="1"
+                              android:gravity="end"
+                              android:layout_height="wrap_content"/>
+
+                      </LinearLayout>
+
+
+                  </LinearLayout>
+
+              </LinearLayout>
+
+
+         </androidx.cardview.widget.CardView>
+
+
+            <include layout="@layout/main_activity_header" />
+
+            <include layout="@layout/main_activity_forbidden_time" />
+
+
+
+
+        </LinearLayout>
+
+
+
+    </androidx.core.widget.NestedScrollView>
+
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:id="@+id/botton"
+        android:layout_width="match_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.bottomappbar.BottomAppBar
+
+            android:layout_alignParentBottom="true"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize">
+
+            <com.google.android.material.bottomnavigation.BottomNavigationView
+                android:id="@+id/bottom_navigation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                app:menu="@menu/bottom"
+                app:labelVisibilityMode="labeled"
+                app:itemIconTint="@color/nav_item_color_state"
+                app:itemTextColor="@color/nav_item_color_state" />
+
+
+
+        </com.google.android.material.bottomappbar.BottomAppBar>
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <include layout="@layout/main_activity_bottom" />
+
+
+
+</RelativeLayout>

@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical">
+    <!-- Date -->
+
+
+
+    <!-- End -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_margin="10dp"
+        app:cardMaxElevation="5dp"
+        android:elevation="10dp"
+        app:cardElevation="5dp"
+        android:layout_height="wrap_content">
+    <!-- Borrtoman Waq't -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/light_color4"
+        android:padding="20dp"
+        android:orientation="vertical"
+        android:id="@+id/layoutCurrentPrayer">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/current_prayer"
+            android:textSize="17sp"
+            android:fontFamily="@font/solaimanlipi"
+            android:textColor="?attr/colorSecondary"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+          <com.srizwan.islamipedia.PulsingCircleView
+              android:layout_width="20dp"
+              android:layout_height="20dp"
+              android:layout_margin="5dp"/>
+
+            <TextView
+                android:id="@+id/textCurrentPrayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/current_prayer"
+                android:textSize="20dp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="?attr/colorSecondary" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="সময়"
+                android:textSize="16sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="?attr/colorSecondary"
+                android:layout_weight="1"
+                android:id="@+id/textCurrentPrayerTimeRemaining"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="০০ - ০০ time"
+                android:textSize="15sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="?attr/colorSecondary"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:id="@+id/textCurrentPrayerTimeRange"
+                android:textAllCaps="false"/>
+        </LinearLayout>
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progress="0"
+            app:indicatorColor="@color/light_color1"
+            app:trackColor="@color/light_color5"
+            android:layout_marginTop="10dp"
+            android:id="@+id/progress_CurrentTimeRemaining"
+            android:max="100" />
+    </LinearLayout>
+    <!-- End -->
+
+    </androidx.cardview.widget.CardView>
+
+
+
+
+
+    <!-- Forbidden Prayer Layout -->
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginBottom="10dp"
+        app:cardMaxElevation="5dp"
+        android:elevation="10dp"
+        app:cardElevation="5dp"
+        android:layout_height="wrap_content">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/danger_color6"
+        android:padding="20dp"
+        android:orientation="vertical"
+        android:id="@+id/layoutForbiddenPrayer">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/now_running_bn"
+            android:textSize="17sp"
+            android:fontFamily="@font/solaimanlipi"
+            android:textColor="@color/light_color1"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+            <com.srizwan.islamipedia.PulsingCircleView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_margin="5dp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/forbidden_time_bn"
+                android:textSize="20dp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color1" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="সময়"
+                android:textSize="16sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color1"
+                android:layout_weight="1"
+                android:id="@+id/textForbiddenPrayerTimeRemaining"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="০০ - ০০ time"
+                android:textSize="14sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/light_color1"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:id="@+id/textForbiddenPrayerTimeRange"
+                android:textAllCaps="false"/>
+        </LinearLayout>
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progress="20"
+            app:indicatorColor="@color/light_color1"
+            app:trackColor="@color/light_color3"
+            android:layout_marginTop="10dp"
+            android:id="@+id/progress_ForbiddenPrayerTimeRemaining"/>
+    </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+    <!-- End -->
+
+    <!-- Porborti Waq't -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        android:layout_height="wrap_content">
+
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:elevation="10dp"
+            android:layout_marginRight="5dp"
+            android:layout_marginBottom="5dp"
+            android:layout_marginLeft="10dp"
+            android:layout_weight="1"
+            app:cardBackgroundColor="#e8f5f9"
+            android:layout_height="wrap_content">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:orientation="vertical"
+                android:id="@+id/layoutNextPrayer"
+                android:padding="10dp"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:layout_height="130dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/next_prayer_bn"
+                    android:textSize="15sp"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:textColor="#165b09"/>
+                <TextView
+                    android:id="@+id/textNextPrayer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/next_prayer_bn"
+                    android:textSize="20dp"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:textColor="?attr/colorPrimary"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="০০ - ০০"
+                    android:textSize="17dp"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:textColor="?attr/colorPrimary"
+                    android:id="@+id/textNextPrayerTimeRange"
+                    />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+
+            android:elevation="10dp"
+            android:layout_weight="1"
+            app:cardBackgroundColor="#d2fc9e"
+            android:layout_marginRight="10dp"
+            android:layout_marginLeft="5dp"
+            android:layout_marginBottom="5dp"
+            android:layout_height="wrap_content">
+            <LinearLayout
+                android:layout_width="match_parent"
+              android:gravity="center"
+                android:layout_height="130dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:weightSum="2">
+
+                        <TextView
+                            android:layout_width="176dp"
+                            android:layout_height="39dp"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/solaimanlipi"
+                            android:gravity="center"
+                            android:text="@string/sehri_end_bn"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="17sp" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="00:00"
+                            android:textSize="17sp"
+                            android:layout_weight="1"
+                            android:textAlignment="center"
+                            android:fontFamily="@font/solaimanlipi"
+                            android:textColor="?attr/colorPrimary"
+                            android:id="@+id/textSehriEndTime" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:weightSum="2">
+
+                        <TextView
+                            android:layout_width="176dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/solaimanlipi"
+                            android:gravity="center"
+                            android:text="@string/iftar_time_en"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="00:00"
+                            android:textSize="17sp"
+                            android:layout_weight="1"
+                            android:textAlignment="center"
+                            android:fontFamily="@font/solaimanlipi"
+                            android:textColor="?attr/colorPrimary"
+                            android:id="@+id/textIftarTime"/>
+                    </LinearLayout>
+
+
+
+
+
+                </LinearLayout>
+
+
+
+
+
+
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+
+    </LinearLayout>
+    <!-- End -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</LinearLayout>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+    android:layout_gravity="end">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_shape"
+        android:padding="10dp">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@drawable/baseline_location_on_24"
+            app:tint="?attr/colorPrimary"/>
+
+        <TextView
+            android:id="@+id/textCurrentLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ঢাকা"
+            android:fontFamily="@font/solaimanlipi"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="12dp"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"/>
+    </LinearLayout>
+
+</LinearLayout>

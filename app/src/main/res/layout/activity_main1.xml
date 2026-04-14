@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:fitsSystemWindows="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/back1ground"
+    android:elevation="05dp"
+    tools:context=".Main1Activity">
+
+    <RelativeLayout
+        android:id="@+id/frame1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/linear1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:orientation="vertical">
+            <LinearLayout
+                android:id="@+id/linear00"
+                android:elevation="05dp"
+                android:gravity="center_vertical"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@color/teal_200"
+                android:orientation="horizontal"
+                tools:ignore="MissingConstraints">
+                <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:src="@drawable/menu"
+                    android:scaleType="fitCenter"
+                    android:padding="15dp"
+                    android:id="@+id/back"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:text="@string/app_name"
+                    android:layout_marginLeft="5dp"
+                    android:gravity="center_vertical"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"/>
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:orientation="vertical"
+                android:background="@drawable/neum7">
+            <ImageView
+                android:id="@+id/hozur"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="00dp"
+                android:layout_gravity="center_horizontal|center_vertical"
+                android:scaleType="fitCenter"
+                android:src="@drawable/logo_" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/lin1"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:orientation="horizontal"
+                android:padding="8dp" />
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <LinearLayout
+                android:id="@+id/lin2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal|center_vertical"
+                android:padding="10dp">
+                <LinearLayout
+                    android:id="@+id/button00"
+                    android:layout_width="110dp"
+                    android:layout_height="130dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/neum7"
+                    android:layout_marginRight="10dp"
+                    android:gravity="center_vertical|center_horizontal">
+                    <ImageView
+                        android:id="@+id/bookpic00"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:contentDescription="TODO"
+                        android:scaleType="fitCenter"
+                        android:layout_marginBottom="10dp"
+                        android:src="@drawable/quranp"/>
+                    <TextView
+                        android:id="@+id/textview00"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/banglafont1"
+                        android:text="আল কুরআন"
+                        android:gravity="center_horizontal|center_vertical"
+                        android:textColor="@color/_021921"
+                        android:textSize="14sp" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/button001"
+                    android:layout_width="110dp"
+                    android:layout_height="130dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/neum7"
+                    android:layout_marginRight="10dp"
+                    android:gravity="center_vertical|center_horizontal">
+                    <ImageView
+                        android:id="@+id/bookpic02"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:contentDescription="TODO"
+                        android:scaleType="fitCenter"
+                        android:layout_marginBottom="10dp"
+                        android:src="@drawable/picture_11"/>
+                    <TextView
+                        android:id="@+id/textview002"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/banglafont1"
+                        android:text="আল হাদিস"
+                        android:gravity="center_horizontal|center_vertical"
+                        android:textColor="@color/_021921"
+                        android:textSize="14sp" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/button01"
+                    android:layout_width="110dp"
+                    android:layout_height="130dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/neum7"
+                    android:gravity="center_vertical|center_horizontal">
+                    <ImageView
+                        android:id="@+id/bookpic2"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:contentDescription="TODO"
+                        android:scaleType="fitCenter"
+                        android:layout_marginBottom="10dp"
+                        android:src="@drawable/picture_10"/>
+                    <TextView
+                        android:id="@+id/textview02"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/banglafont1"
+                        android:text="ইসলামী বই ১"
+                        android:gravity="center_horizontal|center_vertical"
+                        android:textColor="@color/_021921"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/lin3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal|center_vertical"
+                android:padding="10dp">
+                <LinearLayout
+                    android:id="@+id/button1"
+                    android:layout_width="110dp"
+                    android:layout_height="130dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/neum7"
+                    android:layout_marginRight="10dp"
+                    android:gravity="center_vertical|center_horizontal">
+                    <ImageView
+                        android:id="@+id/bookpic"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:contentDescription="TODO"
+                        android:scaleType="fitCenter"
+                        android:layout_marginBottom="10dp"
+                        android:src="@drawable/hujur"/>
+                    <TextView
+                        android:id="@+id/textview0"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/banglafont1"
+                        android:text="@string/kitab"
+                        android:gravity="center_horizontal|center_vertical"
+                        android:textColor="@color/_021921"
+                        android:textSize="14sp" />
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/button04"
+                    android:layout_width="110dp"
+                    android:layout_height="130dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/neum7"
+                    android:layout_marginRight="10dp"
+                    android:gravity="center_vertical|center_horizontal">
+                    <ImageView
+                        android:id="@+id/bookpic050"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:contentDescription="TODO"
+                        android:scaleType="fitCenter"
+                        android:layout_marginBottom="10dp"
+                        android:src="@drawable/picture_10"/>
+                    <TextView
+                        android:id="@+id/textview050"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/banglafont1"
+                        android:text="অনলাইন বই"
+                        android:gravity="center_horizontal|center_vertical"
+                        android:textColor="@color/_021921"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            <LinearLayout
+                    android:id="@+id/button03"
+                    android:layout_width="110dp"
+                    android:layout_height="130dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/neum7"
+                    android:gravity="center_vertical|center_horizontal">
+                    <ImageView
+                        android:id="@+id/bookpic5"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:contentDescription="TODO"
+                        android:scaleType="fitCenter"
+                        android:layout_marginBottom="10dp"
+                        android:src="@drawable/noti_icon"/>
+                    <TextView
+                        android:id="@+id/textview05"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/banglafont1"
+                        android:text="মজার তথ্য"
+                        android:gravity="center_horizontal|center_vertical"
+                        android:textColor="@color/_021921"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/line3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/rizwan"
+                    android:visibility="gone"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:gravity="center_horizontal|center_vertical"
+                    android:text="@string/rizwanS2"
+                    android:textColor="@color/black"
+                    android:textSize="18dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/lin5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|center_horizontal"
+                android:layout_weight="1"
+                android:gravity="center_horizontal|center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/imageView3"
+                    android:layout_width="30dp"
+                    android:layout_height="50dp"
+                    android:layout_margin="5dp"
+                    android:layout_marginStart="5dp"
+                    android:layout_marginLeft="5dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="5dp"
+                    android:layout_marginRight="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_weight="0"
+                    app:srcCompat="@drawable/ic_local_post_office_grey" />
+
+                <LinearLayout
+                    android:id="@+id/border1"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:orientation="horizontal" />
+
+                <ImageView
+                    android:id="@+id/imageView4"
+                    android:layout_width="30dp"
+                    android:layout_height="50dp"
+                    android:layout_margin="5dp"
+                    android:layout_marginStart="5dp"
+                    android:layout_marginLeft="5dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="5dp"
+                    android:layout_marginRight="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_weight="0"
+                    app:srcCompat="@drawable/ic_favorite_grey" />
+
+                <LinearLayout
+                    android:id="@+id/border2"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:orientation="horizontal" />
+
+                <ImageView
+                    android:id="@+id/imageview7"
+                    android:layout_width="30dp"
+                    android:layout_height="50dp"
+                    android:layout_margin="5dp"
+                    android:layout_marginStart="5dp"
+                    android:layout_marginLeft="5dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="5dp"
+                    android:layout_marginRight="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_weight="0"
+                    app:srcCompat="@drawable/ic_share_grey" />
+
+                <LinearLayout
+                    android:id="@+id/border3"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:orientation="horizontal" />
+
+                <ImageView
+                    android:id="@+id/imageView5"
+                    android:layout_width="30dp"
+                    android:layout_height="50dp"
+                    android:layout_margin="5dp"
+                    android:layout_marginStart="5dp"
+                    android:layout_marginLeft="5dp"
+                    android:layout_marginTop="5dp"
+                    android:layout_marginEnd="5dp"
+                    android:layout_marginRight="5dp"
+                    android:layout_marginBottom="5dp"
+                    android:layout_weight="0"
+                    app:srcCompat="@drawable/ic_exit_to_app_grey" />
+            </LinearLayout>
+        </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+    </RelativeLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

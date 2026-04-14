@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- Base color -->
+    <item>
+        <shape>
+            <solid android:color="#F5F7FA"/>
+        </shape>
+    </item>
+    
+    <!-- Top gradient overlay -->
+    <item>
+        <shape>
+            <gradient
+                android:startColor="#E8F0FE"
+                android:endColor="#00E8F0FE"
+                android:angle="90"
+                android:type="linear"/>
+        </shape>
+    </item>
+    
+    <!-- Decorative circles -->
+    <item
+        android:left="200dp"
+        android:top="100dp"
+        android:right="200dp"
+        android:bottom="200dp">
+        <shape>
+            <solid android:color="#0D1A237E"/>
+            <corners android:radius="1000dp"/>
+        </shape>
+    </item>
+    
+    <item
+        android:left="50dp"
+        android:top="300dp"
+        android:right="300dp"
+        android:bottom="50dp">
+        <shape>
+            <solid android:color="#0DD81B60"/>
+            <corners android:radius="500dp"/>
+        </shape>
+    </item>
+    
+    <item
+        android:left="250dp"
+        android:top="500dp"
+        android:right="100dp"
+        android:bottom="100dp">
+        <shape>
+            <solid android:color="#0D4CAF50"/>
+            <corners android:radius="300dp"/>
+        </shape>
+    </item>
+    
+    <!-- Very subtle overlay for readability -->
+    <item>
+        <shape>
+            <solid android:color="#08FFFFFF"/>
+        </shape>
+    </item>
+    
+</layer-list>

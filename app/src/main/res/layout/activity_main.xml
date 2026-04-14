@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:fitsSystemWindows="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/green_2"
+    tools:context=".MainActivity">
+
+    <RelativeLayout
+        android:id="@+id/frame1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/linear1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/linear2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical" />
+
+            <ImageView
+                android:id="@+id/hozur"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_marginBottom="100dp"
+                android:layout_gravity="center_horizontal|center_vertical"
+                android:src="@drawable/logome"
+                />
+
+            <LinearLayout
+                android:id="@+id/linear3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical" />
+            <TextView
+                android:id="@+id/dorud0"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:fontFamily="@font/solaimanlipi"
+                android:textStyle="normal"
+                android:padding="5dp"
+                android:layout_margin="5dp"
+                android:text="❝আল্লাহুম্মা ছাল্লি আলা সাইয়্যিদিনা মুহাম্মাদিনিন \nনাবিয়্যিল উম্মিই ওয়া আলা আলিহি ওয়া সাল্লিম।❞"
+                android:gravity="center_horizontal|center_vertical"
+                android:textColor="#FFFDFD"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/textview1"
+                android:textStyle="normal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_marginBottom="10dp"
+                android:fontFamily="@font/banglafont1"
+                android:gravity="center_horizontal|center_vertical"
+                android:textColor="#FFFDFD"
+                android:textSize="18sp" />
+            <TextView
+                android:textStyle="normal"
+                android:id="@+id/developer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_marginBottom="5dp"
+                android:text="ডেভেলপার : আব্দুল মুস্তফা রাহিম রমজান (রিজওয়ান)"
+                android:fontFamily="@font/banglafont1"
+                android:gravity="center_horizontal|center_vertical"
+                android:textColor="#FFFDFD"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </RelativeLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

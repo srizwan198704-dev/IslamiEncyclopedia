@@ -1,0 +1,65 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:fitsSystemWindows="true"
+	android:background="@drawable/back1ground"
+	android:orientation="vertical">
+	<LinearLayout
+		android:id="@+id/linear1"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:background="#FFFFFF"
+		android:orientation="vertical"
+		android:layout_weight="1">
+		<LinearLayout
+			android:id="@+id/linear4"
+			android:layout_width="match_parent"
+			android:layout_height="60dp"
+			android:paddingLeft="3dp"
+			android:paddingTop="1dp"
+			android:paddingRight="3dp"
+			android:paddingBottom="1dp"
+			android:background="#01837A"
+			android:gravity="center_vertical"
+			android:orientation="horizontal">
+			<ImageView
+				android:id="@+id/imageview2"
+				android:layout_width="40dp"
+				android:layout_height="40dp"
+				android:padding="10dp"
+				android:src="@drawable/ic_arrow_back_white"
+				android:scaleType="fitCenter" />
+			<LinearLayout
+				android:id="@+id/linear5"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:gravity="center_vertical"
+				android:orientation="vertical"
+				android:layout_weight="1">
+				<TextView
+					android:id="@+id/title"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:paddingLeft="8dp"
+					android:paddingTop="3dp"
+					android:paddingRight="8dp"
+					android:textSize="16sp"
+					android:textColor="#FFFFFF"
+					android:singleLine="true"
+					android:fontFamily="@font/solaimanlipi" />
+			</LinearLayout>
+		</LinearLayout>
+		<ListView
+			android:id="@+id/listview"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="#FFFFFF"
+			android:dividerHeight="0dp"
+			android:divider="@null"
+			android:choiceMode="none"
+			android:layout_gravity="center_horizontal|center_vertical" />
+	</LinearLayout>
+</LinearLayout>

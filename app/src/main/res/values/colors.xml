@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#01837A</color>
+    <color name="purple_500">#01837A</color>
+    <color name="purple_700">#01837A</color>
+    <color name="teal_200">#01837A</color>
+    <color name="teal_700">#01837A</color>
+    <color name="black">#01837A</color>
+    <color name="blue">#00BCD4</color>
+    <color name="white">#FFFFFF</color>
+    <color name="button">#FFFFFF</color>
+    <color name="_021921">#021921</color>
+    <color name="white0">#FFFFFFFF</color>
+    <color name="colorSecondary">@color/card_violet</color>
+    <color name="colorGrey">@color/darkColor</color>
+
+    <color name="light_color1">#E6E7E8</color>
+    <color name="light_color2">#F1F2F2</color>
+    <color name="light_color3">#A1A1A1</color>
+    <color name="light_color4">#343a40</color>
+    <color name="light_color5">#49525A</color>
+    <color name="light_color6">#686E75</color>
+    <color name="colorPrimaryDark">#fe4e4e</color>
+    <color name="colorAccent">#f44236</color>
+    <color name="danger_color2">#F8E3E3</color>
+    <color name="danger_color3">#FBECEC</color>
+    <color name="danger_color4">#FFC8C8</color>
+    <color name="danger_color5">#590D0D</color>
+    <color name="danger_color6">#811616</color>
+
+    <color name="red">#CC1414</color>
+    <!--color palette-->
+    <color name="colorPrimary">@color/light_color1</color>
+    <!--    <color name="colorPrimaryDark">#1E5DFF</color>-->
+
+
+    <color name="textTitle">#0C2EED</color>
+    <color name="textHistory">#333232</color>
+
+    <color name="textColor">#3f3b3b</color>
+    <color name="titleColor">#1b272c</color>
+    <color name="darkColor">#313131</color>
+    <color name="grey">#828080</color>
+    <color name="grey1">#4f4f4f</color>
+    <color name="grey2">#d6d6d6</color>
+    <color name="black0">#FF000000</color>
+
+    <color name="departmentColor">#05487E</color>
+
+
+    <color name="searchwhite">#FFFFFF</color>
+    <color name="searchblack">#000000</color>
+
+    <color name="transparent">#00000000</color>
+    <color name="deeppurple">#7c4dff</color>
+
+    <color name="titelcolorbd">#f44236</color>
+    <!--    <color name="titelcolorbd">#20ad96</color>-->
+
+    <color name="headteacher">#c39d7d</color>
+
+    <color name="textcolor">#313131</color>
+
+
+    <color name="otp">#25d366</color>
+
+    <!--color palette-->
+    <color name="purple">#D4C4E3</color>
+    <color name="darkPurple">#9387F5</color>
+    <color name="blue0">#A8DAF0</color>
+    <color name="peach">#F0C390</color>
+    <color name="green">#C3F09C</color>
+    <color name="orangeRed">#F3722C</color>
+    <color name="yellowOrange">#F8961E</color>
+    <color name="MangoTango">#F9844A</color>
+    <color name="maizeCrayola">#F9C74F</color>
+    <color name="card_purple">#8690B1</color>
+    <color name="card_yellow">#FFCC00</color>
+    <color name="card_red">#FF3B30</color>
+    <color name="card_violet">#FF9500</color>
+    <color name="card_blue">#5AC8FA</color>
+    <color name="card_green">#34C759</color>
+
+    <color name="purple_2000">#FFBB86FC</color>
+    <color name="purple_5000">#FFC107</color>
+    <color name="purple_7000">#FF9800</color>
+    <color name="teal_2000">#FF03DAC5</color>
+    <color name="teal_7000">#FF018786</color>
+
+    <color name="web_top">#FF9800</color>
+    <color name="text_color">#000000</color>
+    <color name="background_color">#673AB7</color>
+    <color name="background">#F3E4BA</color>
+    <color name="shadow_color_top">#EFD079</color>
+    <color name="shadow_color_bottom">#F6F4F1</color>
+    <color name="slider_title_background">#40000000</color>
+    <color name="thankYou_title">#FF9800</color>
+    <color name="thankYou_des">#9E9393</color>
+</resources>

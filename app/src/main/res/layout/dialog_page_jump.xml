@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/white"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="10dp"
+        android:background="@color/teal_200"
+        android:fontFamily="@font/solaimanlipi"
+        android:padding="5dp"
+        android:text="কোন আয়াতে যাবেন?"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp" />
+
+    <EditText
+        android:id="@+id/pageInput"
+        android:background="@drawable/edit"
+        android:fontFamily="@font/solaimanlipi"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="আয়াত নাম্বার লিখুন"
+        android:textColor="@color/purple_500"
+        android:textColorHint="@color/purple_500"
+        android:padding="5dp"
+        android:inputType="number" />
+</LinearLayout>

@@ -1,0 +1,75 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:background="@color/white"
+	android:orientation="vertical">
+	<LinearLayout
+		android:id="@+id/linear1"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_margin="5dp"
+		android:padding="8dp"
+		android:background="#FFFFFF"
+		android:gravity="center_horizontal|center_vertical"
+		android:orientation="horizontal">
+		<LinearLayout
+			android:id="@+id/bookpic"
+			android:layout_width="50dp"
+			android:layout_height="50dp"
+			android:background="@drawable/quran"
+			android:gravity="center_horizontal|center_vertical"
+			android:orientation="horizontal"
+			android:layout_gravity="center_horizontal|center_vertical">
+			<TextView
+				android:id="@+id/number"
+				android:focusable="false"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:gravity="center_horizontal|center_vertical"
+				android:text="100"
+				android:textSize="10sp"
+				android:textColor="#000000"
+				android:translationY="-5.0dp"
+				android:layout_gravity="center_horizontal|center_vertical"
+				android:fontFamily="@font/solaimanlipi" />
+		</LinearLayout>
+		<LinearLayout
+			android:id="@+id/boxofcontent"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:orientation="vertical"
+			android:layout_weight="1">
+			<TextView
+				android:id="@+id/suraName"
+				android:focusable="false"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="আল ফাতিহা"
+				android:textSize="16sp"
+				android:textColor="#000000"
+				android:fontFamily="@font/solaimanlipi" />
+			<TextView
+				android:id="@+id/verses"
+				android:focusable="false"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:text="মোট আয়াত : ৭ | মক্কা"
+				android:textSize="12sp"
+				android:textColor="#000000"
+				android:fontFamily="@font/solaimanlipi" />
+		</LinearLayout>
+		<TextView
+			android:id="@+id/suraArabic"
+			android:focusable="false"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="سُّورَة الفَاتِحَة"
+			android:textSize="14sp"
+			android:textStyle="bold"
+			android:textColor="#000000"
+			android:fontFamily="@font/solaimanlipi" />
+	</LinearLayout>
+</LinearLayout>

@@ -1,0 +1,107 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:fitsSystemWindows="true"
+	android:orientation="vertical">
+	<LinearLayout
+		android:id="@+id/viewblog"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:orientation="vertical"
+		android:layout_weight="1">
+		<LinearLayout
+			android:id="@+id/toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="45dp"
+			android:padding="8dp"
+			android:background="#01837A"
+			android:gravity="center_vertical"
+			android:orientation="horizontal">
+			<ImageView
+				android:id="@+id/btn_search"
+				android:layout_width="40dp"
+				android:layout_height="40dp"
+				android:padding="8dp"
+				android:src="@drawable/ic_arrow_back_white"
+				android:scaleType="centerInside" />
+			<LinearLayout
+				android:id="@+id/linear4"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:gravity="center_horizontal|center_vertical"
+				android:orientation="vertical"
+				android:layout_weight="1">
+				<TextView
+					android:id="@+id/textview1"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="TextView"
+					android:textSize="18sp"
+					android:fontFamily="@font/solaimanlipi"
+					android:textColor="#FFFFFF" />
+			</LinearLayout>
+			<ImageView
+				android:id="@+id/btn_menu"
+				android:layout_width="0dp"
+				android:layout_height="40dp"
+				android:padding="8dp"
+				android:src="@drawable/menu"
+				android:scaleType="center" />
+		</LinearLayout>
+		<ProgressBar
+			android:id="@+id/progressbar1"
+			android:layout_width="match_parent"
+			android:layout_height="10dp"
+			android:background="@android:color/transparent"
+			android:indeterminate="true"
+			style="?android:progressBarStyleHorizontal" />
+		<ScrollView
+			android:id="@+id/vscroll1"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="#FFFFFF"
+			android:layout_weight="1">
+			<LinearLayout
+				android:id="@+id/linear2"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:background="@android:color/transparent"
+				android:orientation="vertical">
+				<LinearLayout
+					android:id="@+id/pl"
+					android:layout_width="0dp"
+					android:layout_height="0dp"
+					android:background="#FFFFFF"
+					android:orientation="horizontal" />
+				<WebView
+					android:id="@+id/webview2"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:layout_weight="1"/>
+				<TextView
+					android:id="@+id/textview2"
+					android:layout_width="0dp"
+					android:layout_height="0dp"
+					android:text="TextView"
+					android:textSize="16sp"
+					android:textColor="#FFD600" />
+				<WebView
+					android:id="@+id/tu"
+					android:layout_width="0dp"
+					android:layout_height="0dp"
+					android:background="@android:color/transparent" />
+				<TextView
+					android:id="@+id/textview3"
+					android:layout_width="0dp"
+					android:layout_height="0dp"
+					android:layout_margin="5dp"
+					android:text="TextView"
+					android:textSize="16sp"
+					android:textColor="#000000" />
+			</LinearLayout>
+		</ScrollView>
+	</LinearLayout>
+</LinearLayout>

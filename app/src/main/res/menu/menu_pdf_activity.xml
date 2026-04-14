@@ -1,0 +1,13 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_avatar"
+        android:title="Avatar"
+        android:icon="@drawable/ic_jump_page"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_scan_text"
+        android:title="টেক্সট স্ক্যান"
+        android:icon="@drawable/ic_content_copy_white"
+        app:showAsAction="ifRoom" />
+</menu>

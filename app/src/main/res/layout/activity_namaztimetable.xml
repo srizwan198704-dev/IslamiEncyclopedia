@@ -1,0 +1,76 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:fitsSystemWindows="true"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/fajr_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fajr Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/sunrise_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sunrise Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/dhuhr_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dhuhr Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/asr_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Asr Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/maghrib_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Maghrib Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/isha_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Isha Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/sehri_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sehri Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/iftar_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Iftar Time"
+            android:textSize="16sp"
+            android:padding="8dp" />
+    </LinearLayout>
+</ScrollView>

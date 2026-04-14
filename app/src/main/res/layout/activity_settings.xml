@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:fitsSystemWindows="true"
+    android:background="@color/white">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/topAppBar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="@string/settings"
+            app:titleTextColor="@color/white"
+            android:background="@color/purple_500"
+            app:navigationIcon="?attr/homeAsUpIndicator"
+            app:navigationIconTint="@color/white" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:background="@color/white">
+
+        <!-- Content here -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="20dp"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/darkFont"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginBottom="10dp"
+                android:fontFamily="@font/solaimanlipi"
+                android:text="@string/method"
+                tools:ignore="TextSizeCheck" />
+            <!-- -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:layout_marginLeft="10dp">
+
+                <TextView
+                    style="@style/darkFont"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="10dp"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:text="@string/calculation_method"
+                    tools:ignore="TextSizeCheck" />
+
+                <Spinner
+                    android:id="@+id/calculationMethodSpinner"
+                    style="@style/darkFont"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="@drawable/spinner_bg1"
+                    android:dropDownVerticalOffset="48dp"
+                    android:spinnerMode="dropdown"
+                    tools:ignore="TouchTargetSizeCheck" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:layout_marginTop="10dp"
+                android:layout_marginLeft="10dp">
+
+                <TextView
+                    style="@style/darkFont"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="10dp"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:text="@string/madhab"
+                    tools:ignore="TextSizeCheck" />
+
+                <Spinner
+                    android:id="@+id/madhabSpinner"
+                    style="@style/darkFont"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="@drawable/spinner_bg1"
+                    android:dropDownVerticalOffset="48dp"
+                    android:spinnerMode="dropdown"
+                    tools:ignore="TouchTargetSizeCheck" />
+            </LinearLayout>
+
+            <!-- Notification -->
+            <View
+                android:layout_width="wrap_content"
+                android:layout_height="1dp"
+                android:background="@color/light_color1"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="20dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/darkFont"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="10dp"
+                    android:fontFamily="@font/solaimanlipi"
+                    android:text="@string/notification"
+                    tools:ignore="TextSizeCheck" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:weightSum="1"
+                    android:layout_marginLeft="10dp">
+
+                    <TextView
+                        style="@style/darkFont"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_marginBottom="10dp"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/solaimanlipi"
+                        android:gravity="center_vertical"
+                        android:text="@string/waqt_notification"
+                        tools:ignore="TextSizeCheck" />
+
+                    <Switch
+                        android:id="@+id/switchWaqtNotification"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="end"
+                        android:theme="@style/Widget.App.Switch"
+                        tools:ignore="TouchTargetSizeCheck" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Change Language -->
+            <View
+                android:layout_width="wrap_content"
+                android:layout_height="1dp"
+                android:background="@color/light_color1"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="20dp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="@string/theme"
+                android:visibility="gone"
+                android:layout_marginBottom="10dp"
+                style="@style/darkFont"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:weightSum="1"
+                android:layout_marginLeft="10dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="@string/dark_mode"
+                    android:layout_marginBottom="10dp"
+                    style="@style/darkFont"
+                    android:gravity="center_vertical"
+                    android:layout_weight="1"/>
+                <Switch
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="end"
+                    android:theme="@style/Widget.App.Switch"
+                    android:id="@+id/themeSwitch"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:weightSum="1"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:visibility="gone"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_version"
+                        android:id="@+id/textAppVersion"
+                        android:gravity="start"
+                        android:layout_weight="1"
+                        android:padding="10dp"
+                        android:textSize="10dp"
+                        android:textColor="?attr/colorPrimary"/>
+                    <TextView
+                        android:visibility="gone"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Check for update"
+                        android:id="@+id/textCheckForUpdate"
+                        android:gravity="end"
+                        android:padding="10dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:tooltipText="Tap to check any updated version"
+                        android:textSize="17sp"
+                        android:textColor="?attr/colorPrimary"/>
+                </LinearLayout>
+            </LinearLayout>
+
+
+
+
+        </LinearLayout>
+
+
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

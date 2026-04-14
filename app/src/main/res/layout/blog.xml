@@ -1,0 +1,141 @@
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:fitsSystemWindows="true"
+    android:background="@drawable/back1ground"
+	android:orientation="vertical">
+	<LinearLayout
+		android:id="@+id/linear1"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:background="#FFFFFF"
+		android:orientation="vertical">
+		<com.google.android.material.tabs.TabLayout
+			android:id="@+id/tablayout1"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:background="#01837A"
+			app:tabGravity="fill"
+			app:tabMode="fixed"
+			app:tabIndicatorHeight="3dp"
+			app:tabIndicatorColor="@android:color/white"
+			app:tabSelectedTextColor="@android:color/white"
+			app:tabTextColor="@android:color/white"
+			app:tabTextAppearance="@android:style/TextAppearance.Widget.TabWidget"
+			android:fontFamily="@font/solaimanlipi" />
+		<LinearLayout
+			android:id="@+id/linear_web"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:orientation="vertical">
+			<ProgressBar
+				android:id="@+id/progressbar1"
+				android:layout_width="match_parent"
+				android:layout_height="4dp"
+				android:indeterminate="false"
+				style="?android:progressBarStyleHorizontal" />
+			<Button
+				android:id="@+id/permissions"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:layout_marginLeft="5dp"
+				android:layout_marginRight="5dp"
+				android:padding="8dp"
+				android:visibility="gone"
+				android:text="Storage Permission"
+                android:background="@color/purple_500"
+				android:textSize="16sp"
+				android:textStyle="bold"
+				android:textColor="#FFFFFF"
+				android:fontFamily="@font/solaimanlipi" />
+			<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+				android:id="@+id/swiperefreshlayout1"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent">
+				<WebView
+					android:id="@+id/webview1"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:fontFamily="@font/solaimanlipi" />
+			</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+			<LinearLayout
+				android:id="@+id/errorView"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:gravity="center_horizontal|center_vertical"
+				android:orientation="vertical"
+				android:visibility="gone">
+				<TextView
+					android:id="@+id/textview1"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:padding="8dp"
+					android:text="ইন্টারনেট সংযোগ নেই বা কিছু সমস্যা হচ্ছে"
+					android:textSize="16sp"
+					android:textColor="#000000"
+					android:fontFamily="@font/solaimanlipi" />
+				<com.google.android.material.button.MaterialButton
+					android:id="@+id/materialbutton3"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:padding="8dp"
+					android:gravity="center_horizontal|center_vertical"
+					android:text="আগের পেইজে ফেরত আসুন"
+					android:textSize="14sp"
+					android:textColor="#FFFFFF"
+					android:textAppearance="@style/TextAppearance.MaterialComponents.Button"
+					app:backgroundTint="@color/purple_500"
+					app:cornerRadius="8dp"
+					style="@style/Widget.MaterialComponents.Button"
+					android:fontFamily="@font/solaimanlipi" />
+				<com.google.android.material.button.MaterialButton
+					android:id="@+id/materialbutton1"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:padding="8dp"
+					android:gravity="center_horizontal|center_vertical"
+					android:text="রিফ্রেশ করুন"
+					android:textSize="12sp"
+					android:textColor="#FFFFFF"
+					android:textAppearance="@style/TextAppearance.MaterialComponents.Button"
+					app:backgroundTint="@color/purple_500"
+					app:cornerRadius="8dp"
+					style="@style/Widget.MaterialComponents.Button"
+					android:fontFamily="@font/solaimanlipi" />
+				<com.google.android.material.button.MaterialButton
+					android:id="@+id/materialbutton2"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:padding="8dp"
+					android:gravity="center_horizontal|center_vertical"
+					android:text="ইন্টারনেট সেটিং"
+					android:textSize="12sp"
+					android:textColor="#FFFFFF"
+					android:textAppearance="@style/TextAppearance.MaterialComponents.Button"
+					app:backgroundTint="@color/purple_500"
+					app:cornerRadius="8dp"
+					style="@style/Widget.MaterialComponents.Button"
+					android:fontFamily="@font/solaimanlipi" />
+			</LinearLayout>
+		</LinearLayout>
+		<LinearLayout
+			android:id="@+id/linear_download"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:orientation="horizontal">
+			<ScrollView
+				android:id="@+id/vscroll1"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent">
+				<LinearLayout
+					android:id="@+id/linear_list"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:orientation="vertical" />
+			</ScrollView>
+		</LinearLayout>
+	</LinearLayout>
+</LinearLayout>

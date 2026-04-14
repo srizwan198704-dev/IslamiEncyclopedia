@@ -1,0 +1,52 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/linear1"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="10dp"
+    android:layout_margin="5dp"
+    android:gravity="center_vertical">
+
+    <LinearLayout
+        android:id="@+id/linear5"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_margin="5dp"
+        android:padding="2dp"
+        android:background="@drawable/ic_1_4"
+        android:gravity="center_horizontal|center_vertical"
+        android:orientation="vertical"
+        android:layout_gravity="center_horizontal|center_vertical">
+
+        <TextView
+            android:id="@+id/number"
+            android:focusable="false"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal|center_vertical"
+            android:text="100"
+            android:fontFamily="@font/solaimanlipi"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#5A0202"
+            android:layout_gravity="center_horizontal|center_vertical"  />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/main"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="সূচির নাম"
+            android:textSize="16sp"
+            android:textColor="#000000"
+            android:fontFamily="@font/solaimanlipi" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginLeft="10dp"
+    android:layout_marginRight="10dp"
+    app:cardMaxElevation="5dp"
+    android:elevation="10dp"
+    app:cardElevation="5dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_marginTop="10dp">
+    <!-- Sehri And Iftar -->
+
+    <!-- End -->
+
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bggg"
+        android:padding="20dp"
+        android:weightSum="1"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:orientation="vertical"
+            android:layout_weight="1"
+            android:paddingRight="12dp"
+            android:layout_height="wrap_content"
+           >
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="অ্যাপে আর্থিক অনুদান দিন"
+                android:textSize="15sp"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="@color/teal_700"
+                />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="এই ফান্ডে যাকাত-ফেতরা প্রদান করা যাবেনা। সাধারন ডোনেশন দিতে পারবেন"
+                android:textSize="12sp"
+                android:textAlignment="textStart"
+                android:fontFamily="@font/solaimanlipi"
+                android:textColor="?attr/colorPrimary"
+                 />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/Donate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DONATE"
+            android:background="@drawable/bggg"
+            android:textSize="17sp"
+            android:clickable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:textStyle="bold"
+            android:padding="10dp"
+            android:fontFamily="@font/solaimanlipi"
+            android:textColor="@color/teal_700"
+           android:layout_gravity="center"
+            android:gravity="center"
+            />
+    </LinearLayout>
+    </RelativeLayout>
+    <!-- End -->
+

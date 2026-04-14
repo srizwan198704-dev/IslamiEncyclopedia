@@ -1,0 +1,85 @@
+<resources>
+    <string name="app_name">ইসলামী বিশ্বকোষ ও আল হাদিস S2</string>
+    <string name="title_activity_main1">Main1Activity</string>
+    <string name="title_activity_main2">Main2Activity</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="color">#01837A</string>
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+    <string name="kitab">ইসলামী বই ২</string>
+    <string name="rizwanS2">ডেভেলপার : রিজওয়ান চৌধুরী</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="sorry">আসসালামু আলাইকুম । আন্তরিকভাবে দুঃখিত সমস্যাটির জন্যেই। আমাদের নিজস্ব সার্ভার না থাকায় সমস্যাটি দেখা যাচ্ছে । ইনশাআল্লাহ দ্রুত সার্ভার নেওয়া হবে। ডেভেলপারকে সমস্যার ব্যাপারে জানিয়ে সহযোগিতা করুন।</string>
+    <string name="kanzul">অনলাইন বই ২ থেকে পড়ুন</string>
+    <string name="change_location_bn">জেলা পরিবর্তন</string>
+    <string name="select_division_bn">বিভাগ নির্বাচন করুন</string>
+    <string name="select_district_bn">জেলা নির্বাচন করুন</string>
+
+    <string name="answer">গুরুত্বপূর্ণ প্রশ্ন জিজ্ঞাসা</string>
+    <string name="current_prayer">বর্তমান ওয়াক্ত</string>
+    <string name="next_prayer_bn">পরবর্তী ওয়াক্ত</string>
+    <string name="now_running_bn">এখন চলছে</string>
+
+    <string name="sehri_end_bn">সেহরি শেষ</string>
+    <string name="iftar_time_en">ইফতার</string>
+
+    <string name="namaz_niyom">নামাজের নিয়ম</string>
+    <string name="compass_bn">ক্বিবলা কম্পাস</string>
+    <string name="sehri_iftar_bn">সেহরি ও ইফতার</string>
+    <string name="tasbeeh_bn">তসবিহ</string>
+    <string name="namaz_timetable">নামযের সময়সূচি</string>
+    <string name="al_quran_bn">আল-কুরআন (বাংলা উচ্চারণ ও অর্থসহ)</string>
+    <string name="dua_bn">দোয়া</string>
+
+    <string name="forbidden_time_bn">নিষিদ্ধ সময়</string>
+    <string name="today_forbidden_time_bn">আজকের সম্ভাব্য নিষিদ্ধ সময়</string>
+    <string name="morning_bn">সকাল</string>
+    <string name="noon_bn">দুপুর</string>
+    <string name="evening_bn">সন্ধ্যা</string>
+
+    <string name="tahazzud_bn">তাহাজ্জুদ</string>
+    <string name="fazar_bn">ফজর</string>
+    <string name="ishrak_bn">ইশরাক</string>
+    <string name="surrjadoy_bn">সুর্যোদয়</string>
+    <string name="johr_bn">যোহর</string>
+    <string name="ashr_bn">আসর</string>
+    <string name="surrjasta_bn">সূর্যাস্ত</string>
+    <string name="magrib_bn">মাগরিব</string>
+    <string name="esha_bn">এশা</string>
+
+    <string name="share_bn">শেয়ার</string>
+
+    <string name="settings">সেটিংস</string>
+    <string name="method">পদ্ধতি</string>
+    <string name="calculation_method">সময় হিসাবের পদ্ধতি</string>
+    <string name="madhab">মাজহাব</string>
+    <string name="notification">নোটিফিকেশন</string>
+    <string name="waqt_notification">প্রতি ওয়াক্তের নোটিফিকেশন</string>
+
+    <string name="names_of_allah_bn">আসমাউল হুসনা</string>
+    <string name="names_of_allah_full_bn">আসমাউল হুসনা/ইসমে আজম</string>
+
+    <string name="live_bn">লাইভ</string>
+    <string name="waz_bn">ওয়াজ</string>
+
+    <string name="update_bn">আপডেট</string>
+
+    <string name="no_internet_retry_bn">ইন্টারনেট সংযোগ নেই। পুনরায় ইন্টারনেট চালু করে আবার চেষ্টা করুন।</string>
+
+    <string name="join_facebook_text_bn">অ্যাপ সম্পর্কে বিস্তারিত মতামত জানাতে আমাদের ফেসবুক গ্রুপে জয়েন করুন।</string>
+
+    <string name="theme">থিম</string>
+    <string name="dark_mode">ডার্ক মোড</string>
+    <string name="app_version">App version</string>
+
+</resources>
