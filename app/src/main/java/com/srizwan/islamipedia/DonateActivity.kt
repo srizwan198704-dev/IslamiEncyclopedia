@@ -174,8 +174,9 @@ class DonateActivity : AppCompatActivity() {
         contentLinearLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = contentParams
-            setPadding(dpToPx(24), dpToPx(24), dpToPx(24), dpToPx(24))
-            setBackgroundColor(Color.WHITE)
+            setPadding(dpToPx(24), dpToPx(32), dpToPx(24), dpToPx(32))
+            // White Background Removed
+            gravity = Gravity.CENTER_HORIZONTAL // Center all views horizontally
         }
 
         // Heart Emoji TextView
@@ -185,10 +186,11 @@ class DonateActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                gravity = android.view.Gravity.CENTER_HORIZONTAL or android.view.Gravity.CENTER_VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dpToPx(16)
             }
             text = "❤️"
-            textSize = 100f
+            textSize = 150f // Bigger font size
         }
         contentLinearLayout.addView(heartTextView)
 
@@ -199,13 +201,14 @@ class DonateActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                gravity = android.view.Gravity.CENTER_HORIZONTAL or android.view.Gravity.CENTER_VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
             }
             text = "ইসলামী বিশ্বকোষ ও আল হাদিস S2"
-            textSize = 25f
+            textSize = 35f // Bigger font size
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#1A237E"))
             alpha = 0.8f
+            gravity = Gravity.CENTER // Center text inside the view
             applyFontToTextView(this)
         }
         contentLinearLayout.addView(appNameTextView)
@@ -214,12 +217,12 @@ class DonateActivity : AppCompatActivity() {
         dividerView = View(this).apply {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(
-                dpToPx(60),
-                dpToPx(3)
+                dpToPx(80),
+                dpToPx(4)
             ).apply {
-                gravity = android.view.Gravity.CENTER_HORIZONTAL or android.view.Gravity.CENTER_VERTICAL
-                topMargin = dpToPx(16)
-                bottomMargin = dpToPx(16)
+                gravity = Gravity.CENTER_HORIZONTAL
+                topMargin = dpToPx(24)
+                bottomMargin = dpToPx(24)
             }
             setBackgroundColor(Color.parseColor("#F0F0F0"))
         }
@@ -232,12 +235,13 @@ class DonateActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                gravity = android.view.Gravity.CENTER_HORIZONTAL or android.view.Gravity.CENTER_VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
             }
             text = "আপনার সহযোগিতায় আমরা অ্যাপটিকে বিজ্ঞাপনমুক্ত ও উন্নত রাখতে চাই। এটি একটি সদকায়ে জারিয়া হিসেবে গণ্য হবে ইনশাআল্লাহ।"
-            textSize = 14f
+            textSize = 18f // Bigger font size
             setTextColor(Color.parseColor("#444444"))
-            setLineSpacing(dpToPx(4).toFloat(), 1.0f)
+            setLineSpacing(dpToPx(6).toFloat(), 1.0f)
+            gravity = Gravity.CENTER // Center text
             applyFontToTextView(this)
         }
         contentLinearLayout.addView(commitmentTextView)
@@ -250,27 +254,27 @@ class DonateActivity : AppCompatActivity() {
         expandHeaderLayout = LinearLayout(this).apply {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT, // WRAP_CONTENT for center alignment
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dpToPx(20)
+                topMargin = dpToPx(30)
+                gravity = Gravity.CENTER_HORIZONTAL
             }
             orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
             isFocusable = true
-            setPadding(0, dpToPx(8), 0, dpToPx(8))
+            setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
             setBackgroundResource(expandBgOutValue.resourceId)
         }
 
         expandTitleTextView = TextView(this).apply {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(
-                0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             text = "কেন আপনার সহযোগিতা প্রয়োজন?"
-            textSize = 15f
+            textSize = 20f // Bigger font size
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#1A237E"))
             applyFontToTextView(this)
@@ -282,24 +286,27 @@ class DonateActivity : AppCompatActivity() {
         reasonsContentLayout = LinearLayout(this).apply {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dpToPx(8)
+                topMargin = dpToPx(16)
+                gravity = Gravity.CENTER_HORIZONTAL
             }
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER // Center content
         }
 
         reasonsTextView = TextView(this).apply {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
             text = "• সার্ভার ও রক্ষণাবেক্ষণ খরচ\n• বিজ্ঞাপনমুক্ত বিশুদ্ধ অভিজ্ঞতা\n• তাফসির সমগ্র সম্পূর্ণ করণ\n• নতুন আধুনিক ফিচার উন্নয়ন\n• দ্বীন প্রচারের প্রসার ও সদকায়ে জারিয়া"
-            textSize = 14f
+            textSize = 18f // Bigger font size
             setTextColor(Color.parseColor("#666666"))
-            setLineSpacing(dpToPx(6).toFloat(), 1.0f)
+            setLineSpacing(dpToPx(8).toFloat(), 1.0f)
+            gravity = Gravity.CENTER // Center text
             applyFontToTextView(this)
         }
         reasonsContentLayout.addView(reasonsTextView)
@@ -314,22 +321,23 @@ class DonateActivity : AppCompatActivity() {
         numberContainerLayout = LinearLayout(this).apply {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dpToPx(24)
+                topMargin = dpToPx(40)
+                gravity = Gravity.CENTER_HORIZONTAL
             }
             orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
             isFocusable = true
-            setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
+            setPadding(dpToPx(24), dpToPx(20), dpToPx(24), dpToPx(20))
 
             if (bgResId != 0) {
                 setBackgroundResource(bgResId)
             } else {
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor("#F8F9FA"))
-                    cornerRadius = dpToPx(8).toFloat()
+                    cornerRadius = dpToPx(12).toFloat()
                     setStroke(1, Color.parseColor("#E0E0E0"))
                 }
             }
@@ -340,11 +348,11 @@ class DonateActivity : AppCompatActivity() {
         // Inner LinearLayout for text
         val innerTextLayout = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
-                0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER // Center inner texts
         }
 
         numberLabelTextView = TextView(this).apply {
@@ -354,9 +362,10 @@ class DonateActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
             text = "বিকাশ (পার্সোনাল)"
-            textSize = 12f
+            textSize = 16f // Bigger font size
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#D81B60"))
+            gravity = Gravity.CENTER
             applyFontToTextView(this)
         }
         innerTextLayout.addView(numberLabelTextView)
@@ -368,10 +377,11 @@ class DonateActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
             text = "01537-144153"
-            textSize = 20f
+            textSize = 28f // Bigger font size
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#212121"))
             letterSpacing = 0.05f
+            gravity = Gravity.CENTER
             applyFontToTextView(this)
         }
         innerTextLayout.addView(numberValueTextView)
@@ -383,14 +393,14 @@ class DonateActivity : AppCompatActivity() {
         copyHintTextView = TextView(this).apply {
             id = View.generateViewId()
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dpToPx(8)
-                gravity = android.view.Gravity.CENTER_HORIZONTAL or android.view.Gravity.CENTER_VERTICAL
+                topMargin = dpToPx(16)
+                gravity = Gravity.CENTER_HORIZONTAL
             }
             text = "নম্বরের ওপর ট্যাপ করে কপি করুন"
-            textSize = 11f
+            textSize = 14f // Bigger font size
             setTextColor(Color.parseColor("#888888"))
             applyFontToTextView(this)
         }
