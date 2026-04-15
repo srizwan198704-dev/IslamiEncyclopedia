@@ -902,23 +902,23 @@ class HadithMeActivity : AppCompatActivity() {
     // Scroll to specific hadith
     // ─────────────────────────────────────────────────────────────
     private fun scrollToHadith(hadithNumber: Int) {
-        hadithPagingAdapter?.let { adapter ->
-            // Find position of hadith
-            lifecycleScope.launch {
-                var position = -1
-                for (i in 0 until adapter.itemCount) {
-                    val item = adapter.peek(i) as? HadithItem
-                    if (item?.hadithNumber == hadithNumber) {
-                        position = i
-                        break
-                    }
+    hadithPagingAdapter?.let { adapter ->
+        lifecycleScope.launch {
+            var position = -1
+            for (i in 0 until adapter.itemCount) {
+                // ✅ Use getItem() from PagingDataAdapter
+                val entity = adapter.getItem(i)
+                if (entity?.hadithNumber == hadithNumber) {
+                    position = i
+                    break
                 }
-                if (position >= 0) {
-                    recyclerView.scrollToPosition(position)
-                }
+            }
+            if (position >= 0) {
+                
             }
         }
     }
+}
 
     // ─────────────────────────────────────────────────────────────
     // Refresh current page
