@@ -3,7 +3,7 @@ import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
-    id("org.jetbrains.kotlin.kapt") // ✅ KAPT plugin
+    id("org.jetbrains.kotlin.kapt")
 }
 
 // Local properties থেকে কী-গুলো রিড করা
@@ -28,7 +28,6 @@ android {
         versionName = "7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Resources value mapping
         val keys = mapOf(
             "api" to api, "tafsir" to tafsir, "text" to text, "pdf" to pdf,
             "boyan" to boyan, "blogid" to blogid, "api2" to api2, "textapi" to textapi
@@ -84,15 +83,16 @@ android {
         }
     }
 
+    // ✅ FIXED: Java 17 (stable for CI + KAPT)
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // ✅ Updated Kotlin compiler config (FIXED)
+    // ✅ FIXED: Kotlin JVM 17
     kotlin {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
 
@@ -151,7 +151,8 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 }
 
-// ✅ KAPT stability fix
+// ✅ FINAL KAPT FIX (CI stable)
 kapt {
     correctErrorTypes = true
+    useBuildCache = true
 }
