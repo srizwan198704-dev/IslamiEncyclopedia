@@ -3,7 +3,7 @@ import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
-	kotlin("kapt")
+    alias(libs.plugins.kotlin.kapt) // ✅ Fix: Use proper plugin alias
 }
 
 // Local properties থেকে কী-গুলো রিড করা
@@ -45,7 +45,7 @@ android {
             keyAlias = "book"
             keyPassword = "book0102"
             
-            // ✅ ১৬ KB মেমোরি পেজ সাপোর্টের জন্য আধুনিক সিগনেচার আবশ্যক
+            enableV1Signing = true  // ✅ Recommended to keep V1 for compatibility
             enableV2Signing = true
             enableV3Signing = true
             enableV4Signing = true
@@ -76,10 +76,8 @@ android {
         }
     }
 
-    // ✅ অত্যন্ত গুরুত্বপূর্ণ: নেটিভ লাইব্রেরিগুলোকে ১৬ KB পেজ সাইজে অ্যালাইন করা
     packaging {
         jniLibs {
-            // এটি নেটিভ লাইব্রেরিগুলোকে কম্প্রেস না করে সরাসরি APK/AAB তে রাখবে যেন সিস্টেম ১৬ KB তে রেন্ডার করতে পারে
             useLegacyPackaging = false
         }
     }
@@ -89,9 +87,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    kotlinOptions {
-        jvmTarget = "21"
-        freeCompilerArgs += "-Xlint:deprecation"
+    // ✅ Fix: Replace deprecated kotlinOptions with compilerOptions
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            freeCompilerArgs.add("-Xlint:deprecation")
+        }
     }
 
     buildFeatures {
@@ -106,14 +107,12 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     
-    // PDF এবং অন্যান্য লাইব্রেরি (এগুলো ১৬ KB সাপোর্টের জন্য packaging সেটিংস জরুরি)
     implementation("com.github.DImuthuUpe:AndroidPdfViewer:3.1.0-beta.1")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.github.amitshekhariitbhu:PRDownloader:1.0.2")
     implementation("com.github.bumptech.glide:glide:4.12.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
-    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     
@@ -121,7 +120,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.webkit:webkit:1.7.0")
 
-    // API ও নেটওয়ার্কিং
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
@@ -129,20 +127,17 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("com.squareup.okhttp:okhttp:2.7.5")
     
-    // AI ও অন্যান্য সার্ভিস
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("com.batoulapps.adhan:adhan2:0.0.5")
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.1")
     implementation("com.batoulapps.adhan:adhan:1.2.1")
     implementation("org.jsoup:jsoup:1.16.1")
 
-	implementation("androidx.room:room-common:2.6.1")
-	// Room
+    implementation("androidx.room:room-common:2.6.1")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
 
-    // Paging 3
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
