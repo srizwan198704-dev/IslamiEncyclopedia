@@ -227,7 +227,7 @@ class QuranviewActivity : AppCompatActivity() {
                     val audioId = selectedBook.getString("_id")
                     val fileName = "$audioId.mp3"
                     val file = File(getExternalFilesDir(null), fileName)
-                    val url = "https://cdn.islamic.network/quran/audio/64/ar.alafasy/$audioId.mp3"
+                    val url = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/$audioId.mp3"
 
                     // index বের করি যাতে সেটি থেকে ধারাবাহিকভাবে চালানো যায়
                     val startIndex = filteredItems.indexOfFirst { it.getString("_id") == audioId }
