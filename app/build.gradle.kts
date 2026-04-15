@@ -3,6 +3,7 @@ import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+	kotlin("kapt")
 }
 
 // Local properties থেকে কী-গুলো রিড করা
@@ -134,7 +135,15 @@ dependencies {
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.1")
     implementation("com.batoulapps.adhan:adhan:1.2.1")
     implementation("org.jsoup:jsoup:1.16.1")
-    
+
+	implementation("androidx.room:room-common:2.6.1")
+	// Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+
+    // Paging 3
+    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     
