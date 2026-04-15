@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -24,13 +23,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.paging.*
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.room.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -65,176 +60,8 @@ data class HadithItem(
     val hadithNumber: Int,
     val title: String,
     val descriptionAr: String,
-    val description: String,
-    var isBookmarked: Boolean = false
-)
-
-// ─────────────────────────────────────────────────────────────────
-// Room Database Entities
-// ─────────────────────────────────────────────────────────────────
-@Entity(tableName = "hadith")
-data class HadithEntity(
-    @PrimaryKey val id: String, // format: bookId_sectionId_hadithNumber
-    val bookId: Int,
-    val sectionId: Int,
-    val hadithNumber: Int,
-    val title: String,
-    val descriptionAr: String,
     val description: String
 )
-
-@Entity(tableName = "bookmarks", indices = [Index(value = ["bookId", "sectionId", "hadithNumber"], unique = true)])
-data class BookmarkEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val bookId: Int,
-    val sectionId: Int,
-    val hadithNumber: Int,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-@Entity(tableName = "reading_progress", primaryKeys = ["bookId", "sectionId"])
-data class ReadingProgressEntity(
-    val bookId: Int,
-    val sectionId: Int,
-    val hadithNumber: Int,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-// ─────────────────────────────────────────────────────────────────
-// Room DAO
-// ─────────────────────────────────────────────────────────────────
-@Dao
-interface HadithDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertHadith(hadith: List<HadithEntity>)
-    
-    @Query("SELECT * FROM hadith WHERE bookId = :bookId AND sectionId = :sectionId ORDER BY hadithNumber")
-    fun getHadithPagingSource(bookId: Int, sectionId: Int): PagingSource<Int, HadithEntity>
-    
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun addBookmark(bookmark: BookmarkEntity)
-    
-    @Query("DELETE FROM bookmarks WHERE bookId = :bookId AND sectionId = :sectionId AND hadithNumber = :hadithNumber")
-    suspend fun removeBookmark(bookId: Int, sectionId: Int, hadithNumber: Int)
-    
-    @Query("SELECT EXISTS(SELECT 1 FROM bookmarks WHERE bookId = :bookId AND sectionId = :sectionId AND hadithNumber = :hadithNumber)")
-    suspend fun isBookmarked(bookId: Int, sectionId: Int, hadithNumber: Int): Boolean
-    
-    @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC")
-    fun getAllBookmarks(): Flow<List<BookmarkEntity>>
-    
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun saveReadingProgress(progress: ReadingProgressEntity)
-    
-    @Query("SELECT * FROM reading_progress WHERE bookId = :bookId AND sectionId = :sectionId")
-    suspend fun getReadingProgress(bookId: Int, sectionId: Int): ReadingProgressEntity?
-    
-    @Query("DELETE FROM reading_progress WHERE bookId = :bookId AND sectionId = :sectionId")
-    suspend fun clearReadingProgress(bookId: Int, sectionId: Int)
-    
-    @Query("SELECT * FROM hadith WHERE bookId = :bookId AND sectionId = :sectionId AND hadithNumber = :hadithNumber")
-    suspend fun getHadithByNumber(bookId: Int, sectionId: Int, hadithNumber: Int): HadithEntity?
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Room Database
-// ─────────────────────────────────────────────────────────────────
-@Database(
-    entities = [HadithEntity::class, BookmarkEntity::class, ReadingProgressEntity::class],
-    version = 1,
-    exportSchema = false
-)
-abstract class HadithDatabase : RoomDatabase() {
-    abstract fun hadithDao(): HadithDao
-    
-    companion object {
-        @Volatile
-        private var INSTANCE: HadithDatabase? = null
-        
-        fun getInstance(context: Context): HadithDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    HadithDatabase::class.java,
-                    "hadith_database.db"
-                ).build()
-                INSTANCE = instance
-                instance
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Paging Source for Hadith
-// ─────────────────────────────────────────────────────────────────
-class HadithPagingSource(
-    private val dao: HadithDao,
-    private val bookId: Int,
-    private val sectionId: Int
-) : PagingSource<Int, HadithEntity>() {
-    
-    override fun getRefreshKey(state: PagingState<Int, HadithEntity>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
-                ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
-        }
-    }
-    
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, HadithEntity> {
-        return try {
-            val page = params.key ?: 0
-            val pageSize = params.loadSize
-            
-            val hadith = dao.getHadithByPage(bookId, sectionId, page * pageSize, pageSize)
-            val nextKey = if (hadith.size < pageSize) null else page + 1
-            val prevKey = if (page == 0) null else page - 1
-            
-            LoadResult.Page(
-                data = hadith,
-                prevKey = prevKey,
-                nextKey = nextKey
-            )
-        } catch (e: Exception) {
-            LoadResult.Error(e)
-        }
-    }
-}
-
-// Extended DAO with pagination query
-@Dao
-interface HadithDaoExtended : HadithDao {
-    @Query("SELECT * FROM hadith WHERE bookId = :bookId AND sectionId = :sectionId ORDER BY hadithNumber LIMIT :limit OFFSET :offset")
-    suspend fun getHadithByPage(bookId: Int, sectionId: Int, offset: Int, limit: Int): List<HadithEntity>
-}
-
-// Update database to use extended DAO
-@Database(
-    entities = [HadithEntity::class, BookmarkEntity::class, ReadingProgressEntity::class],
-    version = 2,
-    exportSchema = false
-)
-abstract class HadithDatabaseV2 : RoomDatabase() {
-    abstract fun hadithDao(): HadithDaoExtended
-    
-    companion object {
-        @Volatile
-        private var INSTANCE: HadithDatabaseV2? = null
-        
-        fun getInstance(context: Context): HadithDatabaseV2 {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    HadithDatabaseV2::class.java,
-                    "hadith_database_v2.db"
-                ).fallbackToDestructiveMigration()
-                 .build()
-                INSTANCE = instance
-                instance
-            }
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────
 // Page State
@@ -248,21 +75,20 @@ sealed class PageState {
         val bookTitle: String,
         val sectionTitle: String
     ) : PageState()
-    object Bookmarks : PageState()
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Scroll position holder (only for books and sections)
+// Scroll position holder with better persistence
 // ─────────────────────────────────────────────────────────────────
 object ScrollState {
     var booksPosition: Int = 0
-    var booksOffset: Int = 0
-    val sectionsPositions = mutableMapOf<Int, Pair<Int, Int>>()
-    // Hadith scroll positions NOT saved - always starts from top
+    var booksOffset: Int = 0  // Store pixel offset for precise restoration
+    val sectionsPositions = mutableMapOf<Int, Pair<Int, Int>>()  // position + offset
+    val hadithPositions = mutableMapOf<String, Pair<Int, Int>>() // position + offset
 }
 
 // ─────────────────────────────────────────────────────────────────
-// In-memory Cache
+// In-memory Cache with timestamp for stale data detection
 // ─────────────────────────────────────────────────────────────────
 object HadithCache {
     var books: List<BookItem>? = null
@@ -272,6 +98,7 @@ object HadithCache {
     val hadith = mutableMapOf<String, List<HadithItem>>()
     val hadithTimestamp = mutableMapOf<String, Long>()
     
+    // Clear all cache if needed
     fun clearAll() {
         books = null
         booksTimestamp = 0
@@ -315,8 +142,6 @@ class HadithMeActivity : AppCompatActivity() {
 
     private val cacheDirName = "hadith_data"
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private lateinit var database: HadithDatabaseV2
-    private lateinit var sharedPrefs: SharedPreferences
     
     // Network state tracking
     private var isNetworkAvailable = true
@@ -342,8 +167,6 @@ class HadithMeActivity : AppCompatActivity() {
     private lateinit var globalSearchRecycler: RecyclerView
     private lateinit var globalSearchHint: TextView
     private lateinit var refreshButton: ImageView
-    private lateinit var bookmarksButton: ImageView
-    private lateinit var continueReadingButton: Button
 
     private var currentState: PageState = PageState.Books
     private var isSearchOpen = false
@@ -364,9 +187,6 @@ class HadithMeActivity : AppCompatActivity() {
     
     // Track if we're showing cached content
     private var isShowingCachedContent = false
-    
-    // Paging adapter for hadith
-    private var hadithPagingAdapter: HadithPagingAdapter? = null
 
     private lateinit var onBackPressedCallback: OnBackPressedCallback
 
@@ -383,9 +203,6 @@ class HadithMeActivity : AppCompatActivity() {
             flags = flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
             window.decorView.systemUiVisibility = flags
         }
-
-        database = HadithDatabaseV2.getInstance(this)
-        sharedPrefs = getSharedPreferences("hadith_prefs", Context.MODE_PRIVATE)
 
         onBackPressedCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -472,12 +289,6 @@ class HadithMeActivity : AppCompatActivity() {
             setColorFilter(Color.WHITE)
             setOnClickListener { toggleSearch() }
         }
-        bookmarksButton = ImageView(this).apply {
-            setImageResource(R.drawable.bookmark)
-            layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginStart = dp(8) }
-            setColorFilter(Color.WHITE)
-            setOnClickListener { showBookmarks() }
-        }
         refreshButton = ImageView(this).apply {
             setImageResource(R.drawable.refresh)
             layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginStart = dp(8) }
@@ -488,7 +299,6 @@ class HadithMeActivity : AppCompatActivity() {
         toolbarLayout.addView(backButton)
         toolbarLayout.addView(toolbarTitleView)
         toolbarLayout.addView(searchToggleBtn)
-        toolbarLayout.addView(bookmarksButton)
         toolbarLayout.addView(refreshButton)
         root.addView(toolbarLayout)
 
@@ -543,20 +353,6 @@ class HadithMeActivity : AppCompatActivity() {
         }
         root.addView(offlineIndicator)
 
-        // ── Continue Reading Button ───────────────────────────────
-        continueReadingButton = Button(this).apply {
-            text = "📖 শেষ পড়া হাদিস থেকে চালিয়ে যান"
-            typeface = getBengaliTypeface()
-            setTextColor(Color.WHITE)
-            background = createRoundedSolid(Color.parseColor("#FF9800"), dp(24))
-            setPadding(dp(20), dp(12), dp(20), dp(12))
-            visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(dp(12), dp(8), dp(12), 0) }
-        }
-        root.addView(continueReadingButton)
-
         // ── Content Frame ─────────────────────────────────────────
         val contentFrame = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
@@ -570,7 +366,7 @@ class HadithMeActivity : AppCompatActivity() {
             setPadding(dp(12), dp(12), dp(12), dp(80))
             clipToPadding = false
             
-            // Add scroll listener to save position for books and sections
+            // Add scroll listener to save position during scrolling
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                     super.onScrollStateChanged(recyclerView, newState)
@@ -788,139 +584,6 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Bookmarks
-    // ─────────────────────────────────────────────────────────────
-    private fun showBookmarks() {
-        saveScrollPosition()
-        currentState = PageState.Bookmarks
-        updateToolbar("বুকমার্ক")
-        closeSearchSilently()
-        
-        scope.launch {
-            val bookmarks = database.hadithDao().getAllBookmarks().first()
-            val bookmarkItems = mutableListOf<BookmarkDisplayItem>()
-            
-            bookmarks.forEach { bookmark ->
-                val hadith = database.hadithDao().getHadithByNumber(
-                    bookmark.bookId, 
-                    bookmark.sectionId, 
-                    bookmark.hadithNumber
-                )
-                hadith?.let {
-                    val book = currentBooks.find { b -> b.id == bookmark.bookId }
-                    val section = HadithCache.sections[bookmark.bookId]?.find { s -> s.id == bookmark.sectionId }
-                    
-                    bookmarkItems.add(
-                        BookmarkDisplayItem(
-                            hadith = HadithItem(
-                                hadithNumber = it.hadithNumber,
-                                title = it.title,
-                                descriptionAr = it.descriptionAr,
-                                description = it.description,
-                                isBookmarked = true
-                            ),
-                            bookTitle = book?.titleEn ?: "Book ${bookmark.bookId}",
-                            sectionTitle = section?.title ?: "Section ${bookmark.sectionId}",
-                            bookId = bookmark.bookId,
-                            sectionId = bookmark.sectionId
-                        )
-                    )
-                }
-            }
-            
-            showContent()
-            recyclerView.adapter = BookmarkAdapter(bookmarkItems) { item ->
-                saveScrollPosition()
-                loadHadith(item.bookId, item.sectionId, item.bookTitle, item.sectionTitle)
-            }
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Toggle bookmark
-    // ─────────────────────────────────────────────────────────────
-    private fun toggleBookmark(hadith: HadithItem, bookId: Int, sectionId: Int) {
-        scope.launch {
-            val isBookmarked = database.hadithDao().isBookmarked(bookId, sectionId, hadith.hadithNumber)
-            if (isBookmarked) {
-                database.hadithDao().removeBookmark(bookId, sectionId, hadith.hadithNumber)
-                hadith.isBookmarked = false
-                Toast.makeText(this@HadithMeActivity, "বুকমার্ক থেকে সরানো হয়েছে", Toast.LENGTH_SHORT).show()
-            } else {
-                database.hadithDao().addBookmark(
-                    BookmarkEntity(
-                        bookId = bookId,
-                        sectionId = sectionId,
-                        hadithNumber = hadith.hadithNumber
-                    )
-                )
-                hadith.isBookmarked = true
-                Toast.makeText(this@HadithMeActivity, "বুকমার্ক করা হয়েছে", Toast.LENGTH_SHORT).show()
-            }
-            
-            // Update adapter if showing hadith list
-            if (currentState is PageState.Hadith) {
-                hadithPagingAdapter?.notifyDataSetChanged()
-            }
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Save reading progress
-    // ─────────────────────────────────────────────────────────────
-    private fun saveReadingProgress(bookId: Int, sectionId: Int, hadithNumber: Int) {
-        scope.launch {
-            database.hadithDao().saveReadingProgress(
-                ReadingProgressEntity(
-                    bookId = bookId,
-                    sectionId = sectionId,
-                    hadithNumber = hadithNumber
-                )
-            )
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Check for reading progress
-    // ─────────────────────────────────────────────────────────────
-    private fun checkReadingProgress(bookId: Int, sectionId: Int) {
-        scope.launch {
-            val progress = database.hadithDao().getReadingProgress(bookId, sectionId)
-            if (progress != null) {
-                withContext(Dispatchers.Main) {
-                    continueReadingButton.visibility = View.VISIBLE
-                    continueReadingButton.setOnClickListener {
-                        scrollToHadith(progress.hadithNumber)
-                        continueReadingButton.visibility = View.GONE
-                    }
-                }
-            }
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Scroll to specific hadith
-    // ─────────────────────────────────────────────────────────────
-    private fun scrollToHadith(hadithNumber: Int) {
-    hadithPagingAdapter?.let { adapter ->
-        lifecycleScope.launch {
-            var position = -1
-            for (i in 0 until adapter.itemCount) {
-                // ✅ Use getItem() from PagingDataAdapter
-                val entity = adapter.getItem(i)
-                if (entity?.hadithNumber == hadithNumber) {
-                    position = i
-                    break
-                }
-            }
-            if (position >= 0) {
-                
-            }
-        }
-    }
-}
-
-    // ─────────────────────────────────────────────────────────────
     // Refresh current page
     // ─────────────────────────────────────────────────────────────
     private fun refreshCurrentPage() {
@@ -942,9 +605,6 @@ class HadithMeActivity : AppCompatActivity() {
                 HadithCache.hadith.remove("${state.bookId}_${state.sectionId}")
                 loadHadith(state.bookId, state.sectionId, state.bookTitle, state.sectionTitle)
             }
-            is PageState.Bookmarks -> {
-                showBookmarks()
-            }
         }
     }
 
@@ -961,7 +621,7 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Status helpers
+    // Status helpers — Loading shows ProgressBar, Error hides it
     // ─────────────────────────────────────────────────────────────
     private fun showLoading() {
         isCurrentlyLoading = true
@@ -972,7 +632,6 @@ class HadithMeActivity : AppCompatActivity() {
         statusText.setTextColor(Color.parseColor("#01837A"))
         retryButton.visibility = View.GONE
         refreshButton.visibility = View.GONE
-        continueReadingButton.visibility = View.GONE
     }
 
     private fun showError(message: String, retry: (() -> Unit)? = null) {
@@ -985,7 +644,6 @@ class HadithMeActivity : AppCompatActivity() {
         retryButton.visibility = if (retry != null) View.VISIBLE else View.GONE
         retry?.let { r -> retryButton.setOnClickListener { r() } }
         refreshButton.visibility = if (isShowingCachedContent) View.VISIBLE else View.GONE
-        continueReadingButton.visibility = View.GONE
     }
 
     private fun showContent() {
@@ -1070,7 +728,7 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Scroll helpers (only for books and sections)
+    // Improved scroll helpers with offset
     // ─────────────────────────────────────────────────────────────
     private fun saveScrollPosition() {
         if (!::recyclerView.isInitialized || isCurrentlyLoading) return
@@ -1091,19 +749,8 @@ class HadithMeActivity : AppCompatActivity() {
                 ScrollState.sectionsPositions[s.bookId] = Pair(position, offset)
             }
             is PageState.Hadith -> {
-                // Save reading progress when scrolling hadith
-                val lastVisiblePosition = lm.findLastVisibleItemPosition()
-                if (lastVisiblePosition >= 0 && hadithPagingAdapter != null) {
-                    val hadith = hadithPagingAdapter?.peek(lastVisiblePosition) as? HadithItem
-                    hadith?.let {
-                        val s = currentState as PageState.Hadith
-                        saveReadingProgress(s.bookId, s.sectionId, it.hadithNumber)
-                    }
-                }
-                // Don't save scroll position for hadith
-            }
-            is PageState.Bookmarks -> {
-                // Don't save
+                val s = currentState as PageState.Hadith
+                ScrollState.hadithPositions["${s.bookId}_${s.sectionId}"] = Pair(position, offset)
             }
         }
     }
@@ -1118,7 +765,10 @@ class HadithMeActivity : AppCompatActivity() {
                 val s = currentState as PageState.Sections
                 ScrollState.sectionsPositions[s.bookId] ?: Pair(0, 0)
             }
-            else -> Pair(0, 0)
+            is PageState.Hadith -> {
+                val s = currentState as PageState.Hadith
+                ScrollState.hadithPositions["${s.bookId}_${s.sectionId}"] ?: Pair(0, 0)
+            }
         }
         
         if (pair.first > 0 && pair.first < (recyclerView.adapter?.itemCount ?: 0)) {
@@ -1148,7 +798,6 @@ class HadithMeActivity : AppCompatActivity() {
         updateToolbar("হাদিস সমগ্র")
         closeSearchSilently()
         isShowingCachedContent = false
-        continueReadingButton.visibility = View.GONE
 
         val memBooks = HadithCache.books
         if (memBooks != null) {
@@ -1234,7 +883,6 @@ class HadithMeActivity : AppCompatActivity() {
         updateToolbar(bookTitle)
         closeSearchSilently()
         isShowingCachedContent = false
-        continueReadingButton.visibility = View.GONE
 
         val memSections = HadithCache.sections[bookId]
         if (memSections != null) {
@@ -1312,7 +960,7 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Load Hadith with Paging 3
+    // Load Hadith
     // ─────────────────────────────────────────────────────────────
     private fun loadHadith(bookId: Int, sectionId: Int, bookTitle: String, sectionTitle: String) {
         saveScrollPosition()
@@ -1322,126 +970,58 @@ class HadithMeActivity : AppCompatActivity() {
         isShowingCachedContent = false
         val key = "${bookId}_$sectionId"
 
-        // Check for reading progress
-        checkReadingProgress(bookId, sectionId)
+        val memHadith = HadithCache.hadith[key]
+        if (memHadith != null) {
+            currentHadithList = memHadith
+            filteredHadith = memHadith
+            showContent()
+            recyclerView.adapter = HadithAdapter(
+                filteredHadith,
+                onCopy  = { h -> copyHadith(h, bookTitle, sectionTitle) },
+                onShare = { h -> shareHadith(h, bookTitle, sectionTitle) }
+            )
+            attachKeyboardHideOnTouch()
+            restoreScrollPosition()
+            return
+        }
 
-        // Setup paging adapter
-        hadithPagingAdapter = HadithPagingAdapter(
-            onCopy  = { h -> copyHadith(h, bookTitle, sectionTitle) },
-            onShare = { h -> shareHadith(h, bookTitle, sectionTitle) },
-            onBookmark = { h -> toggleBookmark(h, bookId, sectionId) }
-        )
-        
-        recyclerView.adapter = hadithPagingAdapter
-        attachKeyboardHideOnTouch()
-        
-        // Check if data exists in Room
-        scope.launch {
-            val count = database.hadithDao().getHadithByPage(bookId, sectionId, 0, 1).size
-            if (count > 0) {
-                // Load from Room with Paging
-                showContent()
-                val pagingFlow = Pager(
-                    config = PagingConfig(pageSize = 20, enablePlaceholders = false),
-                    pagingSourceFactory = { HadithPagingSource(database.hadithDao(), bookId, sectionId) }
-                ).flow.cachedIn(lifecycleScope)
-                
-                lifecycleScope.launch {
-                    pagingFlow.collect { pagingData ->
-                        hadithPagingAdapter?.submitData(pagingData)
-                    }
-                }
-                
-                // Load bookmarks status
-                updateBookmarkStatus(bookId, sectionId)
-                return@launch
-            }
-            
-            // Load from network and save to Room
-            showLoading()
+        showLoading()
+        currentRequestJob?.cancel()
+        currentRequestJob = scope.launch {
             try {
                 val json = fetchJson(
                     "https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/$bookId/hadith/$sectionId.json",
                     "hadith_${bookId}_$sectionId"
                 )
                 val hadithList = parseHadith(json)
-                
-                // Save to Room
-                val entities = hadithList.map { h ->
-                    HadithEntity(
-                        id = "${bookId}_${sectionId}_${h.hadithNumber}",
-                        bookId = bookId,
-                        sectionId = sectionId,
-                        hadithNumber = h.hadithNumber,
-                        title = h.title,
-                        descriptionAr = h.descriptionAr,
-                        description = h.description
-                    )
-                }
-                database.hadithDao().insertHadith(entities)
-                
-                // Update bookmark status
-                hadithList.forEach { h ->
-                    h.isBookmarked = database.hadithDao().isBookmarked(bookId, sectionId, h.hadithNumber)
-                }
-                
                 HadithCache.hadith[key] = hadithList
                 HadithCache.hadithTimestamp[key] = System.currentTimeMillis()
                 currentHadithList = hadithList
                 filteredHadith = hadithList
-                
                 showContent()
-                
-                // Start paging from Room
-                val pagingFlow = Pager(
-                    config = PagingConfig(pageSize = 20, enablePlaceholders = false),
-                    pagingSourceFactory = { HadithPagingSource(database.hadithDao(), bookId, sectionId) }
-                ).flow.cachedIn(lifecycleScope)
-                
-                lifecycleScope.launch {
-                    pagingFlow.collect { pagingData ->
-                        hadithPagingAdapter?.submitData(pagingData)
-                    }
-                }
-                
+                recyclerView.adapter = HadithAdapter(
+                    filteredHadith,
+                    onCopy  = { h -> copyHadith(h, bookTitle, sectionTitle) },
+                    onShare = { h -> shareHadith(h, bookTitle, sectionTitle) }
+                )
+                attachKeyboardHideOnTouch()
+                restoreScrollPosition()
                 isShowingCachedContent = false
             } catch (e: Exception) {
                 val cachedJson = getCachedData("hadith_${bookId}_$sectionId")
                 if (cachedJson != null) {
                     val hadithList = parseHadith(cachedJson)
-                    
-                    // Save to Room
-                    val entities = hadithList.map { h ->
-                        HadithEntity(
-                            id = "${bookId}_${sectionId}_${h.hadithNumber}",
-                            bookId = bookId,
-                            sectionId = sectionId,
-                            hadithNumber = h.hadithNumber,
-                            title = h.title,
-                            descriptionAr = h.descriptionAr,
-                            description = h.description
-                        )
-                    }
-                    database.hadithDao().insertHadith(entities)
-                    
                     HadithCache.hadith[key] = hadithList
                     currentHadithList = hadithList
                     filteredHadith = hadithList
-                    
                     showContent()
-                    
-                    // Start paging from Room
-                    val pagingFlow = Pager(
-                        config = PagingConfig(pageSize = 20, enablePlaceholders = false),
-                        pagingSourceFactory = { HadithPagingSource(database.hadithDao(), bookId, sectionId) }
-                    ).flow.cachedIn(lifecycleScope)
-                    
-                    lifecycleScope.launch {
-                        pagingFlow.collect { pagingData ->
-                            hadithPagingAdapter?.submitData(pagingData)
-                        }
-                    }
-                    
+                    recyclerView.adapter = HadithAdapter(
+                        filteredHadith,
+                        onCopy  = { h -> copyHadith(h, bookTitle, sectionTitle) },
+                        onShare = { h -> shareHadith(h, bookTitle, sectionTitle) }
+                    )
+                    attachKeyboardHideOnTouch()
+                    restoreScrollPosition()
                     isShowingCachedContent = true
                     offlineIndicator.visibility = View.VISIBLE
                 } else {
@@ -1450,13 +1030,6 @@ class HadithMeActivity : AppCompatActivity() {
                     }
                 }
             }
-        }
-    }
-
-    private suspend fun updateBookmarkStatus(bookId: Int, sectionId: Int) {
-        val key = "${bookId}_$sectionId"
-        HadithCache.hadith[key]?.forEach { h ->
-            h.isBookmarked = database.hadithDao().isBookmarked(bookId, sectionId, h.hadithNumber)
         }
     }
 
@@ -1527,10 +1100,11 @@ class HadithMeActivity : AppCompatActivity() {
                 }
             }
             is PageState.Hadith -> {
-                // Paging handles hadith
-            }
-            is PageState.Bookmarks -> {
-                // Bookmarks adapter handles
+                recyclerView.adapter = HadithAdapter(
+                    filteredHadith,
+                    onCopy  = { h -> copyHadith(h, s.bookTitle, s.sectionTitle) },
+                    onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) }
+                )
             }
         }
         restoreScrollPosition()
@@ -1578,19 +1152,12 @@ class HadithMeActivity : AppCompatActivity() {
                     h.description.stripHtml().lowercase().contains(term) ||
                     h.descriptionAr.contains(term)
                 }
-                hadithPagingAdapter = HadithPagingAdapter(
+                recyclerView.adapter = HadithAdapter(
+                    filteredHadith,
                     onCopy  = { h -> copyHadith(h, s.bookTitle, s.sectionTitle) },
-                    onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) },
-                    onBookmark = { h -> toggleBookmark(h, s.bookId, s.sectionId) }
+                    onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) }
                 )
-                recyclerView.adapter = hadithPagingAdapter
-                lifecycleScope.launch {
-                    hadithPagingAdapter?.submitData(PagingData.from(filteredHadith))
-                }
                 if (filteredHadith.isEmpty()) showEmptySearchResult()
-            }
-            is PageState.Bookmarks -> {
-                // Not implemented for bookmarks
             }
         }
     }
@@ -1757,10 +1324,6 @@ class HadithMeActivity : AppCompatActivity() {
                 loadSections(s.bookId, s.bookTitle)
             }
             currentState is PageState.Sections -> {
-                saveScrollPosition()
-                loadBooks()
-            }
-            currentState is PageState.Bookmarks -> {
                 saveScrollPosition()
                 loadBooks()
             }
@@ -2047,61 +1610,30 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Hadith Paging Adapter
+    // Hadith Adapter
     // ─────────────────────────────────────────────────────────────
-    inner class HadithPagingAdapter(
+    inner class HadithAdapter(
+        private val items: List<HadithItem>,
         private val onCopy: (HadithItem) -> Unit,
-        private val onShare: (HadithItem) -> Unit,
-        private val onBookmark: (HadithItem) -> Unit
-    ) : PagingDataAdapter<HadithEntity, HadithPagingAdapter.VH>(DIFF_CALLBACK) {
+        private val onShare: (HadithItem) -> Unit
+    ) : RecyclerView.Adapter<HadithAdapter.VH>() {
 
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
 
-        companion object {
-            val DIFF_CALLBACK = object : DiffUtil.ItemCallback<HadithEntity>() {
-                override fun areItemsTheSame(oldItem: HadithEntity, newItem: HadithEntity): Boolean {
-                    return oldItem.id == newItem.id
-                }
-
-                override fun areContentsTheSame(oldItem: HadithEntity, newItem: HadithEntity): Boolean {
-                    return oldItem == newItem
-                }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(
+            LinearLayout(this@HadithMeActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = RecyclerView.LayoutParams(
+                    RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = dp(14) }
+                background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10))
+                elevation = dp(3).toFloat()
+                setPadding(dp(16), dp(14), dp(16), dp(14))
             }
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-            return VH(
-                LinearLayout(this@HadithMeActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    layoutParams = RecyclerView.LayoutParams(
-                        RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT
-                    ).apply { bottomMargin = dp(14) }
-                    background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10))
-                    elevation = dp(3).toFloat()
-                    setPadding(dp(16), dp(14), dp(16), dp(14))
-                }
-            )
-        }
+        )
 
         override fun onBindViewHolder(holder: VH, position: Int) {
-            val entity = getItem(position) ?: return
-            val hadith = HadithItem(
-                hadithNumber = entity.hadithNumber,
-                title = entity.title,
-                descriptionAr = entity.descriptionAr,
-                description = entity.description
-            )
-            
-            // Check bookmark status
-            scope.launch {
-                val isBookmarked = database.hadithDao().isBookmarked(entity.bookId, entity.sectionId, hadith.hadithNumber)
-                hadith.isBookmarked = isBookmarked
-                holder.card.findViewWithTag<ImageView>("bookmark_icon")?.let {
-                    it.setImageResource(if (isBookmarked) R.drawable.bookmark_filled else R.drawable.bookmark)
-                    it.setColorFilter(Color.parseColor("#01837A"))
-                }
-            }
-            
+            val hadith = items[position]
             holder.card.removeAllViews()
             holder.card.setOnClickListener { hideKeyboard(searchInput) }
 
@@ -2125,20 +1657,6 @@ class HadithMeActivity : AppCompatActivity() {
             headerRow.addView(View(this@HadithMeActivity).apply {
                 layoutParams = LinearLayout.LayoutParams(0, 0, 1f)
             })
-            
-            // Bookmark button
-            val bookmarkBtn = ImageView(this@HadithMeActivity).apply {
-                tag = "bookmark_icon"
-                setImageResource(R.drawable.bookmark)
-                setColorFilter(Color.parseColor("#01837A"))
-                layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(10) }
-                setOnClickListener { 
-                    onBookmark(hadith)
-                    setImageResource(if (hadith.isBookmarked) R.drawable.bookmark_filled else R.drawable.bookmark)
-                }
-            }
-            headerRow.addView(bookmarkBtn)
-            
             headerRow.addView(ImageView(this@HadithMeActivity).apply {
                 setImageResource(R.drawable.copy)
                 setColorFilter(Color.parseColor("#01837A"))
@@ -2189,101 +1707,6 @@ class HadithMeActivity : AppCompatActivity() {
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply { topMargin = dp(8) }
-                    setSmartText(bnText)
-                })
-            }
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Bookmark Display Item
-    // ─────────────────────────────────────────────────────────────
-    data class BookmarkDisplayItem(
-        val hadith: HadithItem,
-        val bookTitle: String,
-        val sectionTitle: String,
-        val bookId: Int,
-        val sectionId: Int
-    )
-
-    // ─────────────────────────────────────────────────────────────
-    // Bookmark Adapter
-    // ─────────────────────────────────────────────────────────────
-    inner class BookmarkAdapter(
-        private val items: List<BookmarkDisplayItem>,
-        private val onClick: (BookmarkDisplayItem) -> Unit
-    ) : RecyclerView.Adapter<BookmarkAdapter.VH>() {
-
-        inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(
-            LinearLayout(this@HadithMeActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = RecyclerView.LayoutParams(
-                    RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT
-                ).apply { bottomMargin = dp(14) }
-                background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10))
-                elevation = dp(3).toFloat()
-                setPadding(dp(16), dp(14), dp(16), dp(14))
-            }
-        )
-
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            val item = items[position]
-            holder.card.removeAllViews()
-            holder.card.setOnClickListener { onClick(item) }
-
-            // Book and section info
-            val infoRow = LinearLayout(this@HadithMeActivity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            }
-            infoRow.addView(TextView(this@HadithMeActivity).apply {
-                text = item.bookTitle
-                textSize = 12f
-                setTextColor(Color.WHITE)
-                typeface = getBengaliTypeface()
-                background = createRoundedSolid(Color.parseColor("#01837A"), dp(12))
-                setPadding(dp(8), dp(3), dp(8), dp(3))
-            })
-            infoRow.addView(TextView(this@HadithMeActivity).apply {
-                text = " → ${item.sectionTitle}"
-                textSize = 12f
-                setTextColor(Color.parseColor("#666666"))
-                typeface = getBengaliTypeface()
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { marginStart = dp(8) }
-            })
-            holder.card.addView(infoRow)
-
-            val hadith = item.hadith
-            val titleText = hadith.title.trim()
-            if (titleText.isNotBlank()) {
-                holder.card.addView(TextView(this@HadithMeActivity).apply {
-                    textSize = 16f
-                    setTextColor(Color.parseColor("#01837A"))
-                    typeface = getBengaliTypeface()
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply { topMargin = dp(8) }
-                    setSmartText(titleText)
-                })
-            }
-
-            val bnText = hadith.description.trim()
-            if (bnText.isNotBlank()) {
-                holder.card.addView(TextView(this@HadithMeActivity).apply {
-                    textSize = 14f
-                    setTextColor(Color.parseColor("#444444"))
-                    typeface = getBengaliTypeface()
-                    maxLines = 3
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply { topMargin = dp(6) }
                     setSmartText(bnText)
                 })
             }
