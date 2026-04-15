@@ -3,7 +3,7 @@ import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
-    id("org.jetbrains.kotlin.kapt")
+    id("org.jetbrains.kotlin.kapt") // ✅ KAPT plugin
 }
 
 // Local properties থেকে কী-গুলো রিড করা
@@ -44,8 +44,8 @@ android {
             storePassword = "book0102"
             keyAlias = "book"
             keyPassword = "book0102"
-            
-            enableV1Signing = true  // ✅ Recommended to keep V1 for compatibility
+
+            enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true
             enableV4Signing = true
@@ -56,17 +56,19 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            
+
             val keys = listOf("api", "tafsir", "text", "pdf", "boyan", "blogid", "api2", "textapi")
             keys.forEach { key ->
                 val value = gradleLocalProperties(rootDir, providers).getProperty(key, "")
                 buildConfigField("String", key, "\"$value\"")
             }
         }
+
         debug {
             val keys = listOf("api", "tafsir", "text", "pdf", "boyan", "blogid", "api2", "textapi")
             keys.forEach { key ->
@@ -87,11 +89,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
-    // ✅ Fix: Replace deprecated kotlinOptions with compilerOptions
+    // ✅ Updated Kotlin compiler config (FIXED)
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
-            freeCompilerArgs.add("-Xlint:deprecation")
         }
     }
 
@@ -106,16 +107,16 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    
+
     implementation("com.github.DImuthuUpe:AndroidPdfViewer:3.1.0-beta.1")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.github.amitshekhariitbhu:PRDownloader:1.0.2")
     implementation("com.github.bumptech.glide:glide:4.12.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    
+
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-    
+
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.webkit:webkit:1.7.0")
@@ -126,23 +127,31 @@ dependencies {
     implementation("com.jakewharton.threetenabp:threetenabp:1.4.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("com.squareup.okhttp:okhttp:2.7.5")
-    
+
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("com.batoulapps.adhan:adhan2:0.0.5")
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.1")
     implementation("com.batoulapps.adhan:adhan:1.2.1")
     implementation("org.jsoup:jsoup:1.16.1")
 
+    // Room
     implementation("androidx.room:room-common:2.6.1")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
 
+    // Paging
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
+
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+// ✅ KAPT stability fix
+kapt {
+    correctErrorTypes = true
 }
