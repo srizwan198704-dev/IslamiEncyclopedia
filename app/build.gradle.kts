@@ -3,10 +3,10 @@ import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
-    id("org.jetbrains.kotlin.kapt")
+    alias(libs.plugins.ksp) // ✅ KSP instead of KAPT
 }
 
-// Local properties থেকে কী-গুলো রিড করা
+// Local properties
 val api = gradleLocalProperties(rootDir, providers).getProperty("api", "")
 val tafsir = gradleLocalProperties(rootDir, providers).getProperty("tafsir", "")
 val text = gradleLocalProperties(rootDir, providers).getProperty("text", "")
@@ -26,12 +26,14 @@ android {
         targetSdk = 36
         versionCode = 7
         versionName = "7.0"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val keys = mapOf(
             "api" to api, "tafsir" to tafsir, "text" to text, "pdf" to pdf,
             "boyan" to boyan, "blogid" to blogid, "api2" to api2, "textapi" to textapi
         )
+
         keys.forEach { (key, value) ->
             resValue("string", key, "\"$value\"")
         }
@@ -83,13 +85,11 @@ android {
         }
     }
 
-    // ✅ FIXED: Java 17 (stable for CI + KAPT)
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // ✅ FIXED: Kotlin JVM 17
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -128,17 +128,16 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("com.squareup.okhttp:okhttp:2.7.5")
 
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("com.google.ai.client.generativeai:0.9.0")
     implementation("com.batoulapps.adhan:adhan2:0.0.5")
     implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.1")
     implementation("com.batoulapps.adhan:adhan:1.2.1")
     implementation("org.jsoup:jsoup:1.16.1")
 
-    // Room
-    implementation("androidx.room:room-common:2.6.1")
+    // ✅ Room (KSP)
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
 
     // Paging
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
@@ -149,10 +148,4 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-}
-
-// ✅ FINAL KAPT FIX (CI stable)
-kapt {
-    correctErrorTypes = true
-    useBuildCache = true
 }
