@@ -3,7 +3,7 @@ import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
-    alias(libs.plugins.kotlin.kapt) // ✅ Fix: Use proper plugin alias
+    id("org.jetbrains.kotlin.kapt")
 }
 
 // Local properties থেকে কী-গুলো রিড করা
