@@ -78,7 +78,7 @@ sealed class PageState {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Scroll position holder with better persistence
+// Scroll position holder
 // ─────────────────────────────────────────────────────────────────
 object ScrollState {
     var booksPosition: Int = 0
@@ -157,6 +157,10 @@ class HadithMeActivity : AppCompatActivity() {
     private lateinit var statusView: View
     private lateinit var statusText: TextView
     private lateinit var statusProgressBar: ProgressBar
+    // ── NEW: determinate progress bar + percentage label ──────────
+    private lateinit var downloadProgressBar: ProgressBar
+    private lateinit var progressPercentText: TextView
+    // ─────────────────────────────────────────────────────────────
     private lateinit var retryButton: Button
     private lateinit var fabSearchBtn: FrameLayout
     private lateinit var globalSearchOverlay: FrameLayout
@@ -208,9 +212,6 @@ class HadithMeActivity : AppCompatActivity() {
         }
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
 
-        // ✅ FIX: buildUI() and setContentView() MUST come BEFORE
-        //    checkNetworkState() and loadBooks() so all lateinit views
-        //    are initialized before they are accessed.
         val rootLayout = buildUI()
         setContentView(rootLayout)
 
@@ -222,7 +223,6 @@ class HadithMeActivity : AppCompatActivity() {
 
         File(filesDir, cacheDirName).mkdirs()
 
-        // ✅ These now run AFTER all views exist
         checkNetworkState()
         loadBooks()
     }
@@ -237,9 +237,7 @@ class HadithMeActivity : AppCompatActivity() {
             @Suppress("DEPRECATION")
             cm.activeNetworkInfo?.isConnected == true
         }
-
         if (!isNetworkAvailable) {
-            // ✅ offlineIndicator is guaranteed to exist here now
             offlineIndicator.visibility = View.VISIBLE
             offlineIndicator.text = "⚠️ অফলাইন মোড - ক্যাশে করা ডেটা দেখানো হচ্ছে"
         }
@@ -339,7 +337,6 @@ class HadithMeActivity : AppCompatActivity() {
         root.addView(searchContainer)
 
         // ── Offline Indicator ─────────────────────────────────────
-        // ✅ offlineIndicator is initialized HERE inside buildUI()
         offlineIndicator = TextView(this).apply {
             text = "⚠️ অফলাইন মোড - ক্যাশে করা ডেটা দেখানো হচ্ছে"
             textSize = 12f
@@ -389,16 +386,51 @@ class HadithMeActivity : AppCompatActivity() {
             visibility = View.GONE
         }
 
+        // Indeterminate spinner
         statusProgressBar = ProgressBar(this, null, android.R.attr.progressBarStyleLarge).apply {
             indeterminateTintList =
                 android.content.res.ColorStateList.valueOf(Color.parseColor("#01837A"))
             layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply {
-                bottomMargin = dp(16)
+                bottomMargin = dp(12)
                 gravity = Gravity.CENTER_HORIZONTAL
             }
             visibility = View.GONE
         }
         statusOverlay.addView(statusProgressBar)
+
+        // ── NEW: Determinate horizontal progress bar ───────────────
+        downloadProgressBar = ProgressBar(
+            this, null, android.R.attr.progressBarStyleHorizontal
+        ).apply {
+            max = 100
+            progress = 0
+            progressTintList =
+                android.content.res.ColorStateList.valueOf(Color.parseColor("#01837A"))
+            progressBackgroundTintList =
+                android.content.res.ColorStateList.valueOf(Color.parseColor("#C8E6E4"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(8)
+            ).apply {
+                setMargins(dp(40), 0, dp(40), dp(6))
+            }
+            visibility = View.GONE
+        }
+        statusOverlay.addView(downloadProgressBar)
+
+        // ── NEW: Percentage text ───────────────────────────────────
+        progressPercentText = TextView(this).apply {
+            text = "০%"
+            textSize = 28f
+            setTextColor(Color.parseColor("#01837A"))
+            typeface = getBengaliTypeface()
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(8) }
+            visibility = View.GONE
+        }
+        statusOverlay.addView(progressPercentText)
+        // ──────────────────────────────────────────────────────────
 
         statusText = TextView(this).apply {
             textSize = 17f
@@ -622,6 +654,12 @@ class HadithMeActivity : AppCompatActivity() {
     // ─────────────────────────────────────────────────────────────
     // Status helpers
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Shows the indeterminate spinner + "লোড হচ্ছে..." label.
+     * The download progress widgets are hidden until fetchJson() starts
+     * streaming bytes and calls updateDownloadProgress().
+     */
     private fun showLoading() {
         isCurrentlyLoading = true
         recyclerView.visibility = View.GONE
@@ -631,6 +669,27 @@ class HadithMeActivity : AppCompatActivity() {
         statusText.setTextColor(Color.parseColor("#01837A"))
         retryButton.visibility = View.GONE
         refreshButton.visibility = View.GONE
+        // Reset & hide progress widgets until actual download begins
+        downloadProgressBar.progress = 0
+        downloadProgressBar.visibility = View.GONE
+        progressPercentText.text = "০%"
+        progressPercentText.visibility = View.GONE
+    }
+
+    /**
+     * Called from fetchJson() during download with 0‥100.
+     * Switches from the spinner to the determinate bar once the first
+     * byte arrives (percent > 0).
+     */
+    private fun updateDownloadProgress(percent: Int) {
+        if (percent in 1..100) {
+            statusProgressBar.visibility = View.GONE          // hide spinner
+            downloadProgressBar.visibility = View.VISIBLE
+            progressPercentText.visibility = View.VISIBLE
+            downloadProgressBar.progress = percent
+            progressPercentText.text = "${toBangla(percent)}%"
+            statusText.text = "ডাউনলোড হচ্ছে... ${toBangla(percent)}%"
+        }
     }
 
     private fun showError(message: String, retry: (() -> Unit)? = null) {
@@ -638,6 +697,8 @@ class HadithMeActivity : AppCompatActivity() {
         recyclerView.visibility = View.GONE
         statusView.visibility = View.VISIBLE
         statusProgressBar.visibility = View.GONE
+        downloadProgressBar.visibility = View.GONE
+        progressPercentText.visibility = View.GONE
         statusText.text = "❌ $message"
         statusText.setTextColor(Color.parseColor("#E74C3C"))
         retryButton.visibility = if (retry != null) View.VISIBLE else View.GONE
@@ -649,8 +710,11 @@ class HadithMeActivity : AppCompatActivity() {
         isCurrentlyLoading = false
         statusView.visibility = View.GONE
         statusProgressBar.visibility = View.GONE
+        downloadProgressBar.visibility = View.GONE
+        progressPercentText.visibility = View.GONE
         recyclerView.visibility = View.VISIBLE
-        refreshButton.visibility = if (!isNetworkAvailable || isShowingCachedContent) View.VISIBLE else View.GONE
+        refreshButton.visibility =
+            if (!isNetworkAvailable || isShowingCachedContent) View.VISIBLE else View.GONE
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -672,7 +736,18 @@ class HadithMeActivity : AppCompatActivity() {
         File(dir, cacheFileName(key)).writeText(data)
     }
 
+    /**
+     * Fetches [url] and reports download progress via [updateDownloadProgress].
+     *
+     * Strategy:
+     *  • If Content-Length is known  → report exact byte-based percentage.
+     *  • If Content-Length is absent → use a smooth logarithmic estimate so
+     *    the bar still moves meaningfully (reaches ~95 % then jumps to 100 %).
+     *
+     * Falls back to cache on network failure (same as before).
+     */
     private suspend fun fetchJson(url: String, cacheKey: String): String {
+        // ── Serve from cache immediately when available ────────────
         getCachedData(cacheKey)?.let { cached ->
             withContext(Dispatchers.Main) {
                 offlineIndicator.visibility = View.GONE
@@ -680,18 +755,57 @@ class HadithMeActivity : AppCompatActivity() {
             }
             return cached
         }
+
         return withContext(Dispatchers.IO) {
             try {
                 val connection = URL(url).openConnection() as java.net.HttpURLConnection
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
-                connection.requestMethod = "GET"
-                val text = connection.inputStream.bufferedReader().use { it.readText() }
+                connection.connectTimeout = 10_000
+                connection.readTimeout    = 10_000
+                connection.requestMethod  = "GET"
+                connection.connect()
+
+                val contentLength = connection.contentLength   // -1 if unknown
+
+                // Read byte-by-byte into a buffer, updating UI every ~16 KB
+                val buffer    = ByteArray(16_384)
+                val baos      = java.io.ByteArrayOutputStream()
+                val inputStream = connection.inputStream
+                var totalRead  = 0L
+                var lastPercent = 0
+
+                while (true) {
+                    val read = inputStream.read(buffer)
+                    if (read == -1) break
+                    baos.write(buffer, 0, read)
+                    totalRead += read
+
+                    val percent = when {
+                        contentLength > 0 ->
+                            ((totalRead * 100L) / contentLength).toInt().coerceIn(1, 99)
+                        else -> {
+                            // Logarithmic estimate: converges toward 95 %
+                            val estimate = (95.0 * (1.0 - Math.exp(-totalRead / 150_000.0)))
+                            estimate.toInt().coerceIn(1, 95)
+                        }
+                    }
+
+                    if (percent != lastPercent) {
+                        lastPercent = percent
+                        withContext(Dispatchers.Main) { updateDownloadProgress(percent) }
+                    }
+                }
+                inputStream.close()
+
+                // Signal 100 % before parsing
+                withContext(Dispatchers.Main) { updateDownloadProgress(100) }
+
+                val text = baos.toString("UTF-8")
                 cacheData(cacheKey, text)
+
                 withContext(Dispatchers.Main) {
                     offlineIndicator.visibility = View.GONE
-                    isShowingCachedContent = false
-                    isNetworkAvailable = true
+                    isShowingCachedContent      = false
+                    isNetworkAvailable          = true
                 }
                 text
             } catch (e: Exception) {
@@ -699,16 +813,16 @@ class HadithMeActivity : AppCompatActivity() {
                 if (cached != null) {
                     withContext(Dispatchers.Main) {
                         offlineIndicator.visibility = View.VISIBLE
-                        offlineIndicator.text = "⚠️ অফলাইন মোড - ক্যাশে করা ডেটা দেখানো হচ্ছে"
-                        isShowingCachedContent = true
-                        isNetworkAvailable = false
+                        offlineIndicator.text       = "⚠️ অফলাইন মোড - ক্যাশে করা ডেটা দেখানো হচ্ছে"
+                        isShowingCachedContent      = true
+                        isNetworkAvailable          = false
                     }
                     return@withContext cached
                 } else {
                     withContext(Dispatchers.Main) {
                         offlineIndicator.visibility = View.VISIBLE
-                        offlineIndicator.text = "⚠️ নেটওয়ার্ক নেই এবং ক্যাশে ডেটা পাওয়া যায়নি"
-                        isNetworkAvailable = false
+                        offlineIndicator.text       = "⚠️ নেটওয়ার্ক নেই এবং ক্যাশে ডেটা পাওয়া যায়নি"
+                        isNetworkAvailable          = false
                     }
                     throw e
                 }
@@ -734,7 +848,7 @@ class HadithMeActivity : AppCompatActivity() {
         when (currentState) {
             is PageState.Books -> {
                 ScrollState.booksPosition = position
-                ScrollState.booksOffset = offset
+                ScrollState.booksOffset   = offset
             }
             is PageState.Sections -> {
                 val s = currentState as PageState.Sections
@@ -751,12 +865,12 @@ class HadithMeActivity : AppCompatActivity() {
         if (!::recyclerView.isInitialized) return
         val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
         val pair = when (currentState) {
-            is PageState.Books -> Pair(ScrollState.booksPosition, ScrollState.booksOffset)
+            is PageState.Books    -> Pair(ScrollState.booksPosition, ScrollState.booksOffset)
             is PageState.Sections -> {
                 val s = currentState as PageState.Sections
                 ScrollState.sectionsPositions[s.bookId] ?: Pair(0, 0)
             }
-            is PageState.Hadith -> {
+            is PageState.Hadith   -> {
                 val s = currentState as PageState.Hadith
                 ScrollState.hadithPositions["${s.bookId}_${s.sectionId}"] ?: Pair(0, 0)
             }
@@ -791,8 +905,8 @@ class HadithMeActivity : AppCompatActivity() {
 
         val memBooks = HadithCache.books
         if (memBooks != null) {
-            currentBooks = memBooks
-            filteredBooks = memBooks
+            currentBooks    = memBooks
+            filteredBooks   = memBooks
             showContent()
             recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                 saveScrollPosition()
@@ -812,10 +926,10 @@ class HadithMeActivity : AppCompatActivity() {
                     "hadith_books_list"
                 )
                 val books = parseBooks(json)
-                HadithCache.books = books
+                HadithCache.books          = books
                 HadithCache.booksTimestamp = System.currentTimeMillis()
-                currentBooks = books
-                filteredBooks = books
+                currentBooks    = books
+                filteredBooks   = books
                 showContent()
                 recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                     saveScrollPosition()
@@ -829,8 +943,8 @@ class HadithMeActivity : AppCompatActivity() {
                 if (cachedJson != null) {
                     val books = parseBooks(cachedJson)
                     HadithCache.books = books
-                    currentBooks = books
-                    filteredBooks = books
+                    currentBooks    = books
+                    filteredBooks   = books
                     showContent()
                     recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                         saveScrollPosition()
@@ -875,7 +989,7 @@ class HadithMeActivity : AppCompatActivity() {
 
         val memSections = HadithCache.sections[bookId]
         if (memSections != null) {
-            currentSections = memSections
+            currentSections  = memSections
             filteredSections = memSections
             showContent()
             recyclerView.adapter = SectionAdapter(filteredSections) { section ->
@@ -896,9 +1010,9 @@ class HadithMeActivity : AppCompatActivity() {
                     "sections_$bookId"
                 )
                 val sections = parseSections(json)
-                HadithCache.sections[bookId] = sections
+                HadithCache.sections[bookId]          = sections
                 HadithCache.sectionsTimestamp[bookId] = System.currentTimeMillis()
-                currentSections = sections
+                currentSections  = sections
                 filteredSections = sections
                 showContent()
                 recyclerView.adapter = SectionAdapter(filteredSections) { section ->
@@ -913,7 +1027,7 @@ class HadithMeActivity : AppCompatActivity() {
                 if (cachedJson != null) {
                     val sections = parseSections(cachedJson)
                     HadithCache.sections[bookId] = sections
-                    currentSections = sections
+                    currentSections  = sections
                     filteredSections = sections
                     showContent()
                     recyclerView.adapter = SectionAdapter(filteredSections) { section ->
@@ -962,7 +1076,7 @@ class HadithMeActivity : AppCompatActivity() {
         val memHadith = HadithCache.hadith[key]
         if (memHadith != null) {
             currentHadithList = memHadith
-            filteredHadith = memHadith
+            filteredHadith    = memHadith
             showContent()
             recyclerView.adapter = HadithAdapter(
                 filteredHadith,
@@ -983,10 +1097,10 @@ class HadithMeActivity : AppCompatActivity() {
                     "hadith_${bookId}_$sectionId"
                 )
                 val hadithList = parseHadith(json)
-                HadithCache.hadith[key] = hadithList
+                HadithCache.hadith[key]          = hadithList
                 HadithCache.hadithTimestamp[key] = System.currentTimeMillis()
                 currentHadithList = hadithList
-                filteredHadith = hadithList
+                filteredHadith    = hadithList
                 showContent()
                 recyclerView.adapter = HadithAdapter(
                     filteredHadith,
@@ -1002,7 +1116,7 @@ class HadithMeActivity : AppCompatActivity() {
                     val hadithList = parseHadith(cachedJson)
                     HadithCache.hadith[key] = hadithList
                     currentHadithList = hadithList
-                    filteredHadith = hadithList
+                    filteredHadith    = hadithList
                     showContent()
                     recyclerView.adapter = HadithAdapter(
                         filteredHadith,
@@ -1056,9 +1170,9 @@ class HadithMeActivity : AppCompatActivity() {
         searchRunnable?.let { searchHandler.removeCallbacks(it) }
         searchRunnable = null
         hideKeyboard(searchInput)
-        filteredBooks = currentBooks
+        filteredBooks    = currentBooks
         filteredSections = currentSections
-        filteredHadith = currentHadithList
+        filteredHadith   = currentHadithList
         restoreFullList()
     }
 
@@ -1068,9 +1182,9 @@ class HadithMeActivity : AppCompatActivity() {
         searchRunnable = null
         searchContainer.visibility = View.GONE
         searchInput.setText("")
-        filteredBooks = currentBooks
+        filteredBooks    = currentBooks
         filteredSections = currentSections
-        filteredHadith = currentHadithList
+        filteredHadith   = currentHadithList
     }
 
     private fun restoreFullList() {
@@ -1103,9 +1217,9 @@ class HadithMeActivity : AppCompatActivity() {
         showContent()
         val term = query.lowercase().trim()
         if (term.isBlank()) {
-            filteredBooks = currentBooks
+            filteredBooks    = currentBooks
             filteredSections = currentSections
-            filteredHadith = currentHadithList
+            filteredHadith   = currentHadithList
             restoreFullList()
             return
         }
@@ -1178,10 +1292,10 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     private fun showGlobalHint(msg: String) {
-        globalSearchHint.text = msg
-        globalSearchHint.visibility = View.VISIBLE
-        globalSearchRecycler.visibility = View.GONE
-        globalSearchRecycler.adapter = null
+        globalSearchHint.text      = msg
+        globalSearchHint.visibility      = View.VISIBLE
+        globalSearchRecycler.visibility  = View.GONE
+        globalSearchRecycler.adapter     = null
     }
 
     private fun performGlobalSearchFromCache(query: String) {
@@ -1191,23 +1305,24 @@ class HadithMeActivity : AppCompatActivity() {
             showGlobalHint("প্রথমে বই লিস্ট থেকে কিছু হাদিস খুলুন, তারপর সার্চ করুন।")
             return
         }
-        globalSearchHint.visibility = View.GONE
+        globalSearchHint.visibility     = View.GONE
         globalSearchRecycler.visibility = View.GONE
         globalSearchStatus.text = "🔍 ক্যাশে অনুসন্ধান চলছে..."
 
         scope.launch(Dispatchers.Default) {
-            val results = mutableListOf<GlobalSearchResult>()
-            val term = query.lowercase()
-            var totalHadith = 0
-            var booksSearched = 0
+            val results        = mutableListOf<GlobalSearchResult>()
+            val term           = query.lowercase()
+            var totalHadith    = 0
+            var booksSearched  = 0
+            val totalBooks     = books.size
 
             for (book in books) {
                 val sections = HadithCache.sections[book.id] ?: continue
                 var bookHasData = false
                 for (section in sections) {
-                    val k = "${book.id}_${section.id}"
+                    val k          = "${book.id}_${section.id}"
                     val hadithList = HadithCache.hadith[k] ?: continue
-                    bookHasData = true
+                    bookHasData  = true
                     totalHadith += hadithList.size
                     hadithList.filter { h ->
                         h.hadithNumber.toString().contains(term) ||
@@ -1228,11 +1343,13 @@ class HadithMeActivity : AppCompatActivity() {
                 }
                 if (bookHasData) {
                     booksSearched++
-                    val snap = booksSearched
+                    // ── Progress percentage for global search ──────
+                    val pct   = ((booksSearched * 100) / totalBooks).coerceIn(1, 99)
+                    val snap  = booksSearched
                     val rSnap = results.size
                     withContext(Dispatchers.Main) {
                         globalSearchStatus.text =
-                            "🔍 ${toBangla(snap)} টি বই দেখা হয়েছে — ${toBangla(rSnap)} টি ফলাফল"
+                            "🔍 ${toBangla(pct)}% — ${toBangla(snap)} টি বই — ${toBangla(rSnap)} টি ফলাফল"
                     }
                 }
             }
@@ -1244,14 +1361,16 @@ class HadithMeActivity : AppCompatActivity() {
                         showGlobalHint("😔 ক্যাশে কোনো হাদিস ডাটা নেই।\nপ্রথমে বই খুলুন, তারপর সার্চ করুন।")
                     }
                     results.isEmpty() -> {
-                        globalSearchStatus.text = "মোট ${toBangla(totalHadith)} টি হাদিস — কোনো ফলাফল নেই"
+                        globalSearchStatus.text =
+                            "মোট ${toBangla(totalHadith)} টি হাদিস — কোনো ফলাফল নেই"
                         showGlobalHint("😔 \"$query\" এর জন্য কোনো হাদিস পাওয়া যায়নি।")
                     }
                     else -> {
-                        globalSearchStatus.text = "✅ ${toBangla(results.size)} টি হাদিস পাওয়া গেছে"
-                        globalSearchHint.visibility = View.GONE
+                        globalSearchStatus.text =
+                            "✅ ১০০% সম্পন্ন — ${toBangla(results.size)} টি হাদিস পাওয়া গেছে"
+                        globalSearchHint.visibility     = View.GONE
                         globalSearchRecycler.visibility = View.VISIBLE
-                        globalSearchRecycler.adapter = GlobalSearchAdapter(
+                        globalSearchRecycler.adapter    = GlobalSearchAdapter(
                             results,
                             onCopy  = { r -> copyHadith(r.hadith, r.bookTitle, r.sectionTitle) },
                             onShare = { r -> shareHadith(r.hadith, r.bookTitle, r.sectionTitle) }
@@ -1305,9 +1424,9 @@ class HadithMeActivity : AppCompatActivity() {
     // ─────────────────────────────────────────────────────────────
     private fun handleBackPress() {
         when {
-            isGlobalSearchOpen -> closeGlobalSearch()
-            isSearchOpen -> closeSearch()
-            currentState is PageState.Hadith -> {
+            isGlobalSearchOpen                -> closeGlobalSearch()
+            isSearchOpen                      -> closeSearch()
+            currentState is PageState.Hadith  -> {
                 val s = currentState as PageState.Hadith
                 saveScrollPosition()
                 loadSections(s.bookId, s.bookTitle)
