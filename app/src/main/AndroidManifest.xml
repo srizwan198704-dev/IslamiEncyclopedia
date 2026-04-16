@@ -136,7 +136,7 @@
             android:name=".TafsironlineActivity"
             android:exported="false" />
         <activity
-            android:name=".TafsironlineMeActivity"
+            android:name=".TafsirOnlineMeActivity"
             android:exported="false" />
         <activity
             android:name=".Pdfonline14Activity"
