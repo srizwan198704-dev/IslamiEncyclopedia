@@ -582,7 +582,6 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         text.text = texto
         text.ellipsize = TextUtils.TruncateAt.MARQUEE
         text.isSelected = true
-        text.isHorizontallyScrolling = true
         text.marqueeRepeatLimit = -1
         text.isSingleLine = true
         text.isFocusable = true
