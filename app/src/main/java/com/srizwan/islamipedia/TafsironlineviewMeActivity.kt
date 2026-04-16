@@ -627,68 +627,63 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
     inner class TafsirAdapter(private val data: ArrayList<HashMap<String, Any>>) : RecyclerView.Adapter<TafsirAdapter.ViewHolder>() {
 
-        inner class ViewHolder(val container: LinearLayout) : RecyclerView.ViewHolder(container) {
-            val mainLayout: LinearLayout = container.getChildAt(0) as LinearLayout
-            val numberTv: TextView = mainLayout.findViewById(1001)
-            val ayaArabicTv: TextView = mainLayout.findViewById(1002)
-            val wordsTv: TextView = mainLayout.findViewById(1003)
+        inner class ViewHolder(val mainLinear: LinearLayout) : RecyclerView.ViewHolder(mainLinear) {
+            val numberTv: TextView = mainLinear.findViewById(1001)
+            val ayaArabicTv: TextView = mainLinear.findViewById(1002)
+            val wordsTv: TextView = mainLinear.findViewById(1003)
             
-            val mainIbnAbbas: LinearLayout = mainLayout.findViewById(2001)
-            val headingIbnAbbas: TextView = mainLayout.findViewById(2002)
-            val textIbnAbbas: TextView = mainLayout.findViewById(2003)
+            val mainIbnAbbas: LinearLayout = mainLinear.findViewById(2001)
+            val headingIbnAbbas: TextView = mainLinear.findViewById(2002)
+            val textIbnAbbas: TextView = mainLinear.findViewById(2003)
             
-            val mainKanzulIman: LinearLayout = mainLayout.findViewById(3001)
-            val headingKanzulIman: TextView = mainLayout.findViewById(3002)
-            val textKanzulIman: TextView = mainLayout.findViewById(3003)
+            val mainKanzulIman: LinearLayout = mainLinear.findViewById(3001)
+            val headingKanzulIman: TextView = mainLinear.findViewById(3002)
+            val textKanzulIman: TextView = mainLinear.findViewById(3003)
             
-            val mainKhazainul: LinearLayout = mainLayout.findViewById(4001)
-            val headingKhazainul: TextView = mainLayout.findViewById(4002)
-            val textKhazainul: TextView = mainLayout.findViewById(4003)
+            val mainKhazainul: LinearLayout = mainLinear.findViewById(4001)
+            val headingKhazainul: TextView = mainLinear.findViewById(4002)
+            val textKhazainul: TextView = mainLinear.findViewById(4003)
             
-            val mainNurulIrfan: LinearLayout = mainLayout.findViewById(5001)
-            val headingNurulIrfan: TextView = mainLayout.findViewById(5002)
-            val textNurulIrfan: TextView = mainLayout.findViewById(5003)
+            val mainNurulIrfan: LinearLayout = mainLinear.findViewById(5001)
+            val headingNurulIrfan: TextView = mainLinear.findViewById(5002)
+            val textNurulIrfan: TextView = mainLinear.findViewById(5003)
             
-            val mainIrfanul: LinearLayout = mainLayout.findViewById(6001)
-            val headingIrfanul: TextView = mainLayout.findViewById(6002)
-            val textIrfanul: TextView = mainLayout.findViewById(6003)
+            val mainIrfanul: LinearLayout = mainLinear.findViewById(6001)
+            val headingIrfanul: TextView = mainLinear.findViewById(6002)
+            val textIrfanul: TextView = mainLinear.findViewById(6003)
             
-            val mainTabari: LinearLayout = mainLayout.findViewById(7001)
-            val headingTabari: TextView = mainLayout.findViewById(7002)
-            val textTabari: TextView = mainLayout.findViewById(7003)
+            val mainTabari: LinearLayout = mainLinear.findViewById(7001)
+            val headingTabari: TextView = mainLinear.findViewById(7002)
+            val textTabari: TextView = mainLinear.findViewById(7003)
             
-            val mainMajhari: LinearLayout = mainLayout.findViewById(8001)
-            val headingMajhari: TextView = mainLayout.findViewById(8002)
-            val textMajhari: TextView = mainLayout.findViewById(8003)
+            val mainMajhari: LinearLayout = mainLinear.findViewById(8001)
+            val headingMajhari: TextView = mainLinear.findViewById(8002)
+            val textMajhari: TextView = mainLinear.findViewById(8003)
             
-            val mainIbnKasir: LinearLayout = mainLayout.findViewById(9001)
-            val headingIbnKasir: TextView = mainLayout.findViewById(9002)
-            val textIbnKasir: TextView = mainLayout.findViewById(9003)
+            val mainIbnKasir: LinearLayout = mainLinear.findViewById(9001)
+            val headingIbnKasir: TextView = mainLinear.findViewById(9002)
+            val textIbnKasir: TextView = mainLinear.findViewById(9003)
             
-            val mainKurtubi: LinearLayout = mainLayout.findViewById(10001)
-            val headingKurtubi: TextView = mainLayout.findViewById(10002)
-            val textKurtubi: TextView = mainLayout.findViewById(10003)
+            val mainKurtubi: LinearLayout = mainLinear.findViewById(10001)
+            val headingKurtubi: TextView = mainLinear.findViewById(10002)
+            val textKurtubi: TextView = mainLinear.findViewById(10003)
             
-            val mainBaizabi: LinearLayout = mainLayout.findViewById(11001)
-            val headingBaizabi: TextView = mainLayout.findViewById(11002)
-            val textBaizabi: TextView = mainLayout.findViewById(11003)
+            val mainBaizabi: LinearLayout = mainLinear.findViewById(11001)
+            val headingBaizabi: TextView = mainLinear.findViewById(11002)
+            val textBaizabi: TextView = mainLinear.findViewById(11003)
             
-            val mainRezviya: LinearLayout = mainLayout.findViewById(12001)
-            val headingRezviya: TextView = mainLayout.findViewById(12002)
-            val textRezviya: TextView = mainLayout.findViewById(12003)
+            val mainRezviya: LinearLayout = mainLinear.findViewById(12001)
+            val headingRezviya: TextView = mainLinear.findViewById(12002)
+            val textRezviya: TextView = mainLinear.findViewById(12003)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val scrollView = ScrollView(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
-                setBackgroundColor(Color.WHITE)
-            }
-
+            // Create mainLinear as the root view (NOT ScrollView)
             val mainLinear = LinearLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                setPadding(dpToPx(5), dpToPx(5), dpToPx(5), dpToPx(5))
                 orientation = LinearLayout.VERTICAL
+                setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
+                setBackgroundColor(Color.WHITE)
                 elevation = dpToPx(4).toFloat()
                 
                 val gradientDrawable = GradientDrawable()
@@ -736,9 +731,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             // Arabic text
             val ayaArabicTv = TextView(parent.context).apply {
                 id = 1002
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    gravity = Gravity.RIGHT
-                }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                 gravity = Gravity.RIGHT
                 textSize = 20f
@@ -796,15 +789,20 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             mainLinear.addView(createTafsirSection(parent.context, 12001, 12002, 12003,
                 "তাফসিরে রেজভীয়া", "#EFEBE9", "#795548"))
 
-            scrollView.addView(mainLinear)
+            // Wrap mainLinear in a ScrollView for scrolling
+            val scrollView = ScrollView(parent.context).apply {
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                addView(mainLinear)
+            }
             
+            // Create a container LinearLayout to hold the ScrollView
             val container = LinearLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 orientation = LinearLayout.VERTICAL
+                addView(scrollView)
             }
-            container.addView(scrollView)
             
-            return ViewHolder(container)
+            return ViewHolder(mainLinear)
         }
 
         private fun createTafsirSection(context: Context, mainId: Int, headingId: Int, textId: Int,
@@ -836,7 +834,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
                 val text = TextView(context).apply {
                     id = textId
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT).apply {
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                         topMargin = dpToPx(5)
                     }
                     setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
