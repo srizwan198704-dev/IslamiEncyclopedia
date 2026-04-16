@@ -54,6 +54,8 @@
         <item name="android:textDirection">ltr</item>
         <item name="android:layoutDirection">ltr</item>
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+        <item name="android:statusBarColor">?attr/colorSecondaryVariant</item>
+        <item name="android:navigationBarColor">?attr/colorSecondaryVariant</item>
     </style>
 
     <style name="Theme.MyApplication.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar">
@@ -79,11 +81,4 @@
         <item name="android:navigationBarColor">?attr/colorSecondaryVariant</item>
     </style>
     
-    <!-- Dialog Theme for White Background -->
-    <style name="CustomDialogTheme" parent="Theme.MaterialComponents.Light.Dialog.Alert">
-        <item name="android:windowBackground">@android:color/white</item>
-        <item name="android:background">@android:color/white</item>
-        <item name="colorSurface">@android:color/white</item>
-        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
-    </style>
 </resources>
