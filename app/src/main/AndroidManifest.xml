@@ -136,14 +136,14 @@
             android:name=".TafsironlineActivity"
             android:exported="false" />
         <activity
+            android:name=".TafsironlineMeActivity"
+            android:exported="false" />
+        <activity
             android:name=".Pdfonline14Activity"
             android:exported="false" />
         <activity
             android:name=".ResultActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:windowSoftInputMode="stateHidden"
-            tools:ignore="DiscouragedApi,LockedOrientationActivity" />
+            android:exported="false" />
         <activity
             android:name=".NamazActivity"
             android:exported="false" />
