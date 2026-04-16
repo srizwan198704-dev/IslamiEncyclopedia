@@ -106,12 +106,12 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
             || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE), 1000)
         }
-        
+
         createUI()
         initializeLogic()
     }
@@ -124,7 +124,6 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
     }
 
     private fun createUI() {
-        // Main container
         mainLayout = LinearLayout(this).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             orientation = LinearLayout.VERTICAL
@@ -133,7 +132,6 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         }
         setContentView(mainLayout)
 
-        // Toolbar
         toolbar = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(60))
             setPadding(dpToPx(3), dpToPx(1), dpToPx(3), dpToPx(1))
@@ -178,11 +176,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             textSize = 16f
             setTextColor(Color.WHITE)
             setSingleLine(true)
-            try {
-                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
-            } catch (e: Exception) {
-                // Use default font if custom font not found
-            }
+            try { typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf") } catch (e: Exception) {}
         }
         titleLayout.addView(bookNameTv)
 
@@ -195,11 +189,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             textSize = 14f
             setTextColor(Color.WHITE)
             setSingleLine(true)
-            try {
-                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
-            } catch (e: Exception) {
-                // Use default font if custom font not found
-            }
+            try { typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf") } catch (e: Exception) {}
         }
         titleLayout.addView(authorTv)
 
@@ -253,11 +243,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             text = "ইন্টারনেট সেটিং চেক করুন"
             textSize = 16f
             setTextColor(Color.BLACK)
-            try {
-                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
-            } catch (e: Exception) {
-                // Use default font
-            }
+            try { typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf") } catch (e: Exception) {}
         }
         noInternetLayout.addView(noInternetText)
 
@@ -287,7 +273,6 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         }
         mainLayout.addView(contentLayout)
 
-        // Search Main Layout
         searchMainLayout = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             orientation = LinearLayout.HORIZONTAL
@@ -312,11 +297,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             setTextColor(Color.BLACK)
             hint = "শব্দ লিখে সার্চ করুন"
             setHintTextColor(Color.parseColor("#01837A"))
-            try {
-                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
-            } catch (e: Exception) {
-                // Use default font
-            }
+            try { typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf") } catch (e: Exception) {}
             addTextChangedListener(object : TextWatcher {
                 override fun onTextChanged(charSeq: CharSequence?, p1: Int, p2: Int, p3: Int) {
                     jsonSearch(charSeq.toString())
@@ -350,7 +331,6 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         }
         searchMainLayout.addView(clearSearchIcon)
 
-        // RecyclerView
         recyclerView = RecyclerView(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(Color.parseColor("#F5F5F5"))
@@ -358,7 +338,6 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         }
         contentLayout.addView(recyclerView)
 
-        // No Result Layout
         noResultLayout = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
@@ -380,14 +359,10 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             gravity = Gravity.CENTER
-            text = "কোন সার্চ রেজাল্ট পাওয়া যায়নি"
+            text = "কোন সার্চ রেজাল্ট পাওয়া যায়নি"
             textSize = 16f
             setTextColor(Color.BLACK)
-            try {
-                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
-            } catch (e: Exception) {
-                // Use default font
-            }
+            try { typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf") } catch (e: Exception) {}
         }
         noResultLayout.addView(noResultText)
 
@@ -395,44 +370,36 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         deleted = AlertDialog.Builder(this)
         onlineoffline = AlertDialog.Builder(this)
 
-        // Adapter setup
         adapter = TafsirAdapter(chapter)
         recyclerView.adapter = adapter
 
-        // Request Listener
         _book_request_listener = object : RequestNetwork.RequestListener {
             override fun onResponse(tag: String, response: String, responseHeaders: HashMap<String, Any>) {
                 val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
-                
+
                 if (FileUtil.isExistFile(cachePath)) {
                     try {
                         listmap_cache = Gson().fromJson(FileUtil.readFile(cachePath), object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
                         processListMapCache()
-                    } catch (e: Exception) {
-                        // Handle exception
-                    }
+                    } catch (e: Exception) {}
                 } else {
                     try {
                         listmap_cache = Gson().fromJson(response, object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
                         processListMapCache()
-                    } catch (e: Exception) {
-                        // Handle exception
-                    }
+                    } catch (e: Exception) {}
                 }
-                
+
                 updateUIVisibility()
             }
 
             override fun onErrorResponse(tag: String, message: String) {
                 val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
-                
+
                 if (FileUtil.isExistFile(cachePath)) {
                     try {
                         listmap_cache = Gson().fromJson(FileUtil.readFile(cachePath), object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
                         processListMapCache()
-                    } catch (e: Exception) {
-                        // Handle exception
-                    }
+                    } catch (e: Exception) {}
                 } else {
                     Toast.makeText(applicationContext, "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show()
                     spinProgress.visibility = View.GONE
@@ -447,29 +414,29 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         chapter.clear()
         n = 0.0
         val suraName = intent.getStringExtra("sura") ?: ""
-        
+
         for (i in listmap_cache.indices) {
-            if (listmap_cache[i.toInt()]["sura"].toString() == suraName) {
+            if (listmap_cache[i]["sura"].toString() == suraName) {
                 ListMap = HashMap()
-                ListMap["verses"] = listmap_cache[i.toInt()]["verses"].toString()
-                ListMap["names"] = listmap_cache[i.toInt()]["names"].toString()
-                ListMap["words"] = listmap_cache[i.toInt()]["words"].toString()
-                ListMap["name"] = listmap_cache[i.toInt()]["name"].toString()
-                ListMap["khazainul"] = listmap_cache[i.toInt()]["khazainul"].toString()
-                ListMap["irfanul"] = listmap_cache[i.toInt()]["irfanul"].toString()
-                ListMap["ibnabbas"] = listmap_cache[i.toInt()]["ibnabbas"].toString()
-                ListMap["majhari"] = listmap_cache[i.toInt()]["majhari"].toString()
-                ListMap["nurulirfan"] = listmap_cache[i.toInt()]["nurulirfan"].toString()
-                ListMap["tabari"] = listmap_cache[i.toInt()]["tabari"].toString()
-                ListMap["ibnkasir"] = listmap_cache[i.toInt()]["ibnkasir"].toString()
-                ListMap["rejviya"] = listmap_cache[i.toInt()]["rejviya"].toString()
-                ListMap["baizabi"] = listmap_cache[i.toInt()]["baizabi"].toString()
-                ListMap["kurtubi"] = listmap_cache[i.toInt()]["kurtubi"].toString()
+                ListMap["verses"]    = listmap_cache[i]["verses"].toString()
+                ListMap["names"]     = listmap_cache[i]["names"].toString()
+                ListMap["words"]     = listmap_cache[i]["words"].toString()
+                ListMap["name"]      = listmap_cache[i]["name"].toString()
+                ListMap["khazainul"] = listmap_cache[i]["khazainul"].toString()
+                ListMap["irfanul"]   = listmap_cache[i]["irfanul"].toString()
+                ListMap["ibnabbas"]  = listmap_cache[i]["ibnabbas"].toString()
+                ListMap["majhari"]   = listmap_cache[i]["majhari"].toString()
+                ListMap["nurulirfan"]= listmap_cache[i]["nurulirfan"].toString()
+                ListMap["tabari"]    = listmap_cache[i]["tabari"].toString()
+                ListMap["ibnkasir"]  = listmap_cache[i]["ibnkasir"].toString()
+                ListMap["rejviya"]   = listmap_cache[i]["rejviya"].toString()
+                ListMap["baizabi"]   = listmap_cache[i]["baizabi"].toString()
+                ListMap["kurtubi"]   = listmap_cache[i]["kurtubi"].toString()
                 chapter.add(ListMap)
             }
             n++
         }
-        
+
         adapter.notifyDataSetChanged()
         getsearch = Gson().toJson(chapter)
         searchIcon.visibility = View.VISIBLE
@@ -508,7 +475,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         }
 
         val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
-        
+
         if (FileUtil.isExistFile(cachePath)) {
             try {
                 listmap_cache = Gson().fromJson(FileUtil.readFile(cachePath), object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
@@ -517,29 +484,27 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                 contentLayout.visibility = View.VISIBLE
                 noInternetLayout.visibility = View.GONE
                 searchIcon.visibility = View.VISIBLE
-            } catch (e: Exception) {
-                // Handle exception
-            }
+            } catch (e: Exception) {}
         } else {
             FileUtil.makeDir(FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/")
-            
+
             if (Rizwan.isConnected(applicationContext)) {
                 book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "", _book_request_listener)
             } else {
                 val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 val activeNetwork: NetworkInfo? = cm.activeNetworkInfo
-                
+
                 if (activeNetwork == null || !activeNetwork.isConnected) {
                     noInternetLayout.visibility = View.VISIBLE
                     Toast.makeText(applicationContext, "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show()
                 }
-                
+
                 if (FileUtil.isExistFile(cachePath)) {
                     spinLayout.visibility = View.GONE
                     contentLayout.visibility = View.VISIBLE
                     noInternetLayout.visibility = View.GONE
                 } else {
-                    Toast.makeText(applicationContext, "ফাইল পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "ফাইল পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
                     spinLayout.visibility = View.VISIBLE
                     contentLayout.visibility = View.GONE
                     noInternetLayout.visibility = View.VISIBLE
@@ -587,15 +552,15 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         chapter = Gson().fromJson(getsearch, object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
         length = chapter.size.toDouble()
         r = length - 1
-        
+
         for (i in 0 until length.toInt()) {
             value1 = chapter[r.toInt()]["name"].toString()
             value2 = chapter[r.toInt()]["irfanul"].toString()
-            
+
             if (!(charSeq.length > value1.length) && value1.lowercase().contains(charSeq.lowercase())) {
-                // Keep item
+                // Keep
             } else if (!(charSeq.length > value2.length) && value2.lowercase().contains(charSeq.lowercase())) {
-                // Keep item
+                // Keep
             } else {
                 chapter.removeAt(r.toInt())
             }
@@ -605,15 +570,9 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
     }
 
     private fun replaceArabicNumber(n: String): String {
-        return n.replace("1", "১")
-            .replace("2", "২")
-            .replace("3", "৩")
-            .replace("4", "৪")
-            .replace("5", "৫")
-            .replace("6", "৬")
-            .replace("7", "৭")
-            .replace("8", "৮")
-            .replace("9", "৯")
+        return n.replace("1", "১").replace("2", "২").replace("3", "৩")
+            .replace("4", "৪").replace("5", "৫").replace("6", "৬")
+            .replace("7", "৭").replace("8", "৮").replace("9", "৯")
             .replace("0", "০")
     }
 
@@ -625,89 +584,102 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         return (dp * resources.displayMetrics.density).toInt()
     }
 
-    inner class TafsirAdapter(private val data: ArrayList<HashMap<String, Any>>) : RecyclerView.Adapter<TafsirAdapter.ViewHolder>() {
+    // ─────────────────────────────────────────────────────────────
+    //  ADAPTER  –  KEY FIX: ViewHolder now holds ScrollView (root)
+    // ─────────────────────────────────────────────────────────────
+    inner class TafsirAdapter(private val data: ArrayList<HashMap<String, Any>>) :
+        RecyclerView.Adapter<TafsirAdapter.ViewHolder>() {
 
-        inner class ViewHolder(val mainLinear: LinearLayout) : RecyclerView.ViewHolder(mainLinear) {
-            val numberTv: TextView = mainLinear.findViewById(1001)
-            val ayaArabicTv: TextView = mainLinear.findViewById(1002)
-            val wordsTv: TextView = mainLinear.findViewById(1003)
-            
-            val mainIbnAbbas: LinearLayout = mainLinear.findViewById(2001)
-            val headingIbnAbbas: TextView = mainLinear.findViewById(2002)
-            val textIbnAbbas: TextView = mainLinear.findViewById(2003)
-            
-            val mainKanzulIman: LinearLayout = mainLinear.findViewById(3001)
-            val headingKanzulIman: TextView = mainLinear.findViewById(3002)
-            val textKanzulIman: TextView = mainLinear.findViewById(3003)
-            
-            val mainKhazainul: LinearLayout = mainLinear.findViewById(4001)
-            val headingKhazainul: TextView = mainLinear.findViewById(4002)
-            val textKhazainul: TextView = mainLinear.findViewById(4003)
-            
-            val mainNurulIrfan: LinearLayout = mainLinear.findViewById(5001)
-            val headingNurulIrfan: TextView = mainLinear.findViewById(5002)
-            val textNurulIrfan: TextView = mainLinear.findViewById(5003)
-            
-            val mainIrfanul: LinearLayout = mainLinear.findViewById(6001)
-            val headingIrfanul: TextView = mainLinear.findViewById(6002)
-            val textIrfanul: TextView = mainLinear.findViewById(6003)
-            
-            val mainTabari: LinearLayout = mainLinear.findViewById(7001)
-            val headingTabari: TextView = mainLinear.findViewById(7002)
-            val textTabari: TextView = mainLinear.findViewById(7003)
-            
-            val mainMajhari: LinearLayout = mainLinear.findViewById(8001)
-            val headingMajhari: TextView = mainLinear.findViewById(8002)
-            val textMajhari: TextView = mainLinear.findViewById(8003)
-            
-            val mainIbnKasir: LinearLayout = mainLinear.findViewById(9001)
-            val headingIbnKasir: TextView = mainLinear.findViewById(9002)
-            val textIbnKasir: TextView = mainLinear.findViewById(9003)
-            
-            val mainKurtubi: LinearLayout = mainLinear.findViewById(10001)
-            val headingKurtubi: TextView = mainLinear.findViewById(10002)
-            val textKurtubi: TextView = mainLinear.findViewById(10003)
-            
-            val mainBaizabi: LinearLayout = mainLinear.findViewById(11001)
-            val headingBaizabi: TextView = mainLinear.findViewById(11002)
-            val textBaizabi: TextView = mainLinear.findViewById(11003)
-            
-            val mainRezviya: LinearLayout = mainLinear.findViewById(12001)
-            val headingRezviya: TextView = mainLinear.findViewById(12002)
-            val textRezviya: TextView = mainLinear.findViewById(12003)
+        // ViewHolder accepts ScrollView as the root itemView
+        inner class ViewHolder(root: ScrollView) : RecyclerView.ViewHolder(root) {
+            val numberTv: TextView      = root.findViewById(1001)
+            val ayaArabicTv: TextView   = root.findViewById(1002)
+            val wordsTv: TextView       = root.findViewById(1003)
+
+            val mainIbnAbbas: LinearLayout  = root.findViewById(2001)
+            val headingIbnAbbas: TextView   = root.findViewById(2002)
+            val textIbnAbbas: TextView      = root.findViewById(2003)
+
+            val mainKanzulIman: LinearLayout = root.findViewById(3001)
+            val headingKanzulIman: TextView  = root.findViewById(3002)
+            val textKanzulIman: TextView     = root.findViewById(3003)
+
+            val mainKhazainul: LinearLayout = root.findViewById(4001)
+            val headingKhazainul: TextView  = root.findViewById(4002)
+            val textKhazainul: TextView     = root.findViewById(4003)
+
+            val mainNurulIrfan: LinearLayout = root.findViewById(5001)
+            val headingNurulIrfan: TextView  = root.findViewById(5002)
+            val textNurulIrfan: TextView     = root.findViewById(5003)
+
+            val mainIrfanul: LinearLayout = root.findViewById(6001)
+            val headingIrfanul: TextView  = root.findViewById(6002)
+            val textIrfanul: TextView     = root.findViewById(6003)
+
+            val mainTabari: LinearLayout = root.findViewById(7001)
+            val headingTabari: TextView  = root.findViewById(7002)
+            val textTabari: TextView     = root.findViewById(7003)
+
+            val mainMajhari: LinearLayout = root.findViewById(8001)
+            val headingMajhari: TextView  = root.findViewById(8002)
+            val textMajhari: TextView     = root.findViewById(8003)
+
+            val mainIbnKasir: LinearLayout = root.findViewById(9001)
+            val headingIbnKasir: TextView  = root.findViewById(9002)
+            val textIbnKasir: TextView     = root.findViewById(9003)
+
+            val mainKurtubi: LinearLayout = root.findViewById(10001)
+            val headingKurtubi: TextView  = root.findViewById(10002)
+            val textKurtubi: TextView     = root.findViewById(10003)
+
+            val mainBaizabi: LinearLayout = root.findViewById(11001)
+            val headingBaizabi: TextView  = root.findViewById(11002)
+            val textBaizabi: TextView     = root.findViewById(11003)
+
+            val mainRezviya: LinearLayout = root.findViewById(12001)
+            val headingRezviya: TextView  = root.findViewById(12002)
+            val textRezviya: TextView     = root.findViewById(12003)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            // Create ScrollView as the root
+            // 1. Build ScrollView — NOT attached to parent
             val scrollView = ScrollView(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
                 isFillViewport = true
             }
-            
-            // Create mainLinear as a child of ScrollView (not attached yet)
+
+            // 2. Build mainLinear and add all content into it
             val mainLinear = LinearLayout(parent.context).apply {
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
                 orientation = LinearLayout.VERTICAL
                 setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
                 setBackgroundColor(Color.WHITE)
                 elevation = dpToPx(4).toFloat()
-                
-                val gradientDrawable = GradientDrawable()
-                gradientDrawable.setColor(Color.WHITE)
-                gradientDrawable.cornerRadius = dpToPx(20).toFloat()
-                gradientDrawable.setStroke(dpToPx(1), Color.parseColor("#01837A"))
-                
-                val rippleDrawable = RippleDrawable(
+
+                val gradientDrawable = GradientDrawable().apply {
+                    setColor(Color.WHITE)
+                    cornerRadius = dpToPx(20).toFloat()
+                    setStroke(dpToPx(1), Color.parseColor("#01837A"))
+                }
+                background = RippleDrawable(
                     ColorStateList.valueOf(Color.parseColor("#01837A")),
                     gradientDrawable,
                     null
                 )
-                background = rippleDrawable
             }
 
-            // Number row layout
+            // Number row
             val numberRow = LinearLayout(parent.context).apply {
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
                 orientation = LinearLayout.HORIZONTAL
             }
             mainLinear.addView(numberRow)
@@ -722,22 +694,23 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
             val numberTv = TextView(parent.context).apply {
                 id = 1001
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
                 textSize = 10f
                 setTextColor(Color.BLACK)
                 isFocusable = false
-                try {
-                    typeface = Typeface.createFromAsset(parent.context.assets, "solaimanlipi.ttf")
-                } catch (e: Exception) {
-                    // Use default font
-                }
+                try { typeface = Typeface.createFromAsset(parent.context.assets, "solaimanlipi.ttf") } catch (e: Exception) {}
             }
             numberContainer.addView(numberTv)
 
-            // Arabic text
             val ayaArabicTv = TextView(parent.context).apply {
                 id = 1002
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
                 setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                 gravity = Gravity.RIGHT
                 textSize = 20f
@@ -746,33 +719,27 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                 isFocusable = false
                 textDirection = View.TEXT_DIRECTION_RTL
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
-                try {
-                    typeface = Typeface.createFromAsset(parent.context.assets, "bold.ttf")
-                } catch (e: Exception) {
-                    // Use default font
-                }
+                try { typeface = Typeface.createFromAsset(parent.context.assets, "bold.ttf") } catch (e: Exception) {}
             }
             mainLinear.addView(ayaArabicTv)
 
-            // Words text
             val wordsTv = TextView(parent.context).apply {
                 id = 1003
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
                 setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                 textSize = 14f
                 setTypeface(typeface, Typeface.BOLD)
                 setTextColor(Color.BLACK)
                 isFocusable = false
-                try {
-                    typeface = Typeface.createFromAsset(parent.context.assets, "solaimanlipi.ttf")
-                } catch (e: Exception) {
-                    // Use default font
-                }
+                try { typeface = Typeface.createFromAsset(parent.context.assets, "solaimanlipi.ttf") } catch (e: Exception) {}
             }
             mainLinear.addView(wordsTv)
 
-            // Add all tafsir sections
-            mainLinear.addView(createTafsirSection(parent.context, 2001, 2002, 2003, 
+            // Tafsir sections
+            mainLinear.addView(createTafsirSection(parent.context, 2001, 2002, 2003,
                 "তাফসিরে ইবনে আব্বাস (رضي الله عنه)", "#E8F5E9", "#4CAF50"))
             mainLinear.addView(createTafsirSection(parent.context, 3001, 3002, 3003,
                 "কানযুল ঈমান", "#E0F2F1", "#009688"))
@@ -791,108 +758,105 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             mainLinear.addView(createTafsirSection(parent.context, 10001, 10002, 10003,
                 "তাফসিরে কুরতবী", "#ECEFF1", "#607D8B"))
             mainLinear.addView(createTafsirSection(parent.context, 11001, 11002, 11003,
-                "তাফসিরে বায়যাবী", "#F1F8E9", "#8BC34A"))
+                "তাফসিরে বায়যাবী", "#F1F8E9", "#8BC34A"))
             mainLinear.addView(createTafsirSection(parent.context, 12001, 12002, 12003,
-                "তাফসিরে রেজভীয়া", "#EFEBE9", "#795548"))
+                "তাফসিরে রেজভীয়া", "#EFEBE9", "#795548"))
 
-            // Add mainLinear to ScrollView
+            // 3. Attach mainLinear to scrollView
             scrollView.addView(mainLinear)
-            
-            // Return ViewHolder with mainLinear as the itemView
-            return ViewHolder(mainLinear)
+
+            // 4. Return ViewHolder with scrollView as root (NOT attached to parent)
+            return ViewHolder(scrollView)
         }
 
-        private fun createTafsirSection(context: Context, mainId: Int, headingId: Int, textId: Int,
-                                        headingText: String, bgColor: String, textColor: String): LinearLayout {
+        private fun createTafsirSection(
+            context: Context, mainId: Int, headingId: Int, textId: Int,
+            headingText: String, bgColor: String, textColor: String
+        ): LinearLayout {
             return LinearLayout(context).apply {
                 id = mainId
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
                     topMargin = dpToPx(2)
                     bottomMargin = dpToPx(2)
                 }
                 orientation = LinearLayout.VERTICAL
 
-                val heading = TextView(context).apply {
+                addView(TextView(context).apply {
                     id = headingId
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
                     setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                     setBackgroundColor(Color.parseColor(bgColor))
                     text = headingText
                     textSize = 14f
                     setTextColor(Color.parseColor(textColor))
                     isFocusable = false
-                    try {
-                        typeface = Typeface.createFromAsset(context.assets, "solaimanlipi.ttf")
-                    } catch (e: Exception) {
-                        // Use default font
-                    }
-                }
-                addView(heading)
+                    try { typeface = Typeface.createFromAsset(context.assets, "solaimanlipi.ttf") } catch (e: Exception) {}
+                })
 
-                val text = TextView(context).apply {
+                addView(TextView(context).apply {
                     id = textId
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                        topMargin = dpToPx(5)
-                    }
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = dpToPx(5) }
                     setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                     textSize = 16f
                     setTextColor(Color.BLACK)
                     isFocusable = false
                     visibility = View.GONE
-                    try {
-                        typeface = Typeface.createFromAsset(context.assets, "solaimanlipi.ttf")
-                    } catch (e: Exception) {
-                        // Use default font
-                    }
-                }
-                addView(text)
+                    try { typeface = Typeface.createFromAsset(context.assets, "solaimanlipi.ttf") } catch (e: Exception) {}
+                })
             }
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = data[position]
-            
-            holder.numberTv.text = replaceArabicNumber(item["verses"].toString())
+
+            holder.numberTv.text    = replaceArabicNumber(item["verses"].toString())
             holder.ayaArabicTv.text = item["names"].toString()
-            holder.wordsTv.text = item["words"].toString()
+            holder.wordsTv.text     = item["words"].toString()
             holder.textKanzulIman.text = replaceArabicNumber(item["verses"].toString() + ". " + item["name"].toString())
-            holder.textKhazainul.text = item["khazainul"].toString()
-            holder.textIrfanul.text = item["irfanul"].toString()
-            holder.textIbnAbbas.text = item["ibnabbas"].toString()
-            holder.textMajhari.text = item["majhari"].toString()
+            holder.textKhazainul.text  = item["khazainul"].toString()
+            holder.textIrfanul.text    = item["irfanul"].toString()
+            holder.textIbnAbbas.text   = item["ibnabbas"].toString()
+            holder.textMajhari.text    = item["majhari"].toString()
             holder.textNurulIrfan.text = item["nurulirfan"].toString()
-            holder.textTabari.text = item["tabari"].toString()
-            holder.textIbnKasir.text = item["ibnkasir"].toString()
-            holder.textKurtubi.text = item["kurtubi"].toString()
-            holder.textRezviya.text = item["rejviya"].toString()
-            holder.textBaizabi.text = item["baizabi"].toString()
+            holder.textTabari.text     = item["tabari"].toString()
+            holder.textIbnKasir.text   = item["ibnkasir"].toString()
+            holder.textKurtubi.text    = item["kurtubi"].toString()
+            holder.textRezviya.text    = item["rejviya"].toString()
+            holder.textBaizabi.text    = item["baizabi"].toString()
 
-            // Setup click listeners for expand/collapse
-            setupExpandCollapse(holder.headingIbnAbbas, holder.textIbnAbbas)
-            setupExpandCollapse(holder.headingKhazainul, holder.textKhazainul)
+            setupExpandCollapse(holder.headingIbnAbbas,   holder.textIbnAbbas)
+            setupExpandCollapse(holder.headingKhazainul,  holder.textKhazainul)
             setupExpandCollapse(holder.headingNurulIrfan, holder.textNurulIrfan)
-            setupExpandCollapse(holder.headingTabari, holder.textTabari)
-            setupExpandCollapse(holder.headingMajhari, holder.textMajhari)
-            setupExpandCollapse(holder.headingKurtubi, holder.textKurtubi)
-            setupExpandCollapse(holder.headingIbnKasir, holder.textIbnKasir)
-            setupExpandCollapse(holder.headingBaizabi, holder.textBaizabi)
-            setupExpandCollapse(holder.headingRezviya, holder.textRezviya)
+            setupExpandCollapse(holder.headingTabari,     holder.textTabari)
+            setupExpandCollapse(holder.headingMajhari,    holder.textMajhari)
+            setupExpandCollapse(holder.headingKurtubi,    holder.textKurtubi)
+            setupExpandCollapse(holder.headingIbnKasir,   holder.textIbnKasir)
+            setupExpandCollapse(holder.headingBaizabi,    holder.textBaizabi)
+            setupExpandCollapse(holder.headingRezviya,    holder.textRezviya)
             setupExpandCollapse(holder.headingKanzulIman, holder.textKanzulIman)
-            setupExpandCollapse(holder.headingIrfanul, holder.textIrfanul)
+            setupExpandCollapse(holder.headingIrfanul,    holder.textIrfanul)
 
-            // Hide sections with no tafsir
-            holder.mainIbnAbbas.visibility = if (holder.textIbnAbbas.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainKhazainul.visibility = if (holder.textKhazainul.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainNurulIrfan.visibility = if (holder.textNurulIrfan.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainTabari.visibility = if (holder.textTabari.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainMajhari.visibility = if (holder.textMajhari.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainIbnKasir.visibility = if (holder.textIbnKasir.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainKurtubi.visibility = if (holder.textKurtubi.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainBaizabi.visibility = if (holder.textBaizabi.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.mainRezviya.visibility = if (holder.textRezviya.text == "তাফসির যুক্ত করা হয়নি") View.GONE else View.VISIBLE
-            holder.wordsTv.visibility = if (holder.wordsTv.text == "শব্দার্থ যুক্ত করা হয়নি") View.GONE else View.VISIBLE
+            val noTafsir = "তাফসির যুক্ত করা হয়নি"
+            holder.mainIbnAbbas.visibility  = if (holder.textIbnAbbas.text  == noTafsir) View.GONE else View.VISIBLE
+            holder.mainKhazainul.visibility = if (holder.textKhazainul.text == noTafsir) View.GONE else View.VISIBLE
+            holder.mainNurulIrfan.visibility= if (holder.textNurulIrfan.text== noTafsir) View.GONE else View.VISIBLE
+            holder.mainTabari.visibility    = if (holder.textTabari.text    == noTafsir) View.GONE else View.VISIBLE
+            holder.mainMajhari.visibility   = if (holder.textMajhari.text   == noTafsir) View.GONE else View.VISIBLE
+            holder.mainIbnKasir.visibility  = if (holder.textIbnKasir.text  == noTafsir) View.GONE else View.VISIBLE
+            holder.mainKurtubi.visibility   = if (holder.textKurtubi.text   == noTafsir) View.GONE else View.VISIBLE
+            holder.mainBaizabi.visibility   = if (holder.textBaizabi.text   == noTafsir) View.GONE else View.VISIBLE
+            holder.mainRezviya.visibility   = if (holder.textRezviya.text   == noTafsir) View.GONE else View.VISIBLE
+            holder.wordsTv.visibility       = if (holder.wordsTv.text       == "শব্দার্থ যুক্ত করা হয়নি") View.GONE else View.VISIBLE
 
-            // Enable copy for all text views
             enableCopyTextView(holder.ayaArabicTv)
             enableCopyTextView(holder.wordsTv)
             enableCopyTextView(holder.textIbnAbbas)
