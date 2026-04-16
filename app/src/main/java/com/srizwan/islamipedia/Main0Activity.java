@@ -974,7 +974,7 @@ public class Main0Activity extends AppCompatActivity {
                                                     }
                                                     else {
                                                         if (name.getText().toString().equals("তাফসীর সমগ্র")) {
-                                                            in.setClass(getApplicationContext(), TafsirOnlineMeActivity.class);
+                                                            in.setClass(getApplicationContext(), TafsironlineActivity.class);
                                                             startActivity(in);
                                                         }
                                                         else {
@@ -1115,8 +1115,7 @@ public class Main0Activity extends AppCompatActivity {
                                                                                                                 if (name.getText().toString().equals("অভিযোগ")) {
     // প্রথমে একটি ডায়ালগ দেখাবে দুইটি অপশন সহ
     AlertDialog.Builder optionDialog = new AlertDialog.Builder(Main0Activity.this);
-    optionDialog.setTitle("নির্বাচন করুন");
-    optionDialog.setMessage("আপনি কি করতে চান?");
+    optionDialog.setMessage("নির্বাচন করুন");
     optionDialog.setPositiveButton("মেসেজ পাঠান", new DialogInterface.OnClickListener() {
         @Override
         public void onClick(DialogInterface dialog, int which) {
@@ -1179,7 +1178,7 @@ public class Main0Activity extends AppCompatActivity {
         }
     });
     
-    optionDialog.setNegativeButton("অভিযোগ করুন", new DialogInterface.OnClickListener() {
+    optionDialog.setNegativeButton("অনলাইন সাপোর্ট", new DialogInterface.OnClickListener() {
         @Override
         public void onClick(DialogInterface dialog, int which) {
             // অভিযোগ করুন এ ক্লিক করলে ReportActivity তে যাবে
