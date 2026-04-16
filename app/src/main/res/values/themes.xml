@@ -53,6 +53,7 @@
         <item name="windowNoTitle">true</item>
         <item name="android:textDirection">ltr</item>
         <item name="android:layoutDirection">ltr</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 
     <style name="Theme.MyApplication.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar">
@@ -74,6 +75,8 @@
         <item name="android:layoutDirection">ltr</item>
         <!-- Force disable night mode -->
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+        <item name="android:statusBarColor">?attr/colorSecondaryVariant</item>
+        <item name="android:navigationBarColor">?attr/colorSecondaryVariant</item>
     </style>
     
     <!-- Dialog Theme for White Background -->
