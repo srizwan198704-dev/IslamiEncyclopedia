@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -22,7 +23,6 @@ import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -116,7 +116,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         initializeLogic()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, companion: String[], permissions: IntArray, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1000) {
             initializeLogic()
@@ -148,7 +148,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(dpToPx(40), dpToPx(40)).apply {
                 rightMargin = dpToPx(5)
             }
-            setPadding(dpToPx(10))
+            setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
             setImageResource(R.drawable.ic_arrow_back_white)
             scaleType = ImageView.ScaleType.FIT_CENTER
             setOnClickListener { finish() }
@@ -164,7 +164,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
         titleLayout = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             orientation = LinearLayout.VERTICAL
         }
         boxLayout.addView(titleLayout)
@@ -178,7 +178,11 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             textSize = 16f
             setTextColor(Color.WHITE)
             setSingleLine(true)
-            typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            try {
+                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            } catch (e: Exception) {
+                // Use default font if custom font not found
+            }
         }
         titleLayout.addView(bookNameTv)
 
@@ -191,7 +195,11 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             textSize = 14f
             setTextColor(Color.WHITE)
             setSingleLine(true)
-            typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            try {
+                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            } catch (e: Exception) {
+                // Use default font if custom font not found
+            }
         }
         titleLayout.addView(authorTv)
 
@@ -209,7 +217,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         // Spin Layout (Loading)
         spinLayout = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             setBackgroundColor(Color.WHITE)
             gravity = Gravity.CENTER
             orientation = LinearLayout.VERTICAL
@@ -218,13 +226,13 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
         spinProgress = ProgressBar(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
         }
         spinLayout.addView(spinProgress)
 
         noInternetLayout = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             gravity = Gravity.CENTER
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
@@ -240,18 +248,22 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
         noInternetText = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             gravity = Gravity.CENTER
             text = "ইন্টারনেট সেটিং চেক করুন"
             textSize = 16f
             setTextColor(Color.BLACK)
-            typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            try {
+                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            } catch (e: Exception) {
+                // Use default font
+            }
         }
         noInternetLayout.addView(noInternetText)
 
         refreshButton = MaterialButton(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             gravity = Gravity.CENTER
             text = "রিফ্রেশ করুন"
             textSize = 12f
@@ -285,22 +297,26 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
         searchBoxLayout = TextInputLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                setMargins(dpToPx(5))
+                setMargins(dpToPx(5), dpToPx(5), dpToPx(5), dpToPx(5))
             }
-            setPadding(dpToPx(8))
-            boxCornerRadii(100f, 100f, 100f, 100f)
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+            setBoxCornerRadii(100f, 100f, 100f, 100f)
             boxBackgroundColor = Color.WHITE
         }
         searchMainLayout.addView(searchBoxLayout)
 
         searchBox = EditText(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             textSize = 14f
             setTextColor(Color.BLACK)
             hint = "শব্দ লিখে সার্চ করুন"
             setHintTextColor(Color.parseColor("#01837A"))
-            typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            try {
+                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            } catch (e: Exception) {
+                // Use default font
+            }
             addTextChangedListener(object : TextWatcher {
                 override fun onTextChanged(charSeq: CharSequence?, p1: Int, p2: Int, p3: Int) {
                     jsonSearch(charSeq.toString())
@@ -345,7 +361,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         // No Result Layout
         noResultLayout = LinearLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             setBackgroundColor(Color.WHITE)
             gravity = Gravity.CENTER
             orientation = LinearLayout.VERTICAL
@@ -362,12 +378,16 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
         noResultText = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setPadding(dpToPx(8))
+            setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
             gravity = Gravity.CENTER
             text = "কোন সার্চ রেজাল্ট পাওয়া যায়নি"
             textSize = 16f
             setTextColor(Color.BLACK)
-            typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            try {
+                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+            } catch (e: Exception) {
+                // Use default font
+            }
         }
         noResultLayout.addView(noResultText)
 
@@ -546,9 +566,9 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         textView.text = text
         textView.ellipsize = TextUtils.TruncateAt.MARQUEE
         textView.isSelected = true
-        textView.isHorizontallyScrolling = true
+        textView.setHorizontallyScrolling(true)
         textView.marqueeRepeatLimit = -1
-        textView.isSingleLine = true
+        textView.setSingleLine(true)
         textView.isFocusable = true
         textView.isFocusableInTouchMode = true
     }
@@ -661,13 +681,13 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val scrollView = ScrollView(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                setPadding(dpToPx(10))
+                setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
                 setBackgroundColor(Color.WHITE)
             }
 
             val mainLinear = LinearLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                setPadding(dpToPx(5))
+                setPadding(dpToPx(5), dpToPx(5), dpToPx(5), dpToPx(5))
                 orientation = LinearLayout.VERTICAL
                 elevation = dpToPx(4).toFloat()
                 
@@ -677,7 +697,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                 gradientDrawable.setStroke(dpToPx(1), Color.parseColor("#01837A"))
                 
                 val rippleDrawable = RippleDrawable(
-                    android.content.res.ColorStateList.valueOf(Color.parseColor("#01837A")),
+                    ColorStateList.valueOf(Color.parseColor("#01837A")),
                     gradientDrawable,
                     null
                 )
@@ -693,7 +713,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
 
             val numberContainer = LinearLayout(parent.context).apply {
                 layoutParams = LinearLayout.LayoutParams(dpToPx(50), dpToPx(50))
-                setPadding(dpToPx(8))
+                setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                 setBackgroundResource(R.drawable.ic_1_4)
                 gravity = Gravity.CENTER
             }
@@ -705,7 +725,11 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                 textSize = 10f
                 setTextColor(Color.BLACK)
                 isFocusable = false
-                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+                try {
+                    typeface = Typeface.createFromAsset(parent.context.assets, "solaimanlipi.ttf")
+                } catch (e: Exception) {
+                    // Use default font
+                }
             }
             numberContainer.addView(numberTv)
 
@@ -715,7 +739,7 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                     gravity = Gravity.RIGHT
                 }
-                setPadding(dpToPx(8))
+                setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                 gravity = Gravity.RIGHT
                 textSize = 20f
                 setTypeface(typeface, Typeface.BOLD)
@@ -723,7 +747,11 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                 isFocusable = false
                 textDirection = View.TEXT_DIRECTION_RTL
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
-                typeface = Typeface.createFromAsset(assets, "bold.ttf")
+                try {
+                    typeface = Typeface.createFromAsset(parent.context.assets, "bold.ttf")
+                } catch (e: Exception) {
+                    // Use default font
+                }
             }
             mainLinear.addView(ayaArabicTv)
 
@@ -731,12 +759,16 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             val wordsTv = TextView(parent.context).apply {
                 id = 1003
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                setPadding(dpToPx(8))
+                setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                 textSize = 14f
                 setTypeface(typeface, Typeface.BOLD)
                 setTextColor(Color.BLACK)
                 isFocusable = false
-                typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+                try {
+                    typeface = Typeface.createFromAsset(parent.context.assets, "solaimanlipi.ttf")
+                } catch (e: Exception) {
+                    // Use default font
+                }
             }
             mainLinear.addView(wordsTv)
 
@@ -788,13 +820,17 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                 val heading = TextView(context).apply {
                     id = headingId
                     layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                    setPadding(dpToPx(8))
+                    setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                     setBackgroundColor(Color.parseColor(bgColor))
                     text = headingText
                     textSize = 14f
                     setTextColor(Color.parseColor(textColor))
                     isFocusable = false
-                    typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+                    try {
+                        typeface = Typeface.createFromAsset(context.assets, "solaimanlipi.ttf")
+                    } catch (e: Exception) {
+                        // Use default font
+                    }
                 }
                 addView(heading)
 
@@ -803,12 +839,16 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
                     layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT).apply {
                         topMargin = dpToPx(5)
                     }
-                    setPadding(dpToPx(8))
+                    setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                     textSize = 16f
                     setTextColor(Color.BLACK)
                     isFocusable = false
                     visibility = View.GONE
-                    typeface = Typeface.createFromAsset(assets, "solaimanlipi.ttf")
+                    try {
+                        typeface = Typeface.createFromAsset(context.assets, "solaimanlipi.ttf")
+                    } catch (e: Exception) {
+                        // Use default font
+                    }
                 }
                 addView(text)
             }
