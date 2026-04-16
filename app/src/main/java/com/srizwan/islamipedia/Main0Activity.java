@@ -974,7 +974,7 @@ public class Main0Activity extends AppCompatActivity {
                                                     }
                                                     else {
                                                         if (name.getText().toString().equals("তাফসীর সমগ্র")) {
-                                                            in.setClass(getApplicationContext(), TafsironlineMeActivity.class);
+                                                            in.setClass(getApplicationContext(), TafsirOnlineMeActivity.class);
                                                             startActivity(in);
                                                         }
                                                         else {
@@ -1113,9 +1113,84 @@ public class Main0Activity extends AppCompatActivity {
                                                                                                             }
                                                                                                             else {
                                                                                                                 if (name.getText().toString().equals("অভিযোগ")) {
-                                                                                                                    in.setClass(getApplicationContext(), ReportActivity.class);
-                                                                                                                    startActivity(in);
-                                                                                                                }
+    // প্রথমে একটি ডায়ালগ দেখাবে দুইটি অপশন সহ
+    AlertDialog.Builder optionDialog = new AlertDialog.Builder(Main0Activity.this);
+    optionDialog.setTitle("নির্বাচন করুন");
+    optionDialog.setMessage("আপনি কি করতে চান?");
+    optionDialog.setPositiveButton("মেসেজ পাঠান", new DialogInterface.OnClickListener() {
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+            // মেসেজ পাঠান এর জন্য আপনার পুরনো AlertDialog কোড
+            AlertDialog.Builder builder = new AlertDialog.Builder(Main0Activity.this);
+            LayoutInflater inflater = getLayoutInflater();
+            View dialogView = inflater.inflate(R.layout.dialog_report, null);
+            builder.setView(dialogView);
+            
+            final EditText editText = dialogView.findViewById(R.id.editText);
+            Button sendButton = dialogView.findViewById(R.id.sendButton);
+            Button emailButton = dialogView.findViewById(R.id.emailButton);
+            Button whatsapp = dialogView.findViewById(R.id.whatsapp);
+            
+            final AlertDialog dialog = builder.create();
+            
+            sendButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String message = editText.getText().toString();
+                    if (!message.isEmpty()) {
+                        String url = "https://api.telegram.org/bot8513295796:AAEfeaGo-O29kSk-4zCxcUiB3eU-GRPbtGw/sendMessage?chat_id=7619923490&text=" + message;
+                        send.startRequestNetwork(RequestNetworkController.POST, url, "Rizwan", _send_request_listener);
+                        dialog.dismiss();
+                        Toast.makeText(getApplicationContext(), "মেসেজ পাঠানো হয়েছে", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(Main0Activity.this, "দয়া করে কিছু লিখুন", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+            
+            whatsapp.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent me = new Intent(Intent.ACTION_VIEW);
+                    me.setData(Uri.parse("https://wa.me/8801714656343"));
+                    startActivity(me);
+                }
+            });
+            
+            emailButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent emailIntent = new Intent(Intent.ACTION_SEND);
+                    emailIntent.setType("message/rfc822");
+                    emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[]{"muhammodrizwan01@gmail.com"});
+                    emailIntent.putExtra(Intent.EXTRA_SUBJECT, "App Issue or Suggestion");
+                    emailIntent.putExtra(Intent.EXTRA_TEXT, "বইয়ের নাম বা অ্যাপের সমস্যা লিখুন...");
+                    
+                    try {
+                        startActivity(Intent.createChooser(emailIntent, "Select Email App"));
+                    } catch (android.content.ActivityNotFoundException ex) {
+                        Toast.makeText(Main0Activity.this, "No email clients installed.", Toast.LENGTH_SHORT).show();
+                    }
+                    dialog.dismiss();
+                }
+            });
+            
+            dialog.show();
+        }
+    });
+    
+    optionDialog.setNegativeButton("অভিযোগ করুন", new DialogInterface.OnClickListener() {
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+            // অভিযোগ করুন এ ক্লিক করলে ReportActivity তে যাবে
+            Intent in = new Intent(getApplicationContext(), ReportActivity.class);
+            startActivity(in);
+        }
+    });
+    
+    optionDialog.show();
+		}
+                                                                                                                
                                                                                                                 else {
                                                                                                                     if (name.getText().toString().equals("অনলাইন প্রবন্ধ")) {
                                                                                                                         in.setClass(getApplicationContext(), BlogonlineActivity.class);
