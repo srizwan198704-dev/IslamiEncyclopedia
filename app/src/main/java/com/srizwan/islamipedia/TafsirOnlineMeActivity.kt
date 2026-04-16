@@ -1070,7 +1070,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 if (item["suraName"]?.toString() == "none") {
                     Toast.makeText(applicationContext, "বই যুক্ত করা হয়নি", Toast.LENGTH_SHORT).show()
                 } else {
-                    intent.setClass(applicationContext, TafsironlineviewActivity::class.java)
+                    intent.setClass(applicationContext, TafsironlineviewMeActivity::class.java)
                     intent.putExtra("name", item["suraName"]?.toString() ?: "")
                     intent.putExtra("author", "${item["versess"]} | ${item["type"]}")
                     intent.putExtra("sura", item["sura"]?.toString() ?: "")
