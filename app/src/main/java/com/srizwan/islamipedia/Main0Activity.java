@@ -1131,7 +1131,7 @@ public class Main0Activity extends AppCompatActivity {
             Button emailButton = dialogView.findViewById(R.id.emailButton);
             Button whatsapp = dialogView.findViewById(R.id.whatsapp);
             
-            final AlertDialog dialog = builder.create();
+            final AlertDialog dialogme = builder.create();
             
             sendButton.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -1171,11 +1171,11 @@ public class Main0Activity extends AppCompatActivity {
                     } catch (android.content.ActivityNotFoundException ex) {
                         Toast.makeText(Main0Activity.this, "No email clients installed.", Toast.LENGTH_SHORT).show();
                     }
-                    dialog.dismiss();
+                    dialogme.dismiss();
                 }
             });
             
-            dialog.show();
+            dialogme.show();
         }
     });
     
@@ -1363,4 +1363,4 @@ public class Main0Activity extends AppCompatActivity {
             }
         }
     }
-}
+							}
