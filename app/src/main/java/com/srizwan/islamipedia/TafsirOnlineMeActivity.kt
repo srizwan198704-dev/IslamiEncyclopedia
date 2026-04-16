@@ -30,6 +30,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputLayout
+import com.google.android.material.shape.ShapeAppearanceModel
+import com.google.android.material.shape.CornerFamily
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.*
@@ -370,7 +372,11 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                     }
                     setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
                     boxBackgroundColor = Color.WHITE
-                    boxCornerRadii(100f, 100f, 100f, 100f)
+                    
+                    // Fix: Use ShapeAppearanceModel instead of boxCornerRadii
+                    shapeAppearanceModel = ShapeAppearanceModel.builder()
+                        .setAllCornerSizes(ShapeAppearanceModel.PILL)
+                        .build()
 
                     searchBox = EditText(context).apply {
                         layoutParams = LinearLayout.LayoutParams(
@@ -795,20 +801,11 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         RecyclerView.Adapter<TafsirAdapter.ViewHolder>() {
 
         inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val linear1: LinearLayout
-            val suraArabic: TextView
-            val number: TextView
-            val suraName: TextView
-            val verses: TextView
-
-            init {
-                val tag = itemView.tag as? Map<*, *>
-                linear1 = tag?.get("linear1") as? LinearLayout ?: itemView.findViewById(0)
-                suraArabic = tag?.get("suraArabic") as? TextView ?: TextView(context)
-                number = tag?.get("number") as? TextView ?: TextView(context)
-                suraName = tag?.get("suraName") as? TextView ?: TextView(context)
-                verses = tag?.get("verses") as? TextView ?: TextView(context)
-            }
+            val linear1: LinearLayout = itemView.findViewById(itemView.context.resources.getIdentifier("linear1", "id", itemView.context.packageName))
+            val suraArabic: TextView = itemView.findViewById(itemView.context.resources.getIdentifier("suraArabic", "id", itemView.context.packageName))
+            val number: TextView = itemView.findViewById(itemView.context.resources.getIdentifier("number", "id", itemView.context.packageName))
+            val suraName: TextView = itemView.findViewById(itemView.context.resources.getIdentifier("suraName", "id", itemView.context.packageName))
+            val verses: TextView = itemView.findViewById(itemView.context.resources.getIdentifier("verses", "id", itemView.context.packageName))
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -816,7 +813,8 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         }
 
         private fun createProgrammaticItemView(parent: ViewGroup): View {
-            val rootLayout = LinearLayout(parent.context).apply {
+            val context = parent.context
+            val rootLayout = LinearLayout(context).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
@@ -825,7 +823,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
             }
 
-            val linear1 = LinearLayout(parent.context).apply {
+            val linear1 = LinearLayout(context).apply {
                 id = View.generateViewId()
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -853,14 +851,14 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 isClickable = true
             }
 
-            val bookPic = LinearLayout(parent.context).apply {
+            val bookPic = LinearLayout(context).apply {
                 layoutParams = LinearLayout.LayoutParams(50.dpToPx(), 50.dpToPx())
                 setBackgroundResource(R.drawable.quran)
                 gravity = Gravity.CENTER
                 orientation = LinearLayout.HORIZONTAL
             }
 
-            val number = TextView(parent.context).apply {
+            val number = TextView(context).apply {
                 id = View.generateViewId()
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -870,12 +868,12 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 textSize = 10f
                 setTextColor(Color.BLACK)
                 translationY = -5f
-                typeface = ResourcesCompat.getFont(parent.context, R.font.solaimanlipi)
+                typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi)
             }
             bookPic.addView(number)
             linear1.addView(bookPic)
 
-            val boxOfContent = LinearLayout(parent.context).apply {
+            val boxOfContent = LinearLayout(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -884,7 +882,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
             }
 
-            val suraName = TextView(parent.context).apply {
+            val suraName = TextView(context).apply {
                 id = View.generateViewId()
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -892,11 +890,11 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 )
                 textSize = 16f
                 setTextColor(Color.BLACK)
-                typeface = ResourcesCompat.getFont(parent.context, R.font.solaimanlipi)
+                typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi)
             }
             boxOfContent.addView(suraName)
 
-            val verses = TextView(parent.context).apply {
+            val verses = TextView(context).apply {
                 id = View.generateViewId()
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -904,12 +902,12 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 )
                 textSize = 12f
                 setTextColor(Color.BLACK)
-                typeface = ResourcesCompat.getFont(parent.context, R.font.solaimanlipi)
+                typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi)
             }
             boxOfContent.addView(verses)
             linear1.addView(boxOfContent)
 
-            val suraArabic = TextView(parent.context).apply {
+            val suraArabic = TextView(context).apply {
                 id = View.generateViewId()
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -923,13 +921,12 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
             rootLayout.addView(linear1)
             
-            rootLayout.tag = mapOf(
-                "linear1" to linear1,
-                "suraArabic" to suraArabic,
-                "number" to number,
-                "suraName" to suraName,
-                "verses" to verses
-            )
+            // Store IDs as tags for later retrieval
+            linear1.tag = "linear1"
+            suraArabic.tag = "suraArabic"
+            number.tag = "number"
+            suraName.tag = "suraName"
+            verses.tag = "verses"
             
             return rootLayout
         }
