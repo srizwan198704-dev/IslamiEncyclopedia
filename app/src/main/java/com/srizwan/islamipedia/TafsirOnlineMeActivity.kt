@@ -31,7 +31,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.shape.ShapeAppearanceModel
-import com.google.android.material.shape.CornerFamily
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.util.*
@@ -68,11 +67,17 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
     private lateinit var noResLayout: LinearLayout
     private lateinit var boxOfSearch: TextInputLayout
     private lateinit var searchBox: EditText
+    
+    // লোডিং পারসেন্টেজ এর জন্য UI Components
+    private lateinit var loadingPercentLayout: LinearLayout
+    private lateinit var loadingProgressBar: ProgressBar
+    private lateinit var loadingPercentText: TextView
+    private lateinit var loadingStatusText: TextView
 
     private lateinit var book: RequestNetwork
     private lateinit var bookUpdate: RequestNetwork
     private val intent = Intent()
-    private lateinit var adapter: TafsirAdapter
+    private var adapter: TafsirAdapter? = null  // Changed from lateinit to nullable
 
     private val bookRequestListener = object : RequestNetwork.RequestListener {
         override fun onResponse(tag: String, response: String, responseHeaders: HashMap<String, Any>) {
@@ -81,6 +86,15 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
         override fun onErrorResponse(tag: String, message: String) {
             handleBookError()
+        }
+    }
+    
+    // লোডিং প্রগ্রেস ট্র্যাক করার জন্য লিসেনার
+    private val bookProgressListener = object : RequestNetwork.ProgressListener {
+        override fun onProgressUpdate(percent: Int, bytesWritten: Long, totalBytes: Long) {
+            runOnUiThread {
+                updateLoadingProgress(percent)
+            }
         }
     }
 
@@ -271,6 +285,59 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 setTextColor(Color.BLACK)
             }
             addView(version)
+            
+            // লোডিং পারসেন্টেজ লেআউট তৈরি করা
+            loadingPercentLayout = LinearLayout(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                visibility = View.GONE
+            }
+            
+            loadingStatusText = TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                text = "ডাউনলোড হচ্ছে..."
+                textSize = 14f
+                setTextColor(Color.parseColor("#01837A"))
+                gravity = Gravity.CENTER
+                typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi)
+                setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
+            }
+            loadingPercentLayout.addView(loadingStatusText)
+            
+            loadingProgressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    250.dpToPx(),
+                    20.dpToPx()
+                ).apply {
+                    setMargins(20.dpToPx(), 10.dpToPx(), 20.dpToPx(), 10.dpToPx())
+                }
+                max = 100
+                progress = 0
+                progressTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#01837A"))
+            }
+            loadingPercentLayout.addView(loadingProgressBar)
+            
+            loadingPercentText = TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                text = "০% সম্পূর্ণ"
+                textSize = 12f
+                setTextColor(Color.parseColor("#01837A"))
+                gravity = Gravity.CENTER
+                typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi)
+            }
+            loadingPercentLayout.addView(loadingPercentText)
+            
+            addView(loadingPercentLayout)
 
             spinBer = ProgressBar(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -284,6 +351,30 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
             noInternetLayout = createNoInternetLayout()
             addView(noInternetLayout)
         }
+    }
+    
+    private fun updateLoadingProgress(percent: Int) {
+        loadingPercentLayout.visibility = View.VISIBLE
+        spinBer.visibility = View.GONE
+        loadingProgressBar.progress = percent
+        loadingPercentText.text = "$percent% সম্পূর্ণ"
+        
+        when {
+            percent < 30 -> loadingStatusText.text = "সংযোগ স্থাপন করা হচ্ছে..."
+            percent < 60 -> loadingStatusText.text = "তথ্য ডাউনলোড করা হচ্ছে..."
+            percent < 90 -> loadingStatusText.text = "প্রস্তুত করা হচ্ছে..."
+            percent < 100 -> loadingStatusText.text = "সমাপ্তির পথে..."
+            else -> {
+                loadingStatusText.text = "সম্পূর্ণ! লোড হচ্ছে..."
+                loadingPercentLayout.visibility = View.GONE
+                spinBer.visibility = View.VISIBLE
+            }
+        }
+    }
+    
+    private fun hideLoadingProgress() {
+        loadingPercentLayout.visibility = View.GONE
+        spinBer.visibility = View.VISIBLE
     }
 
     private fun createNoInternetLayout(): LinearLayout {
@@ -334,7 +425,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#FF01837A"))
                 cornerRadius = 8.dpToPx()
                 setOnClickListener {
-                    book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "", bookRequestListener)
+                    book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "", bookRequestListener, bookProgressListener)
                     spinBer.visibility = View.VISIBLE
                     noInternetLayout.visibility = View.GONE
                 }
@@ -373,7 +464,6 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                     setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
                     boxBackgroundColor = Color.WHITE
                     
-                    // Fix: Use ShapeAppearanceModel instead of boxCornerRadii
                     shapeAppearanceModel = ShapeAppearanceModel.builder()
                         .setAllCornerSizes(ShapeAppearanceModel.PILL)
                         .build()
@@ -394,8 +484,9 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                                 jsonSearch(s.toString())
-                                noResLayout.visibility = if (map.isEmpty()) View.VISIBLE else View.GONE
-                                recyclerView.visibility = if (map.isEmpty()) View.GONE else View.VISIBLE
+                                val currentMap = map
+                                noResLayout.visibility = if (currentMap.isEmpty()) View.VISIBLE else View.GONE
+                                recyclerView.visibility = if (currentMap.isEmpty()) View.GONE else View.VISIBLE
                             }
                             override fun afterTextChanged(s: Editable?) {}
                         })
@@ -426,11 +517,12 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
             recyclerView = RecyclerView(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
+                    LinearLayout.LayoutParams.MATCH_PARENT
                 )
                 layoutManager = LinearLayoutManager(context)
+                // Initialize adapter here to avoid lateinit error
                 adapter = TafsirAdapter(map)
-                this.adapter = adapter
+                this@TafsirOnlineMeActivity.adapter = adapter as TafsirAdapter
             }
             addView(recyclerView)
 
@@ -498,7 +590,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         } else {
             FileUtil.makeDir(FileUtil.getPackageDataDir(applicationContext) + "/ইসলামী বিশ্বকোষ/.অনলাইন বই ২/")
             if (Rizwan.isConnected(applicationContext)) {
-                book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "Rizwan", bookRequestListener)
+                book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "Rizwan", bookRequestListener, bookProgressListener)
             } else {
                 handleNoInternet()
             }
@@ -584,7 +676,8 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
     private fun updateUIAfterLoad() {
         runOnUiThread {
-            adapter.updateData(map)
+            hideLoadingProgress()
+            adapter?.updateData(map)
             refresh.visibility = View.VISIBLE
             spinLayout.visibility = View.GONE
             contentLayout.visibility = View.VISIBLE
@@ -602,6 +695,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
     private fun handleBookError() {
         runOnUiThread {
+            hideLoadingProgress()
             val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
             
             if (FileUtil.isExistFile(cachePath)) {
@@ -651,7 +745,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
             
             Handler(Looper.getMainLooper()).postDelayed({
                 materialButton1.performClick()
-                adapter.notifyDataSetChanged()
+                adapter?.notifyDataSetChanged()
             }, 50)
             
             map.clear()
@@ -682,7 +776,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                     map.add(item)
                 }
             }
-            adapter.updateData(map)
+            adapter?.updateData(map)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -817,7 +911,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
             val rootLayout = LinearLayout(context).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.WRAP_CONTENT
                 )
                 setBackgroundColor(Color.WHITE)
                 orientation = LinearLayout.VERTICAL
@@ -921,12 +1015,19 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
             rootLayout.addView(linear1)
             
-            // Store IDs as tags for later retrieval
-            linear1.tag = "linear1"
-            suraArabic.tag = "suraArabic"
-            number.tag = "number"
-            suraName.tag = "suraName"
-            verses.tag = "verses"
+            // Set IDs for the views
+            linear1.id = View.generateViewId()
+            suraArabic.id = View.generateViewId()
+            number.id = View.generateViewId()
+            suraName.id = View.generateViewId()
+            verses.id = View.generateViewId()
+            
+            // Store the views in tags for later retrieval
+            linear1.setTag("linear1", linear1)
+            suraArabic.setTag("suraArabic", suraArabic)
+            number.setTag("number", number)
+            suraName.setTag("suraName", suraName)
+            verses.setTag("verses", verses)
             
             return rootLayout
         }
