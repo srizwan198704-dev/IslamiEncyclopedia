@@ -82,13 +82,13 @@ sealed class PageState {
 // ─────────────────────────────────────────────────────────────────
 object ScrollState {
     var booksPosition: Int = 0
-    var booksOffset: Int = 0  // Store pixel offset for precise restoration
-    val sectionsPositions = mutableMapOf<Int, Pair<Int, Int>>()  // position + offset
-    val hadithPositions = mutableMapOf<String, Pair<Int, Int>>() // position + offset
+    var booksOffset: Int = 0
+    val sectionsPositions = mutableMapOf<Int, Pair<Int, Int>>()
+    val hadithPositions = mutableMapOf<String, Pair<Int, Int>>()
 }
 
 // ─────────────────────────────────────────────────────────────────
-// In-memory Cache with timestamp for stale data detection
+// In-memory Cache
 // ─────────────────────────────────────────────────────────────────
 object HadithCache {
     var books: List<BookItem>? = null
@@ -97,8 +97,7 @@ object HadithCache {
     val sectionsTimestamp = mutableMapOf<Int, Long>()
     val hadith = mutableMapOf<String, List<HadithItem>>()
     val hadithTimestamp = mutableMapOf<String, Long>()
-    
-    // Clear all cache if needed
+
     fun clearAll() {
         books = null
         booksTimestamp = 0
@@ -142,8 +141,7 @@ class HadithMeActivity : AppCompatActivity() {
 
     private val cacheDirName = "hadith_data"
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    
-    // Network state tracking
+
     private var isNetworkAvailable = true
     private var isCurrentlyLoading = false
     private var currentRequestJob: Job? = null
@@ -184,8 +182,7 @@ class HadithMeActivity : AppCompatActivity() {
     private var filteredBooks: List<BookItem> = emptyList()
     private var filteredSections: List<SectionItem> = emptyList()
     private var filteredHadith: List<HadithItem> = emptyList()
-    
-    // Track if we're showing cached content
+
     private var isShowingCachedContent = false
 
     private lateinit var onBackPressedCallback: OnBackPressedCallback
@@ -211,6 +208,9 @@ class HadithMeActivity : AppCompatActivity() {
         }
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
 
+        // ✅ FIX: buildUI() and setContentView() MUST come BEFORE
+        //    checkNetworkState() and loadBooks() so all lateinit views
+        //    are initialized before they are accessed.
         val rootLayout = buildUI()
         setContentView(rootLayout)
 
@@ -221,12 +221,12 @@ class HadithMeActivity : AppCompatActivity() {
         }
 
         File(filesDir, cacheDirName).mkdirs()
-        
-        // Check network state before loading
+
+        // ✅ These now run AFTER all views exist
         checkNetworkState()
         loadBooks()
     }
-    
+
     private fun checkNetworkState() {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         isNetworkAvailable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -237,8 +237,9 @@ class HadithMeActivity : AppCompatActivity() {
             @Suppress("DEPRECATION")
             cm.activeNetworkInfo?.isConnected == true
         }
-        
+
         if (!isNetworkAvailable) {
+            // ✅ offlineIndicator is guaranteed to exist here now
             offlineIndicator.visibility = View.VISIBLE
             offlineIndicator.text = "⚠️ অফলাইন মোড - ক্যাশে করা ডেটা দেখানো হচ্ছে"
         }
@@ -338,6 +339,7 @@ class HadithMeActivity : AppCompatActivity() {
         root.addView(searchContainer)
 
         // ── Offline Indicator ─────────────────────────────────────
+        // ✅ offlineIndicator is initialized HERE inside buildUI()
         offlineIndicator = TextView(this).apply {
             text = "⚠️ অফলাইন মোড - ক্যাশে করা ডেটা দেখানো হচ্ছে"
             textSize = 12f
@@ -365,8 +367,6 @@ class HadithMeActivity : AppCompatActivity() {
             )
             setPadding(dp(12), dp(12), dp(12), dp(80))
             clipToPadding = false
-            
-            // Add scroll listener to save position during scrolling
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                     super.onScrollStateChanged(recyclerView, newState)
@@ -591,7 +591,6 @@ class HadithMeActivity : AppCompatActivity() {
             Toast.makeText(this, "ইন্টারনেট সংযোগ নেই", Toast.LENGTH_SHORT).show()
             return
         }
-        
         when (val state = currentState) {
             is PageState.Books -> {
                 HadithCache.books = null
@@ -621,7 +620,7 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Status helpers — Loading shows ProgressBar, Error hides it
+    // Status helpers
     // ─────────────────────────────────────────────────────────────
     private fun showLoading() {
         isCurrentlyLoading = true
@@ -674,36 +673,31 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     private suspend fun fetchJson(url: String, cacheKey: String): String {
-        // Check cache first
         getCachedData(cacheKey)?.let { cached ->
-            withContext(Dispatchers.Main) { 
+            withContext(Dispatchers.Main) {
                 offlineIndicator.visibility = View.GONE
                 isShowingCachedContent = true
             }
             return cached
         }
-        
-        // Try network
         return withContext(Dispatchers.IO) {
             try {
                 val connection = URL(url).openConnection() as java.net.HttpURLConnection
                 connection.connectTimeout = 10000
                 connection.readTimeout = 10000
                 connection.requestMethod = "GET"
-                
                 val text = connection.inputStream.bufferedReader().use { it.readText() }
                 cacheData(cacheKey, text)
-                withContext(Dispatchers.Main) { 
+                withContext(Dispatchers.Main) {
                     offlineIndicator.visibility = View.GONE
                     isShowingCachedContent = false
                     isNetworkAvailable = true
                 }
                 text
             } catch (e: Exception) {
-                // Network failed, try cache again
                 val cached = getCachedData(cacheKey)
                 if (cached != null) {
-                    withContext(Dispatchers.Main) { 
+                    withContext(Dispatchers.Main) {
                         offlineIndicator.visibility = View.VISIBLE
                         offlineIndicator.text = "⚠️ অফলাইন মোড - ক্যাশে করা ডেটা দেখানো হচ্ছে"
                         isShowingCachedContent = true
@@ -711,7 +705,7 @@ class HadithMeActivity : AppCompatActivity() {
                     }
                     return@withContext cached
                 } else {
-                    withContext(Dispatchers.Main) { 
+                    withContext(Dispatchers.Main) {
                         offlineIndicator.visibility = View.VISIBLE
                         offlineIndicator.text = "⚠️ নেটওয়ার্ক নেই এবং ক্যাশে ডেটা পাওয়া যায়নি"
                         isNetworkAvailable = false
@@ -728,17 +722,15 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Improved scroll helpers with offset
+    // Scroll helpers
     // ─────────────────────────────────────────────────────────────
     private fun saveScrollPosition() {
         if (!::recyclerView.isInitialized || isCurrentlyLoading) return
         val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
         val position = lm.findFirstVisibleItemPosition()
         if (position < 0) return
-        
         val view = lm.findViewByPosition(position)
         val offset = view?.top ?: 0
-        
         when (currentState) {
             is PageState.Books -> {
                 ScrollState.booksPosition = position
@@ -757,7 +749,6 @@ class HadithMeActivity : AppCompatActivity() {
 
     private fun restoreScrollPosition() {
         if (!::recyclerView.isInitialized) return
-        
         val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
         val pair = when (currentState) {
             is PageState.Books -> Pair(ScrollState.booksPosition, ScrollState.booksOffset)
@@ -770,7 +761,6 @@ class HadithMeActivity : AppCompatActivity() {
                 ScrollState.hadithPositions["${s.bookId}_${s.sectionId}"] ?: Pair(0, 0)
             }
         }
-        
         if (pair.first > 0 && pair.first < (recyclerView.adapter?.itemCount ?: 0)) {
             lm.scrollToPositionWithOffset(pair.first, pair.second)
         }
@@ -804,9 +794,9 @@ class HadithMeActivity : AppCompatActivity() {
             currentBooks = memBooks
             filteredBooks = memBooks
             showContent()
-            recyclerView.adapter = BookAdapter(filteredBooks) { book -> 
+            recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                 saveScrollPosition()
-                loadSections(book.id, book.titleEn) 
+                loadSections(book.id, book.titleEn)
             }
             attachKeyboardHideOnTouch()
             restoreScrollPosition()
@@ -827,15 +817,14 @@ class HadithMeActivity : AppCompatActivity() {
                 currentBooks = books
                 filteredBooks = books
                 showContent()
-                recyclerView.adapter = BookAdapter(filteredBooks) { book -> 
+                recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                     saveScrollPosition()
-                    loadSections(book.id, book.titleEn) 
+                    loadSections(book.id, book.titleEn)
                 }
                 attachKeyboardHideOnTouch()
                 restoreScrollPosition()
                 isShowingCachedContent = false
             } catch (e: Exception) {
-                // Try to load from cache if network failed
                 val cachedJson = getCachedData("hadith_books_list")
                 if (cachedJson != null) {
                     val books = parseBooks(cachedJson)
@@ -843,9 +832,9 @@ class HadithMeActivity : AppCompatActivity() {
                     currentBooks = books
                     filteredBooks = books
                     showContent()
-                    recyclerView.adapter = BookAdapter(filteredBooks) { book -> 
+                    recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                         saveScrollPosition()
-                        loadSections(book.id, book.titleEn) 
+                        loadSections(book.id, book.titleEn)
                     }
                     attachKeyboardHideOnTouch()
                     restoreScrollPosition()
@@ -1088,9 +1077,9 @@ class HadithMeActivity : AppCompatActivity() {
         showContent()
         when (val s = currentState) {
             is PageState.Books -> {
-                recyclerView.adapter = BookAdapter(filteredBooks) { book -> 
+                recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                     saveScrollPosition()
-                    loadSections(book.id, book.titleEn) 
+                    loadSections(book.id, book.titleEn)
                 }
             }
             is PageState.Sections -> {
@@ -1127,9 +1116,9 @@ class HadithMeActivity : AppCompatActivity() {
                     b.titleAr.contains(term) ||
                     b.id.toString().contains(term)
                 }
-                recyclerView.adapter = BookAdapter(filteredBooks) { book -> 
+                recyclerView.adapter = BookAdapter(filteredBooks) { book ->
                     saveScrollPosition()
-                    loadSections(book.id, book.titleEn) 
+                    loadSections(book.id, book.titleEn)
                 }
                 if (filteredBooks.isEmpty()) showEmptySearchResult()
             }
@@ -1414,7 +1403,6 @@ class HadithMeActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-
             headerRow.addView(TextView(this@HadithMeActivity).apply {
                 text = toBangla(book.originalPosition + 1)
                 textSize = 13f
@@ -1530,7 +1518,6 @@ class HadithMeActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-
             headerRow.addView(TextView(this@HadithMeActivity).apply {
                 text = toBangla(section.originalPosition + 1)
                 textSize = 13f
