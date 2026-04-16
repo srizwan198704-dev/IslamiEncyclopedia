@@ -84,19 +84,29 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
     private val bookUpdateRequestListener = object : RequestNetwork.RequestListener {
         override fun onResponse(tag: String, response: String, responseHeaders: HashMap<String, Any>) {
-            val updateBook = Gson().fromJson<ArrayList<HashMap<String, Any>>>(
-                response,
-                object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type
-            )
-            if (version.text.toString().toDoubleOrNull() ?: 0.0 < 
-                (updateBook[0]["version"].toString().toDoubleOrNull() ?: 0.0)) {
-                if (!isFinishing) {
-                    showUpdateDialog(updateBook)
+            try {
+                val updateBook = Gson().fromJson<ArrayList<HashMap<String, Any>>>(
+                    response,
+                    object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type
+                )
+                if (updateBook.isNotEmpty()) {
+                    val currentVersion = version.text.toString().toDoubleOrNull() ?: 0.0
+                    val newVersion = (updateBook[0]["version"] as? String)?.toDoubleOrNull() ?: 0.0
+                    
+                    if (currentVersion < newVersion) {
+                        if (!isFinishing) {
+                            showUpdateDialog(updateBook)
+                        }
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
-        override fun onErrorResponse(tag: String, message: String) {}
+        override fun onErrorResponse(tag: String, message: String) {
+            // Handle error silently
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -516,17 +526,27 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
     }
 
     private fun loadCachedData(cachePath: String) {
-        listmapCache = Gson().fromJson(
-            FileUtil.readFile(cachePath),
-            object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type
-        )
-        processCachedData()
-        updateUIAfterLoad()
+        try {
+            val cachedJson = FileUtil.readFile(cachePath)
+            listmapCache = Gson().fromJson(
+                cachedJson,
+                object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type
+            )
+            processCachedData()
+            updateUIAfterLoad()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            handleBookError()
+        }
     }
 
     private fun processResponseData(response: String) {
-        listmapCache = Gson().fromJson(response, object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
-        processCachedData()
+        try {
+            listmapCache = Gson().fromJson(response, object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
+            processCachedData()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun processCachedData() {
@@ -547,43 +567,47 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
     private fun addToMap(item: HashMap<String, Any>) {
         val newMap = HashMap<String, Any>()
-        newMap["sura"] = item["sura"].toString()
-        newMap["suraName"] = item["suraName"].toString()
-        newMap["type"] = item["type"].toString()
-        newMap["versess"] = item["versess"].toString()
-        newMap["suraArabic"] = item["suraArabic"].toString()
-        newMap["version"] = item["version"].toString()
+        newMap["sura"] = item["sura"]?.toString() ?: ""
+        newMap["suraName"] = item["suraName"]?.toString() ?: ""
+        newMap["type"] = item["type"]?.toString() ?: ""
+        newMap["versess"] = item["versess"]?.toString() ?: ""
+        newMap["suraArabic"] = item["suraArabic"]?.toString() ?: ""
+        newMap["version"] = item["version"]?.toString() ?: "1.0"
         map.add(newMap)
     }
 
     private fun updateUIAfterLoad() {
-        adapter.updateData(map)
-        refresh.visibility = View.VISIBLE
-        spinLayout.visibility = View.GONE
-        contentLayout.visibility = View.VISIBLE
-        noInternetLayout.visibility = View.GONE
-        searchImg.visibility = View.VISIBLE
-        progressBar1.visibility = View.GONE
-        
-        if (map.isNotEmpty()) {
-            version.text = map[0]["version"].toString()
+        runOnUiThread {
+            adapter.updateData(map)
+            refresh.visibility = View.VISIBLE
+            spinLayout.visibility = View.GONE
+            contentLayout.visibility = View.VISIBLE
+            noInternetLayout.visibility = View.GONE
+            searchImg.visibility = View.VISIBLE
+            progressBar1.visibility = View.GONE
+            
+            if (map.isNotEmpty()) {
+                version.text = map[0]["version"]?.toString() ?: "1.0"
+            }
+            
+            updateVisibility()
         }
-        
-        updateVisibility()
     }
 
     private fun handleBookError() {
-        val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
-        
-        if (FileUtil.isExistFile(cachePath)) {
-            loadCachedData(cachePath)
-        } else {
-            refresh.visibility = View.VISIBLE
-            Toast.makeText(applicationContext, "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show()
-            spinBer.visibility = View.GONE
-            noInternetLayout.visibility = View.VISIBLE
+        runOnUiThread {
+            val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
+            
+            if (FileUtil.isExistFile(cachePath)) {
+                loadCachedData(cachePath)
+            } else {
+                refresh.visibility = View.VISIBLE
+                Toast.makeText(applicationContext, "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show()
+                spinBer.visibility = View.GONE
+                noInternetLayout.visibility = View.VISIBLE
+            }
+            updateVisibility()
         }
-        updateVisibility()
     }
 
     private fun handleNoInternet() {
@@ -642,20 +666,20 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
     }
 
     private fun jsonSearch(charSeq: String) {
-        map = Gson().fromJson(getsearch, object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
-        val length = map.size.toDouble()
-        var r = length - 1
-        
-        while (r >= 0) {
-            val value1 = map[r.toInt()]["suraName"].toString()
-            if (!(charSeq.length > value1.length) && value1.lowercase().contains(charSeq.lowercase())) {
-                // Keep item
-            } else {
-                map.removeAt(r.toInt())
+        try {
+            val originalMap: ArrayList<HashMap<String, Any>> = Gson().fromJson(getsearch, object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type)
+            map.clear()
+            
+            originalMap.forEach { item ->
+                val value1 = item["suraName"]?.toString() ?: ""
+                if (charSeq.isEmpty() || (charSeq.length <= value1.length && value1.lowercase(Locale.getDefault()).contains(charSeq.lowercase(Locale.getDefault())))) {
+                    map.add(item)
+                }
             }
-            r--
+            adapter.updateData(map)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        adapter.updateData(map)
     }
 
     private fun replaceArabicNumber(n: String): String {
@@ -688,7 +712,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-                text = updateBook[0]["title"].toString()
+                text = updateBook[0]["title"]?.toString() ?: "নতুন আপডেট"
                 textSize = 18f
                 setTextColor(Color.BLACK)
                 typeface = Typeface.DEFAULT_BOLD
@@ -701,7 +725,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-                text = updateBook[0]["new"].toString()
+                text = updateBook[0]["new"]?.toString() ?: "নতুন ফিচার যোগ করা হয়েছে"
                 textSize = 14f
                 setTextColor(Color.BLACK)
                 setPadding(0, 0, 0, 20.dpToPx())
@@ -771,15 +795,19 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         RecyclerView.Adapter<TafsirAdapter.ViewHolder>() {
 
         inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val linear1: LinearLayout = itemView.findViewById(R.id.linear1) ?: createItemView(itemView)
-            val suraArabic: TextView = itemView.findViewById(R.id.suraArabic) ?: TextView(context)
-            val number: TextView = itemView.findViewById(R.id.number) ?: TextView(context)
-            val suraName: TextView = itemView.findViewById(R.id.suraName) ?: TextView(context)
-            val verses: TextView = itemView.findViewById(R.id.verses) ?: TextView(context)
+            val linear1: LinearLayout
+            val suraArabic: TextView
+            val number: TextView
+            val suraName: TextView
+            val verses: TextView
 
-            private fun createItemView(parent: View): LinearLayout {
-                // This is a fallback - views should be created programmatically
-                return LinearLayout(context)
+            init {
+                val tag = itemView.tag as? Map<*, *>
+                linear1 = tag?.get("linear1") as? LinearLayout ?: itemView.findViewById(0)
+                suraArabic = tag?.get("suraArabic") as? TextView ?: TextView(context)
+                number = tag?.get("number") as? TextView ?: TextView(context)
+                suraName = tag?.get("suraName") as? TextView ?: TextView(context)
+                verses = tag?.get("verses") as? TextView ?: TextView(context)
             }
         }
 
@@ -908,29 +936,22 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = data[position]
-            val viewTag = holder.itemView.tag as? Map<*, *>
-            
-            val linear1 = viewTag?.get("linear1") as? LinearLayout ?: holder.linear1
-            val suraArabic = viewTag?.get("suraArabic") as? TextView ?: holder.suraArabic
-            val number = viewTag?.get("number") as? TextView ?: holder.number
-            val suraName = viewTag?.get("suraName") as? TextView ?: holder.suraName
-            val verses = viewTag?.get("verses") as? TextView ?: holder.verses
 
             if (item.containsKey("suraName")) {
-                suraName.text = item["suraName"].toString()
-                verses.text = "${item["versess"]} | ${item["type"]}"
-                number.text = replaceArabicNumber(item["sura"].toString())
-                suraArabic.text = item["suraArabic"].toString()
+                holder.suraName.text = item["suraName"]?.toString() ?: ""
+                holder.verses.text = "${item["versess"]} | ${item["type"]}"
+                holder.number.text = replaceArabicNumber(item["sura"]?.toString() ?: "")
+                holder.suraArabic.text = item["suraArabic"]?.toString() ?: ""
             }
 
-            linear1.setOnClickListener {
-                if (item["suraName"].toString() == "none") {
+            holder.linear1.setOnClickListener {
+                if (item["suraName"]?.toString() == "none") {
                     Toast.makeText(applicationContext, "বই যুক্ত করা হয়নি", Toast.LENGTH_SHORT).show()
                 } else {
                     intent.setClass(applicationContext, TafsironlineviewActivity::class.java)
-                    intent.putExtra("name", item["suraName"].toString())
+                    intent.putExtra("name", item["suraName"]?.toString() ?: "")
                     intent.putExtra("author", "${item["versess"]} | ${item["type"]}")
-                    intent.putExtra("sura", item["sura"].toString())
+                    intent.putExtra("sura", item["sura"]?.toString() ?: "")
                     intent.putExtra("bookname", bookname.text.toString())
                     startActivity(intent)
                 }
@@ -950,5 +971,11 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         if (requestCode == 1000) {
             initializeLogic()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        timer?.cancel()
+        timer = null
     }
 }
