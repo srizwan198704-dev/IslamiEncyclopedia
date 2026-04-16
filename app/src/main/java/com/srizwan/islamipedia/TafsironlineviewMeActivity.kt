@@ -678,9 +678,15 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            // Create mainLinear as the root view (NOT ScrollView)
-            val mainLinear = LinearLayout(parent.context).apply {
+            // Create ScrollView as the root
+            val scrollView = ScrollView(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                isFillViewport = true
+            }
+            
+            // Create mainLinear as a child of ScrollView (not attached yet)
+            val mainLinear = LinearLayout(parent.context).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 orientation = LinearLayout.VERTICAL
                 setPadding(dpToPx(10), dpToPx(10), dpToPx(10), dpToPx(10))
                 setBackgroundColor(Color.WHITE)
@@ -789,19 +795,10 @@ class TafsironlineviewMeActivity : AppCompatActivity() {
             mainLinear.addView(createTafsirSection(parent.context, 12001, 12002, 12003,
                 "তাফসিরে রেজভীয়া", "#EFEBE9", "#795548"))
 
-            // Wrap mainLinear in a ScrollView for scrolling
-            val scrollView = ScrollView(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                addView(mainLinear)
-            }
+            // Add mainLinear to ScrollView
+            scrollView.addView(mainLinear)
             
-            // Create a container LinearLayout to hold the ScrollView
-            val container = LinearLayout(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                orientation = LinearLayout.VERTICAL
-                addView(scrollView)
-            }
-            
+            // Return ViewHolder with mainLinear as the itemView
             return ViewHolder(mainLinear)
         }
 
