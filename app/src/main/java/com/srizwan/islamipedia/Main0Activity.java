@@ -974,7 +974,7 @@ public class Main0Activity extends AppCompatActivity {
                                                     }
                                                     else {
                                                         if (name.getText().toString().equals("তাফসীর সমগ্র")) {
-                                                            in.setClass(getApplicationContext(), TafsironlineActivity.class);
+                                                            in.setClass(getApplicationContext(), TafsironlineMeActivity.class);
                                                             startActivity(in);
                                                         }
                                                         else {
