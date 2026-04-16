@@ -77,23 +77,26 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
     private lateinit var book: RequestNetwork
     private lateinit var bookUpdate: RequestNetwork
     private val intent = Intent()
-    private var adapter: TafsirAdapter? = null  // Changed from lateinit to nullable
+    private var adapter: TafsirAdapter? = null
+
+    // লোডিং প্রগ্রেস ট্র্যাক করার জন্য ভেরিয়েবল
+    private var isDownloading = false
+    private val handler = Handler(Looper.getMainLooper())
+    private var progressUpdateRunnable: Runnable? = null
 
     private val bookRequestListener = object : RequestNetwork.RequestListener {
         override fun onResponse(tag: String, response: String, responseHeaders: HashMap<String, Any>) {
-            handleBookResponse(response)
+            handler.post {
+                updateLoadingProgress(100)
+                hideLoadingProgress()
+                handleBookResponse(response)
+            }
         }
 
         override fun onErrorResponse(tag: String, message: String) {
-            handleBookError()
-        }
-    }
-    
-    // লোডিং প্রগ্রেস ট্র্যাক করার জন্য লিসেনার
-    private val bookProgressListener = object : RequestNetwork.ProgressListener {
-        override fun onProgressUpdate(percent: Int, bytesWritten: Long, totalBytes: Long) {
-            runOnUiThread {
-                updateLoadingProgress(percent)
+            handler.post {
+                hideLoadingProgress()
+                handleBookError()
             }
         }
     }
@@ -106,10 +109,12 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                     object : TypeToken<ArrayList<HashMap<String, Any>>>() {}.type
                 )
                 if (updateBook.isNotEmpty()) {
-                    val currentVersion = version.text.toString().toDoubleOrNull() ?: 0.0
+                    val currentVersion = if (::version.isInitialized && version.text.isNotEmpty()) {
+                        version.text.toString().toDoubleOrNull() ?: 0.0
+                    } else 0.0
                     val newVersion = (updateBook[0]["version"] as? String)?.toDoubleOrNull() ?: 0.0
                     
-                    if (currentVersion < newVersion) {
+                    if (currentVersion < newVersion && currentVersion > 0) {
                         if (!isFinishing) {
                             showUpdateDialog(updateBook)
                         }
@@ -255,7 +260,9 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 visibility = View.GONE
                 setOnClickListener {
-                    searchMainLayout.visibility = if (searchMainLayout.visibility == View.GONE) View.VISIBLE else View.GONE
+                    if (::searchMainLayout.isInitialized) {
+                        searchMainLayout.visibility = if (searchMainLayout.visibility == View.GONE) View.VISIBLE else View.GONE
+                    }
                 }
             }
             titleBox.addView(searchImg)
@@ -283,6 +290,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
                 textSize = 12f
                 setTextColor(Color.BLACK)
+                text = "সংস্করণ: 1.0"
             }
             addView(version)
             
@@ -353,9 +361,29 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         }
     }
     
+    private fun startSimulatedProgress() {
+        isDownloading = true
+        var progress = 0
+        
+        progressUpdateRunnable = object : Runnable {
+            override fun run() {
+                if (!isDownloading) return
+                if (progress < 90) {
+                    progress += (5..15).random()
+                    if (progress > 90) progress = 90
+                    updateLoadingProgress(progress)
+                    handler.postDelayed(this, 300)
+                }
+            }
+        }
+        handler.post(progressUpdateRunnable!!)
+    }
+    
     private fun updateLoadingProgress(percent: Int) {
+        if (!::loadingPercentLayout.isInitialized) return
+        
         loadingPercentLayout.visibility = View.VISIBLE
-        spinBer.visibility = View.GONE
+        if (::spinBer.isInitialized) spinBer.visibility = View.GONE
         loadingProgressBar.progress = percent
         loadingPercentText.text = "$percent% সম্পূর্ণ"
         
@@ -366,15 +394,19 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
             percent < 100 -> loadingStatusText.text = "সমাপ্তির পথে..."
             else -> {
                 loadingStatusText.text = "সম্পূর্ণ! লোড হচ্ছে..."
-                loadingPercentLayout.visibility = View.GONE
-                spinBer.visibility = View.VISIBLE
             }
         }
     }
     
     private fun hideLoadingProgress() {
-        loadingPercentLayout.visibility = View.GONE
-        spinBer.visibility = View.VISIBLE
+        isDownloading = false
+        progressUpdateRunnable?.let { handler.removeCallbacks(it) }
+        if (::loadingPercentLayout.isInitialized) {
+            loadingPercentLayout.visibility = View.GONE
+        }
+        if (::spinBer.isInitialized) {
+            spinBer.visibility = View.VISIBLE
+        }
     }
 
     private fun createNoInternetLayout(): LinearLayout {
@@ -425,7 +457,8 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                 backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#FF01837A"))
                 cornerRadius = 8.dpToPx()
                 setOnClickListener {
-                    book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "", bookRequestListener, bookProgressListener)
+                    startSimulatedProgress()
+                    book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "", bookRequestListener)
                     spinBer.visibility = View.VISIBLE
                     noInternetLayout.visibility = View.GONE
                 }
@@ -485,8 +518,12 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                                 jsonSearch(s.toString())
                                 val currentMap = map
-                                noResLayout.visibility = if (currentMap.isEmpty()) View.VISIBLE else View.GONE
-                                recyclerView.visibility = if (currentMap.isEmpty()) View.GONE else View.VISIBLE
+                                if (::noResLayout.isInitialized) {
+                                    noResLayout.visibility = if (currentMap.isEmpty()) View.VISIBLE else View.GONE
+                                }
+                                if (::recyclerView.isInitialized) {
+                                    recyclerView.visibility = if (currentMap.isEmpty()) View.GONE else View.VISIBLE
+                                }
                             }
                             override fun afterTextChanged(s: Editable?) {}
                         })
@@ -520,9 +557,8 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT
                 )
                 layoutManager = LinearLayoutManager(context)
-                // Initialize adapter here to avoid lateinit error
                 adapter = TafsirAdapter(map)
-                this@TafsirOnlineMeActivity.adapter = adapter as TafsirAdapter
+                this@TafsirOnlineMeActivity.adapter = this.adapter as TafsirAdapter
             }
             addView(recyclerView)
 
@@ -567,11 +603,11 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         bookname.text = "তাফসির সমগ্র"
         bookname.marqueeText("তাফসির সমগ্র")
         click = 0.0
-        noInternetLayout.visibility = View.GONE
-        searchMainLayout.visibility = View.GONE
-        searchImg.visibility = View.GONE
-        noResLayout.visibility = View.GONE
-        refresh.visibility = View.GONE
+        if (::noInternetLayout.isInitialized) noInternetLayout.visibility = View.GONE
+        if (::searchMainLayout.isInitialized) searchMainLayout.visibility = View.GONE
+        if (::searchImg.isInitialized) searchImg.visibility = View.GONE
+        if (::noResLayout.isInitialized) noResLayout.visibility = View.GONE
+        if (::refresh.isInitialized) refresh.visibility = View.GONE
 
         updateVisibility()
 
@@ -590,7 +626,8 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         } else {
             FileUtil.makeDir(FileUtil.getPackageDataDir(applicationContext) + "/ইসলামী বিশ্বকোষ/.অনলাইন বই ২/")
             if (Rizwan.isConnected(applicationContext)) {
-                book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "Rizwan", bookRequestListener, bookProgressListener)
+                startSimulatedProgress()
+                book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "Rizwan", bookRequestListener)
             } else {
                 handleNoInternet()
             }
@@ -598,7 +635,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (searchMainLayout.visibility == View.VISIBLE) {
+                if (::searchMainLayout.isInitialized && searchMainLayout.visibility == View.VISIBLE) {
                     if (searchBox.text.toString().isEmpty()) {
                         searchMainLayout.visibility = View.GONE
                     } else {
@@ -654,7 +691,9 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
             if (n == 0.0) {
                 addToMap(item)
             } else {
-                if (item["sura"].toString() != listmapCache[n.toInt() - 1]["sura"].toString()) {
+                val currentSura = item["sura"]?.toString() ?: ""
+                val previousSura = listmapCache[n.toInt() - 1]["sura"]?.toString() ?: ""
+                if (currentSura != previousSura) {
                     addToMap(item)
                 }
             }
@@ -678,15 +717,15 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         runOnUiThread {
             hideLoadingProgress()
             adapter?.updateData(map)
-            refresh.visibility = View.VISIBLE
-            spinLayout.visibility = View.GONE
-            contentLayout.visibility = View.VISIBLE
-            noInternetLayout.visibility = View.GONE
-            searchImg.visibility = View.VISIBLE
-            progressBar1.visibility = View.GONE
+            if (::refresh.isInitialized) refresh.visibility = View.VISIBLE
+            if (::spinLayout.isInitialized) spinLayout.visibility = View.GONE
+            if (::contentLayout.isInitialized) contentLayout.visibility = View.VISIBLE
+            if (::noInternetLayout.isInitialized) noInternetLayout.visibility = View.GONE
+            if (::searchImg.isInitialized) searchImg.visibility = View.VISIBLE
+            if (::progressBar1.isInitialized) progressBar1.visibility = View.GONE
             
-            if (map.isNotEmpty()) {
-                version.text = map[0]["version"]?.toString() ?: "1.0"
+            if (map.isNotEmpty() && ::version.isInitialized) {
+                version.text = "সংস্করণ: ${map[0]["version"]?.toString() ?: "1.0"}"
             }
             
             updateVisibility()
@@ -701,10 +740,10 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
             if (FileUtil.isExistFile(cachePath)) {
                 loadCachedData(cachePath)
             } else {
-                refresh.visibility = View.VISIBLE
+                if (::refresh.isInitialized) refresh.visibility = View.VISIBLE
                 Toast.makeText(applicationContext, "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show()
-                spinBer.visibility = View.GONE
-                noInternetLayout.visibility = View.VISIBLE
+                if (::spinBer.isInitialized) spinBer.visibility = View.GONE
+                if (::noInternetLayout.isInitialized) noInternetLayout.visibility = View.VISIBLE
             }
             updateVisibility()
         }
@@ -716,21 +755,21 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         val capabilities = cm.getNetworkCapabilities(network)
         val isConnected = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
 
-        if (!isConnected) {
+        if (!isConnected && ::noInternetLayout.isInitialized) {
             noInternetLayout.visibility = View.VISIBLE
             Toast.makeText(applicationContext, "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show()
         }
 
         val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
         if (FileUtil.isExistFile(cachePath)) {
-            spinLayout.visibility = View.GONE
-            contentLayout.visibility = View.VISIBLE
-            noInternetLayout.visibility = View.GONE
+            if (::spinLayout.isInitialized) spinLayout.visibility = View.GONE
+            if (::contentLayout.isInitialized) contentLayout.visibility = View.VISIBLE
+            if (::noInternetLayout.isInitialized) noInternetLayout.visibility = View.GONE
         } else {
             Toast.makeText(applicationContext, "ফাইল পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
-            spinLayout.visibility = View.VISIBLE
-            contentLayout.visibility = View.GONE
-            noInternetLayout.visibility = View.VISIBLE
+            if (::spinLayout.isInitialized) spinLayout.visibility = View.VISIBLE
+            if (::contentLayout.isInitialized) contentLayout.visibility = View.GONE
+            if (::noInternetLayout.isInitialized) noInternetLayout.visibility = View.VISIBLE
         }
     }
 
@@ -738,13 +777,16 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         val cachePath = FileUtil.getPackageDataDir(applicationContext) + "//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"
         
         if (FileUtil.isExistFile(cachePath)) {
-            refresh.visibility = View.GONE
-            progressBar1.visibility = View.VISIBLE
-            searchImg.visibility = View.GONE
+            if (::refresh.isInitialized) refresh.visibility = View.GONE
+            if (::progressBar1.isInitialized) progressBar1.visibility = View.VISIBLE
+            if (::searchImg.isInitialized) searchImg.visibility = View.GONE
             FileUtil.deleteFile(cachePath)
             
             Handler(Looper.getMainLooper()).postDelayed({
-                materialButton1.performClick()
+                if (::materialButton1.isInitialized) {
+                    startSimulatedProgress()
+                    materialButton1.performClick()
+                }
                 adapter?.notifyDataSetChanged()
             }, 50)
             
@@ -755,13 +797,13 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
     private fun updateVisibility() {
         if (map.isEmpty()) {
-            spinLayout.visibility = View.VISIBLE
-            contentLayout.visibility = View.GONE
-            searchImg.visibility = View.GONE
+            if (::spinLayout.isInitialized) spinLayout.visibility = View.VISIBLE
+            if (::contentLayout.isInitialized) contentLayout.visibility = View.GONE
+            if (::searchImg.isInitialized) searchImg.visibility = View.GONE
         } else {
-            spinLayout.visibility = View.GONE
-            contentLayout.visibility = View.VISIBLE
-            searchImg.visibility = View.VISIBLE
+            if (::spinLayout.isInitialized) spinLayout.visibility = View.GONE
+            if (::contentLayout.isInitialized) contentLayout.visibility = View.VISIBLE
+            if (::searchImg.isInitialized) searchImg.visibility = View.VISIBLE
         }
     }
 
@@ -855,7 +897,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
         (dialogView.getChildAt(2) as TextView).setOnClickListener {
-            refresh.performClick()
+            if (::refresh.isInitialized) refresh.performClick()
             dialog.dismiss()
         }
 
@@ -877,7 +919,7 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
         val gradientDrawable = GradientDrawable().apply {
             setColor(Color.parseColor(focus))
             cornerRadius = round.toFloat()
-            setStroke(stroke.toInt(), Color.parseColor(strokeClr.replace("#", "#")))
+            setStroke(stroke.toInt(), Color.parseColor(strokeClr))
         }
         val rippleDrawable = RippleDrawable(
             android.content.res.ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.parseColor(pressed))),
@@ -1015,20 +1057,6 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
             rootLayout.addView(linear1)
             
-            // Set IDs for the views
-            linear1.id = View.generateViewId()
-            suraArabic.id = View.generateViewId()
-            number.id = View.generateViewId()
-            suraName.id = View.generateViewId()
-            verses.id = View.generateViewId()
-            
-            // Store the views in tags for later retrieval
-            linear1.setTag("linear1", linear1)
-            suraArabic.setTag("suraArabic", suraArabic)
-            number.setTag("number", number)
-            suraName.setTag("suraName", suraName)
-            verses.setTag("verses", verses)
-            
             return rootLayout
         }
 
@@ -1073,6 +1101,8 @@ class TafsirOnlineMeActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isDownloading = false
+        progressUpdateRunnable?.let { handler.removeCallbacks(it) }
         timer?.cancel()
         timer = null
     }
