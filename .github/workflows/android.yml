@@ -34,12 +34,49 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # 🔥 Build APK
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
+      # 🔥 Build AAB (main target)
       - name: Build Release AAB
         run: ./gradlew bundleRelease
 
+      # ✅ Install tools for checking native libs
+      - name: Install binutils (readelf)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils unzip
+
+      # 🔍 Extract AAB
+      - name: Extract AAB
+        run: |
+          unzip app/build/outputs/bundle/release/app-release.aab -d aab_check
+
+      # 🔍 Show all native libs (debug visibility)
+      - name: List .so files
+        run: |
+          find aab_check -name "*.so"
+
+      # 🔍 Detailed page size report
+      - name: Check page size (report)
+        run: |
+          find aab_check -name "*.so" -exec sh -c '
+            echo "---- $1 ----";
+            readelf -l "$1" | grep LOAD
+          ' _ {} \;
+
+      # ❌ Auto fail if 4KB found
+      - name: Fail if 4KB page size detected
+        run: |
+          if find aab_check -name "*.so" -exec readelf -l {} \; | grep -q "0x1000"; then
+            echo "❌ ERROR: Found 4KB page size (0x1000). Not allowed!"
+            exit 1
+          else
+            echo "✅ SUCCESS: All native libraries are 16KB compatible (0x4000)"
+          fi
+
+      # 📦 Upload artifacts
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
