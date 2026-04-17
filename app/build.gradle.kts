@@ -105,7 +105,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     
-    implementation("com.github.barteksc:android-pdf-viewer:3.2.0-beta.1")
+    implementation("com.github.marain87:AndroidPdfViewer:3.2.8")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.github.amitshekhariitbhu:PRDownloader:1.0.2")
     implementation("com.github.bumptech.glide:glide:4.12.0")
