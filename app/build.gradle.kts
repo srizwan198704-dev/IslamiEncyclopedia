@@ -106,7 +106,7 @@ dependencies {
     implementation(libs.material)
     
     // PDF এবং অন্যান্য লাইব্রেরি (এগুলো ১৬ KB সাপোর্টের জন্য packaging সেটিংস জরুরি)
-    implementation("com.github.DImuthuUpe:AndroidPdfViewer:3.1.0-beta.1")
+    implementation("com.github.DImuthuUpe:AndroidPdfViewer:3.2.0-beta.1")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.github.amitshekhariitbhu:PRDownloader:1.0.2")
     implementation("com.github.bumptech.glide:glide:4.12.0")
