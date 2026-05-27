@@ -5,7 +5,6 @@ on:
 
 jobs:
   build_and_test:
-    # দ্রুত রান করার জন্য উবুন্টু ব্যবহার করা হলো
     runs-on: ubuntu-latest
 
     steps:
@@ -30,39 +29,41 @@ jobs:
 
       - name: Decode Keystore
         run: |
+          # build.gradle.kts অনুযায়ী ফাইলটি সরাসরি app/ ফোল্ডারে 'book.jks' নামে যাবে
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/book.jks
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 🧪 [ধাপ ১]: উবুন্টু ইমুলেটর কনফিগারেশন ও টেস্ট (ভিডিও রেকর্ডসহ)
+      # 🧪 [ধাপ ১]: targetSdk 36 এর সাথে সামঞ্জস্য রেখে Emulator রান ও স্ক্রিন রেকর্ড
       - name: Run UI Tests on Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
-          target: default
-          arch: x86
+          api-level: 34           # targetSdk 36 এর কাছাকাছি এবং স্টেবল এপিআই ৩৪ ব্যবহার করা হয়েছে
+          target: google_apis
+          arch: x86_64            # গ্রেডল ফাইলের ndk filter (x86_64) এর সাথে হুবহু মিল রাখা হয়েছে
           profile: Nexus 6
           disable-animations: true
-          # উবুন্টুর জন্য হার্ডওয়্যার এক্সিলারেশন অন করার চেষ্টা (সম্ভব না হলে সফটওয়্যার রান হবে)
-          enable-hw-accel: true 
+          force-avd-creation: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
           script: |
-            echo "Starting Screen Recording..."
+            echo "Starting Screen Recording in background..."
+            # ব্যাকগ্রাউন্ডে ভিডিও রেকর্ড চালু করা
             adb shell screenrecord /sdcard/ui_test_recording.mp4 &
-            RECORD_PID=$!
             
-            echo "Running Espresso Tests..."
-            ./gradlew connectedAndroidTest || true
+            echo "Running Espresso UI Tests..."
+            # টেস্ট রান করা এবং ফেইল করলেও স্ক্রিপ্ট যেন পরের ধাপে গিয়ে ভিডিও সেভ করে
+            ./gradlew connectedDebugAndroidTest || echo "⚠️ Tests completed with failures, processing video..."
             
             echo "Stopping Screen Recording..."
             sleep 2
-            kill -INT $RECORD_PID
+            adb shell pkill -2 screenrecord || true
             sleep 5
             
-            echo "Pulling video..."
-            adb pull /sdcard/ui_test_recording.mp4 .
+            echo "Pulling video from Emulator..."
+            adb pull /sdcard/ui_test_recording.mp4 . || echo "❌ Video pull failed"
 
-      # 📦 [ধাপ ২]: টেস্টের ভিডিও আপলোড
+      # 📦 [ধাপ ২]: টেস্টের স্ক্রিন রেকর্ডিং ভিডিও আপলোড (টেস্ট পাস বা ফেইল যাই হোক)
       - name: Upload Test Screen Recording Video
         uses: actions/upload-artifact@v4
         if: always()
@@ -70,11 +71,11 @@ jobs:
           name: test-screen-recording
           path: ui_test_recording.mp4
 
-      # 🔥 Build APK
+      # 🔥 Build APK (Release)
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
-      # 🔥 Build AAB
+      # 🔥 Build AAB (Release)
       - name: Build Release AAB
         run: ./gradlew bundleRelease
 
@@ -112,7 +113,7 @@ jobs:
             echo "✅ SUCCESS: All native libraries are 16KB compatible (0x4000)"
           fi
 
-      # 📦 Upload artifacts
+      # 📦 Upload Final Build Artifacts
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
