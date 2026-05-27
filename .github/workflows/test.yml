@@ -1,12 +1,12 @@
-name: Android CITest
+name: Android CItest
 
 on:
   workflow_dispatch:   # শুধু manual run
 
 jobs:
   build_and_test:
-    # ইমুলেটর স্মুথলি চালানোর জন্য macOS ব্যবহার করা হয়েছে
-    runs-on: macos-13
+    # দ্রুত রান করার জন্য উবুন্টু ব্যবহার করা হলো
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -35,38 +35,37 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 🧪 [ধাপ ১]: অ্যান্ড্রয়েড ইমুলেটর তৈরি ও টেস্ট রান করা (ভিডিও রেকর্ডসহ)
+      # 🧪 [ধাপ ১]: উবুন্টু ইমুলেটর কনফিগারেশন ও টেস্ট (ভিডিও রেকর্ডসহ)
       - name: Run UI Tests on Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29            # টেস্টের জন্য স্টেবল এপিআই লেভেল
-          target: google_apis
-          arch: x86_64
+          api-level: 29
+          target: default
+          arch: x86
           profile: Nexus 6
+          disable-animations: true
+          # উবুন্টুর জন্য হার্ডওয়্যার এক্সিলারেশন অন করার চেষ্টা (সম্ভব না হলে সফটওয়্যার রান হবে)
+          enable-hw-accel: true 
           script: |
-            echo "Starting Screen Recording in background..."
-            # ইমুলেটরের ব্যাকগ্রাউন্ডে স্ক্রিন রেকর্ড শুরু করা (সর্বোচ্চ ৩ মিনিট বা ১৮০ সেকেন্ড)
+            echo "Starting Screen Recording..."
             adb shell screenrecord /sdcard/ui_test_recording.mp4 &
             RECORD_PID=$!
             
-            echo "Running Espresso/UI Tests..."
-            # এখানে আপনার প্রজেক্টের অ্যান্ড্রোয়েড টেস্ট রান হবে
+            echo "Running Espresso Tests..."
             ./gradlew connectedAndroidTest || true
             
             echo "Stopping Screen Recording..."
-            # রেকর্ডার বন্ধ করা এবং ফাইল প্রসেস হওয়ার জন্য সময় দেওয়া
             sleep 2
             kill -INT $RECORD_PID
             sleep 5
             
-            echo "Pulling video from emulator to runner..."
-            # ইমুলেটর থেকে ভিডিও ফাইলটি রানারে নিয়ে আসা
+            echo "Pulling video..."
             adb pull /sdcard/ui_test_recording.mp4 .
 
-      # 📦 [ধাপ ২]: টেস্টের স্ক্রিন রেকর্ডিং ভিডিও আপলোড করা
+      # 📦 [ধাপ ২]: টেস্টের ভিডিও আপলোড
       - name: Upload Test Screen Recording Video
         uses: actions/upload-artifact@v4
-        if: always() # টেস্ট ফেইল করলেও যেন ভিডিও আপলোড হয়
+        if: always()
         with:
           name: test-screen-recording
           path: ui_test_recording.mp4
@@ -75,43 +74,42 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
-      # 🔥 Build AAB (main target)
+      # 🔥 Build AAB
       - name: Build Release AAB
         run: ./gradlew bundleRelease
 
       # ✅ Install tools for checking native libs
       - name: Install binutils (readelf)
-        # macOS-এ readelf এর বিকল্প হিসেবে llvm-readelf ব্যবহার করা হয়
         run: |
-          brew install llvm
-          echo "echo '---- Checking Native Libs ----'"
+          sudo apt-get update
+          sudo apt-get install -y binutils unzip
 
       # 🔍 Extract AAB
       - name: Extract AAB
         run: |
           unzip app/build/outputs/bundle/release/app-release.aab -d aab_check
 
-      # 🔍 Show all native libs (debug visibility)
+      # 🔍 Show all native libs
       - name: List .so files
         run: |
           find aab_check -name "*.so"
 
-      # 🔍 Detailed page size report & 16KB check
-      - name: Check page size (16KB alignment)
+      # 🔍 Detailed page size report
+      - name: Check page size (report)
         run: |
-          # macOS এর সুসংগত স্ক্রিপ্ট যা ১৬KB এলignment চেক করবে
-          FAILED=0
-          for file in $(find aab_check -name "*.so"); do
-            echo "---- $file ----"
-            if otool -l "$file" 2>/dev/null | grep -q "0x1000"; then
-              echo "❌ ERROR: Found 4KB page size in $file"
-              FAILED=1
-            fi
-          done
-          if [ $FAILED -eq 1 ]; then
+          find aab_check -name "*.so" -exec sh -c '
+            echo "---- $1 ----";
+            readelf -l "$1" | grep LOAD
+          ' _ {} \;
+
+      # ❌ Auto fail if 4KB found
+      - name: Fail if 4KB page size detected
+        run: |
+          if find aab_check -name "*.so" -exec readelf -l {} \; | grep -q "0x1000"; then
+            echo "❌ ERROR: Found 4KB page size (0x1000). Not allowed!"
             exit 1
           else
-            echo "✅ SUCCESS: All native libraries are compatible!"
+            echo "✅ SUCCESS: All native libraries are 16KB compatible (0x4000)"
           fi
 
       # 📦 Upload artifacts
