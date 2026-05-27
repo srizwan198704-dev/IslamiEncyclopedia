@@ -34,53 +34,57 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ✅ Enable KVM hardware acceleration (speeds up emulator significantly)
+      # ✅ KVM hardware acceleration (emulator অনেক দ্রুত বুট হবে)
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # 🧪 Run UI Tests on Android Emulator
+      # 🧪 UI Tests + Screen Recording
       - name: Run UI Tests on Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          # API 29 is more compatible with x86_64 and modern AGP
           api-level: 29
           target: default
-          # x86_64 avoids "0 compatible devices" ABI mismatch with modern builds
           arch: x86_64
           profile: Nexus 6
           disable-animations: true
           force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
-          # pre-adb-setup runs AFTER boot but BEFORE the script — use it to unlock screen
           pre-adb-setup: |
             adb shell input keyevent 82
           script: |
-            echo "✅ Emulator is ready. Verifying device..."
+            echo "✅ Device ready. Verifying ADB connection..."
             adb devices -l
 
-            # Double-check the device is fully booted before proceeding
-            echo "Waiting for sys.boot_completed..."
+            # বুট সম্পূর্ণ নিশ্চিত করা
             adb wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done; echo "Boot confirmed"'
 
-            echo "Starting screen recording in background..."
-            adb shell screenrecord /sdcard/ui_test_recording.mp4 &
-            RECORD_PID=$!
+            # স্ক্রিন আনলক করা (home screen যাতে দেখা যায়)
+            adb shell input keyevent 82
+            adb shell input keyevent 3
 
-            echo "Running Espresso UI Tests..."
+            echo "📹 Starting screen recording..."
+            adb shell screenrecord /sdcard/ui_test_recording.mp4 &
+
+            # ✅ অ্যাপ নিজে থেকে লঞ্চ করা (স্ক্রিনে দেখা যাবে)
+            echo "🚀 Launching app on emulator..."
+            adb shell am start -n com.srizwan.islamipedia/.MainActivity
+            sleep 5
+
+            echo "🧪 Running Espresso UI Tests..."
             ./gradlew connectedDebugAndroidTest || echo "⚠️ Tests completed with some failures."
 
-            echo "Stopping screen recording..."
+            echo "⏹ Stopping screen recording..."
             sleep 2
             adb shell pkill -2 screenrecord || true
             sleep 5
 
-            echo "Pulling video from emulator..."
+            echo "📥 Pulling video from emulator..."
             adb pull /sdcard/ui_test_recording.mp4 . || echo "❌ Video pull failed"
 
-      # 📦 Upload test screen recording
+      # 📦 Screen recording আপলোড
       - name: Upload Test Screen Recording
         uses: actions/upload-artifact@v4
         if: always()
@@ -88,7 +92,7 @@ jobs:
           name: test-screen-recording
           path: ui_test_recording.mp4
 
-      # 📋 Upload test reports (HTML report with pass/fail details)
+      # 📋 Test report আপলোড
       - name: Upload Test Reports
         uses: actions/upload-artifact@v4
         if: always()
@@ -96,21 +100,21 @@ jobs:
           name: test-reports
           path: app/build/reports/androidTests/
 
-      # 🔥 Build Release APK
+      # 🔥 Release APK build
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
-      # 🔥 Build Release AAB
+      # 🔥 Release AAB build
       - name: Build Release AAB
         run: ./gradlew bundleRelease
 
-      # ✅ Install tools for native lib checking
+      # ✅ Native lib tools install
       - name: Install binutils (readelf)
         run: |
           sudo apt-get update
           sudo apt-get install -y binutils unzip
 
-      # 🔍 Extract and inspect AAB for page size compliance
+      # 🔍 AAB extract করা
       - name: Extract AAB
         run: |
           unzip app/build/outputs/bundle/release/app-release.aab -d aab_check
@@ -126,7 +130,7 @@ jobs:
             readelf -l "$1" | grep LOAD
           ' _ {} \;
 
-      # ❌ Fail if 4KB page size detected (Play Store requirement)
+      # ❌ 4KB page size থাকলে fail
       - name: Fail if 4KB page size detected
         run: |
           if find aab_check -name "*.so" -exec readelf -l {} \; | grep -q "0x1000"; then
@@ -136,7 +140,7 @@ jobs:
             echo "✅ SUCCESS: All native libraries are 16KB compatible (0x4000)"
           fi
 
-      # 📦 Upload final artifacts
+      # 📦 Final artifacts
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
