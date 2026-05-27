@@ -34,7 +34,7 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ✅ KVM hardware acceleration (emulator অনেক দ্রুত বুট হবে)
+      # ✅ KVM hardware acceleration
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -55,24 +55,37 @@ jobs:
           pre-adb-setup: |
             adb shell input keyevent 82
           script: |
-            echo "✅ Device ready. Verifying ADB connection..."
+            echo "✅ Device ready."
             adb devices -l
 
-            # বুট সম্পূর্ণ নিশ্চিত করা
+            # বুট নিশ্চিত করা
             adb wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done; echo "Boot confirmed"'
-
-            # স্ক্রিন আনলক করা (home screen যাতে দেখা যায়)
             adb shell input keyevent 82
             adb shell input keyevent 3
+            sleep 2
 
+            # ─────────────────────────────────────────────────────
+            # ধাপ ১: আগে Debug APK build ও install করা
+            # (এরপরেই am start কাজ করবে)
+            # ─────────────────────────────────────────────────────
+            echo "📦 Building and installing Debug APK..."
+            ./gradlew assembleDebug
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            echo "✅ APK installed successfully."
+
+            # ─────────────────────────────────────────────────────
+            # ধাপ ২: স্ক্রিন রেকর্ড শুরু + অ্যাপ লঞ্চ
+            # ─────────────────────────────────────────────────────
             echo "📹 Starting screen recording..."
             adb shell screenrecord /sdcard/ui_test_recording.mp4 &
 
-            # ✅ অ্যাপ নিজে থেকে লঞ্চ করা (স্ক্রিনে দেখা যাবে)
-            echo "🚀 Launching app on emulator..."
+            echo "🚀 Launching app..."
             adb shell am start -n com.srizwan.islamipedia/.MainActivity
-            sleep 5
+            sleep 8
 
+            # ─────────────────────────────────────────────────────
+            # ধাপ ৩: Espresso tests রান করা
+            # ─────────────────────────────────────────────────────
             echo "🧪 Running Espresso UI Tests..."
             ./gradlew connectedDebugAndroidTest || echo "⚠️ Tests completed with some failures."
 
@@ -81,7 +94,7 @@ jobs:
             adb shell pkill -2 screenrecord || true
             sleep 5
 
-            echo "📥 Pulling video from emulator..."
+            echo "📥 Pulling video..."
             adb pull /sdcard/ui_test_recording.mp4 . || echo "❌ Video pull failed"
 
       # 📦 Screen recording আপলোড
@@ -92,7 +105,7 @@ jobs:
           name: test-screen-recording
           path: ui_test_recording.mp4
 
-      # 📋 Test report আপলোড
+      # 📋 Test reports আপলোড
       - name: Upload Test Reports
         uses: actions/upload-artifact@v4
         if: always()
@@ -100,21 +113,20 @@ jobs:
           name: test-reports
           path: app/build/reports/androidTests/
 
-      # 🔥 Release APK build
+      # 🔥 Release APK
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
-      # 🔥 Release AAB build
+      # 🔥 Release AAB
       - name: Build Release AAB
         run: ./gradlew bundleRelease
 
-      # ✅ Native lib tools install
+      # ✅ Native lib check tools
       - name: Install binutils (readelf)
         run: |
           sudo apt-get update
           sudo apt-get install -y binutils unzip
 
-      # 🔍 AAB extract করা
       - name: Extract AAB
         run: |
           unzip app/build/outputs/bundle/release/app-release.aab -d aab_check
