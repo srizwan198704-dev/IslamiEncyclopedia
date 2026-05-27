@@ -1,0 +1,128 @@
+name: Android CITest
+
+on:
+  workflow_dispatch:   # শুধু manual run
+
+jobs:
+  build_and_test:
+    # ইমুলেটর স্মুথলি চালানোর জন্য macOS ব্যবহার করা হয়েছে
+    runs-on: macos-13
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Create local.properties
+        run: |
+          echo "api=${{ secrets.API }}" >> local.properties
+          echo "tafsir=${{ secrets.TAFSIR }}" >> local.properties
+          echo "text=${{ secrets.TEXT }}" >> local.properties
+          echo "pdf=${{ secrets.PDF }}" >> local.properties
+          echo "boyan=${{ secrets.BOYAN }}" >> local.properties
+          echo "blogid=${{ secrets.BLOGID }}" >> local.properties
+          echo "api2=${{ secrets.API2 }}" >> local.properties
+          echo "textapi=${{ secrets.TEXTAPI }}" >> local.properties
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/book.jks
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 🧪 [ধাপ ১]: অ্যান্ড্রয়েড ইমুলেটর তৈরি ও টেস্ট রান করা (ভিডিও রেকর্ডসহ)
+      - name: Run UI Tests on Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29            # টেস্টের জন্য স্টেবল এপিআই লেভেল
+          target: google_apis
+          arch: x86_64
+          profile: Nexus 6
+          script: |
+            echo "Starting Screen Recording in background..."
+            # ইমুলেটরের ব্যাকগ্রাউন্ডে স্ক্রিন রেকর্ড শুরু করা (সর্বোচ্চ ৩ মিনিট বা ১৮০ সেকেন্ড)
+            adb shell screenrecord /sdcard/ui_test_recording.mp4 &
+            RECORD_PID=$!
+            
+            echo "Running Espresso/UI Tests..."
+            # এখানে আপনার প্রজেক্টের অ্যান্ড্রোয়েড টেস্ট রান হবে
+            ./gradlew connectedAndroidTest || true
+            
+            echo "Stopping Screen Recording..."
+            # রেকর্ডার বন্ধ করা এবং ফাইল প্রসেস হওয়ার জন্য সময় দেওয়া
+            sleep 2
+            kill -INT $RECORD_PID
+            sleep 5
+            
+            echo "Pulling video from emulator to runner..."
+            # ইমুলেটর থেকে ভিডিও ফাইলটি রানারে নিয়ে আসা
+            adb pull /sdcard/ui_test_recording.mp4 .
+
+      # 📦 [ধাপ ২]: টেস্টের স্ক্রিন রেকর্ডিং ভিডিও আপলোড করা
+      - name: Upload Test Screen Recording Video
+        uses: actions/upload-artifact@v4
+        if: always() # টেস্ট ফেইল করলেও যেন ভিডিও আপলোড হয়
+        with:
+          name: test-screen-recording
+          path: ui_test_recording.mp4
+
+      # 🔥 Build APK
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+
+      # 🔥 Build AAB (main target)
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease
+
+      # ✅ Install tools for checking native libs
+      - name: Install binutils (readelf)
+        # macOS-এ readelf এর বিকল্প হিসেবে llvm-readelf ব্যবহার করা হয়
+        run: |
+          brew install llvm
+          echo "echo '---- Checking Native Libs ----'"
+
+      # 🔍 Extract AAB
+      - name: Extract AAB
+        run: |
+          unzip app/build/outputs/bundle/release/app-release.aab -d aab_check
+
+      # 🔍 Show all native libs (debug visibility)
+      - name: List .so files
+        run: |
+          find aab_check -name "*.so"
+
+      # 🔍 Detailed page size report & 16KB check
+      - name: Check page size (16KB alignment)
+        run: |
+          # macOS এর সুসংগত স্ক্রিপ্ট যা ১৬KB এলignment চেক করবে
+          FAILED=0
+          for file in $(find aab_check -name "*.so"); do
+            echo "---- $file ----"
+            if otool -l "$file" 2>/dev/null | grep -q "0x1000"; then
+              echo "❌ ERROR: Found 4KB page size in $file"
+              FAILED=1
+            fi
+          done
+          if [ $FAILED -eq 1 ]; then
+            exit 1
+          else
+            echo "✅ SUCCESS: All native libraries are compatible!"
+          fi
+
+      # 📦 Upload artifacts
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: islamipedia-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload Release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: islamipedia-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
