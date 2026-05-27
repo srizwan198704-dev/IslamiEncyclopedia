@@ -29,31 +29,31 @@ jobs:
 
       - name: Decode Keystore
         run: |
-          # build.gradle.kts অনুযায়ী ফাইলটি সরাসরি app/ ফোল্ডারে 'book.jks' নামে যাবে
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/book.jks
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 🧪 [ধাপ ১]: targetSdk 36 এর সাথে সামঞ্জস্য রেখে Emulator রান ও স্ক্রিন রেকর্ড
+      # 🧪 [ধাপ ১]: লাইটওয়েট স্টেবল ইমুলেটর রান ও স্ক্রিন রেকর্ড (বুট লুপ ফিক্সড)
       - name: Run UI Tests on Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34           # targetSdk 36 এর কাছাকাছি এবং স্টেবল এপিআই ৩৪ ব্যবহার করা হয়েছে
-          target: google_apis
-          arch: x86_64            # গ্রেডল ফাইলের ndk filter (x86_64) এর সাথে হুবহু মিল রাখা হয়েছে
+          api-level: 28           # উবুন্টু রানারের জন্য সবচেয়ে স্টেবল এবং ফাস্ট এপিআই লেভেল
+          target: default         # গুগল প্লে সার্ভিস ছাড়া একদম হালকা ক্লিন ইমুলেটর
+          arch: x86               # খুব দ্রুত বুট হওয়ার জন্য x86 আর্কিটেকচার
           profile: Nexus 6
           disable-animations: true
           force-avd-creation: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
+          # ইমুলেটর মেমোরি ও গ্রাফিক্স অপ্টিমাইজেশন (বুট লুপ এড়ানোর জন্য)
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
           script: |
-            echo "Starting Screen Recording in background..."
-            # ব্যাকগ্রাউন্ডে ভিডিও রেকর্ড চালু করা
+            echo "Emulator booted successfully! Starting Screen Recording..."
+            # ব্যাকগ্রাউন্ডে স্ক্রিন রেকর্ড চালু করা
             adb shell screenrecord /sdcard/ui_test_recording.mp4 &
             
             echo "Running Espresso UI Tests..."
-            # টেস্ট রান করা এবং ফেইল করলেও স্ক্রিপ্ট যেন পরের ধাপে গিয়ে ভিডিও সেভ করে
-            ./gradlew connectedDebugAndroidTest || echo "⚠️ Tests completed with failures, processing video..."
+            # ডিবাগ টেস্ট রান করা (ফেইল করলেও স্ক্রিপ্ট পরের ধাপে যাবে)
+            ./gradlew connectedDebugAndroidTest || echo "⚠️ Tests completed with some failures."
             
             echo "Stopping Screen Recording..."
             sleep 2
@@ -63,7 +63,7 @@ jobs:
             echo "Pulling video from Emulator..."
             adb pull /sdcard/ui_test_recording.mp4 . || echo "❌ Video pull failed"
 
-      # 📦 [ধাপ ২]: টেস্টের স্ক্রিন রেকর্ডিং ভিডিও আপলোড (টেস্ট পাস বা ফেইল যাই হোক)
+      # 📦 [ধাপ ২]: টেস্টের স্ক্রিন রেকর্ডিং ভিডিও আপলোড (Artifacts এ পাবেন)
       - name: Upload Test Screen Recording Video
         uses: actions/upload-artifact@v4
         if: always()
@@ -113,7 +113,7 @@ jobs:
             echo "✅ SUCCESS: All native libraries are 16KB compatible (0x4000)"
           fi
 
-      # 📦 Upload Final Build Artifacts
+      # 📦 Final Artifacts আপলোড
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
