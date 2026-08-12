@@ -695,6 +695,11 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			} else {
 				maintafsirrezbiya.setVisibility(View.VISIBLE);
 			}
+			if ("তাফসির যুক্ত করা হয়নি".equals(textifranulkuran.getText().toString())) {
+				mainirfanullayout.setVisibility(View.GONE);
+			} else {
+				mainirfanullayout.setVisibility(View.VISIBLE);
+			}
 			if ("শব্দার্থ যুক্ত করা হয়নি".equals(words.getText().toString())) {
 				words.setVisibility(View.GONE);
 			} else {
@@ -717,4 +722,4 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			return _view;
 		}
 	}
-											 }
+	}
