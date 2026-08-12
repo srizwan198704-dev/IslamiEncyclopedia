@@ -42,7 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class TafsironlineviewActivity extends AppCompatActivity {
-	
+
 	private String newName = "";
 	private double click = 0;
 	private String a = "";
@@ -66,11 +66,15 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 	private String debug_string = "";
 	private double n = 0;
 	private HashMap<String, Object> ListMap = new HashMap<>();
-	
-	private ArrayList<HashMap<String, Object>> map = new ArrayList<>();
+
+	// Intent এর মাধ্যমে পাওয়া বর্তমান সূরার তথ্য
+	private String suraNumber = "";
+	private String suraLink = "";
+	// এই সূরাটার তাফসির লোকালি ক্যাশ করার জন্য পাথ (প্রতিটা সূরার জন্য আলাদা ফাইল)
+	private String suraCacheFile = "";
+
 	private ArrayList<HashMap<String, Object>> chapter = new ArrayList<>();
-	private ArrayList<HashMap<String, Object>> listmap_cache = new ArrayList<>();
-	
+
 	private LinearLayout toolbar;
 	private LinearLayout spin;
 	private LinearLayout content;
@@ -93,7 +97,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 	private EditText searchbox;
 	private ImageView noresult;
 	private TextView no_result;
-	
+
 	private RequestNetwork book;
 	private RequestNetwork.RequestListener _book_request_listener;
 	private Intent in = new Intent();
@@ -105,7 +109,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.tafsironlineview);
 		initialize(_savedInstanceState);
-		
+
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 		|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
 			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1000);
@@ -113,7 +117,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			initializeLogic();
 		}
 	}
-	
+
 	@Override
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -121,7 +125,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			initializeLogic();
 		}
 	}
-	
+
 	private void initialize(Bundle _savedInstanceState) {
 		toolbar = findViewById(R.id.toolbar);
 		spin = findViewById(R.id.spin);
@@ -148,14 +152,22 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		book = new RequestNetwork(this);
 		deleted = new AlertDialog.Builder(this);
 		onlineoffline = new AlertDialog.Builder(this);
-		
+
+		// TafsironlineActivity থেকে পাঠানো sura নম্বর ও ওই সূরার নিজস্ব json লিংক
+		suraNumber = getIntent().getStringExtra("sura");
+		suraLink = getIntent().getStringExtra("link");
+		if (suraNumber == null) {
+			suraNumber = "";
+		}
+		suraCacheFile = FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির/".concat(suraNumber.concat(".json")));
+
 		list.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
 				finish();
 			}
 		});
-		
+
 		searchimg.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -166,16 +178,18 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 				}
 			}
 		});
-		
+
 		materialbutton1.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
-				book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "", _book_request_listener);
-				spinber.setVisibility(View.VISIBLE);
-				Nointernet.setVisibility(View.GONE);
+				if (suraLink != null && !suraLink.equals("")) {
+					book.startRequestNetwork(RequestNetworkController.GET, suraLink, "", _book_request_listener);
+					spinber.setVisibility(View.VISIBLE);
+					Nointernet.setVisibility(View.GONE);
+				}
 			}
 		});
-		
+
 		imageview2.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View _view) {
@@ -186,7 +200,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 				}
 			}
 		});
-		
+
 		searchbox.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
@@ -200,90 +214,38 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 					ListView1.setVisibility(View.VISIBLE);
 				}
 			}
-			
+
 			@Override
 			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-				
+
 			}
-			
+
 			@Override
 			public void afterTextChanged(Editable _param1) {
-				
+
 			}
 		});
-		
+
+		// এই সূরার json ফাইল আগে থেকেই সম্পূর্ণভাবে ওই সূরার আয়াতগুলো ধারণ করে,
+		// তাই "sura" অনুযায়ী আলাদা করে ফিল্টার করার দরকার নেই।
 		_book_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
 				final String _tag = _param1;
 				final String _response = _param2;
 				final HashMap<String, Object> _responseHeaders = _param3;
-				if (FileUtil.isExistFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"))) {
-					try{
-						listmap_cache = new Gson().fromJson(FileUtil.readFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র")), new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
-						n = 0;
-						for(int _repeat40 = 0; _repeat40 < (int)(listmap_cache.size()); _repeat40++) {
-							if (listmap_cache.get((int)n).get("sura").toString().equals(getIntent().getStringExtra("sura"))) {
-								ListMap = new HashMap<>();
-								ListMap.put("verses", listmap_cache.get((int)n).get("verses").toString());
-								ListMap.put("names", listmap_cache.get((int)n).get("names").toString());
-								ListMap.put("words", listmap_cache.get((int)n).get("words").toString());
-								ListMap.put("name", listmap_cache.get((int)n).get("name").toString());
-								ListMap.put("khazainul", listmap_cache.get((int)n).get("khazainul").toString());
-								ListMap.put("irfanul", listmap_cache.get((int)n).get("irfanul").toString());
-								ListMap.put("ibnabbas", listmap_cache.get((int)n).get("ibnabbas").toString());
-								ListMap.put("majhari", listmap_cache.get((int)n).get("majhari").toString());
-								ListMap.put("nurulirfan", listmap_cache.get((int)n).get("nurulirfan").toString());
-								ListMap.put("tabari", listmap_cache.get((int)n).get("tabari").toString());
-								ListMap.put("ibnkasir", listmap_cache.get((int)n).get("ibnkasir").toString());
-								ListMap.put("rejviya", listmap_cache.get((int)n).get("rejviya").toString());
-								ListMap.put("baizabi", listmap_cache.get((int)n).get("baizabi").toString());
-								ListMap.put("kurtubi", listmap_cache.get((int)n).get("kurtubi").toString());
-								chapter.add(ListMap);
-							}
-							n++;
-						}
-						ListView1.setAdapter(new ListView1Adapter(chapter));
-						((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
-						getsearch = new Gson().toJson(chapter);
-						searchimg.setVisibility(View.VISIBLE);
-					}catch(Exception e){
-						 
-					}
-				} else {
-					try{
-						if (!FileUtil.isExistFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"))) {
-							listmap_cache = new Gson().fromJson(_response, new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
-							n = 0;
-							for(int _repeat96 = 0; _repeat96 < (int)(listmap_cache.size()); _repeat96++) {
-								if (listmap_cache.get((int)n).get("sura").toString().equals(getIntent().getStringExtra("sura"))) {
-									ListMap = new HashMap<>();
-									ListMap.put("verses", listmap_cache.get((int)n).get("verses").toString());
-									ListMap.put("names", listmap_cache.get((int)n).get("names").toString());
-									ListMap.put("words", listmap_cache.get((int)n).get("words").toString());
-									ListMap.put("name", listmap_cache.get((int)n).get("name").toString());
-									ListMap.put("khazainul", listmap_cache.get((int)n).get("khazainul").toString());
-									ListMap.put("irfanul", listmap_cache.get((int)n).get("irfanul").toString());
-									ListMap.put("ibnabbas", listmap_cache.get((int)n).get("ibnabbas").toString());
-									ListMap.put("majhari", listmap_cache.get((int)n).get("majhari").toString());
-									ListMap.put("nurulirfan", listmap_cache.get((int)n).get("nurulirfan").toString());
-									ListMap.put("tabari", listmap_cache.get((int)n).get("tabari").toString());
-									ListMap.put("ibnkasir", listmap_cache.get((int)n).get("ibnkasir").toString());
-									ListMap.put("rejviya", listmap_cache.get((int)n).get("rejviya").toString());
-									ListMap.put("baizabi", listmap_cache.get((int)n).get("baizabi").toString());
-									ListMap.put("kurtubi", listmap_cache.get((int)n).get("kurtubi").toString());
-									chapter.add(ListMap);
-								}
-								n++;
-							}
-							ListView1.setAdapter(new ListView1Adapter(chapter));
-							((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
-							searchimg.setVisibility(View.VISIBLE);
-							getsearch = new Gson().toJson(chapter);
-						}
-					}catch(Exception e){
-						 
-					}
+				try {
+					chapter = new Gson().fromJson(_response, new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
+					ListView1.setAdapter(new ListView1Adapter(chapter));
+					((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
+					getsearch = new Gson().toJson(chapter);
+					searchimg.setVisibility(View.VISIBLE);
+					spinber.setVisibility(View.GONE);
+					// পরের বার দ্রুত ও অফলাইনে দেখানোর জন্য এই সূরাটা লোকালি সংরক্ষণ করা
+					FileUtil.makeDir(FileUtil.getPackageDataDir(getApplicationContext()).concat("/".concat("/ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির/")));
+					FileUtil.writeFile(suraCacheFile, _response);
+				} catch (Exception e) {
+
 				}
 				if (chapter.size() == 0) {
 					spin.setVisibility(View.VISIBLE);
@@ -295,54 +257,43 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 					searchimg.setVisibility(View.VISIBLE);
 				}
 			}
-			
+
 			@Override
 			public void onErrorResponse(String _param1, String _param2) {
 				final String _tag = _param1;
 				final String _message = _param2;
-				if (FileUtil.isExistFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"))) {
-					try{
-						listmap_cache = new Gson().fromJson(FileUtil.readFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র")), new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
-						n = 0;
-						for(int _repeat86 = 0; _repeat86 < (int)(listmap_cache.size()); _repeat86++) {
-							if (listmap_cache.get((int)n).get("sura").toString().equals(getIntent().getStringExtra("sura"))) {
-								ListMap = new HashMap<>();
-								ListMap.put("verses", listmap_cache.get((int)n).get("verses").toString());
-								ListMap.put("names", listmap_cache.get((int)n).get("names").toString());
-								ListMap.put("words", listmap_cache.get((int)n).get("words").toString());
-								ListMap.put("name", listmap_cache.get((int)n).get("name").toString());
-								ListMap.put("khazainul", listmap_cache.get((int)n).get("khazainul").toString());
-								ListMap.put("irfanul", listmap_cache.get((int)n).get("irfanul").toString());
-								ListMap.put("ibnabbas", listmap_cache.get((int)n).get("ibnabbas").toString());
-								ListMap.put("majhari", listmap_cache.get((int)n).get("majhari").toString());
-								ListMap.put("nurulirfan", listmap_cache.get((int)n).get("nurulirfan").toString());
-								ListMap.put("tabari", listmap_cache.get((int)n).get("tabari").toString());
-								ListMap.put("ibnkasir", listmap_cache.get((int)n).get("ibnkasir").toString());
-								ListMap.put("rejviya", listmap_cache.get((int)n).get("rejviya").toString());
-								ListMap.put("baizabi", listmap_cache.get((int)n).get("baizabi").toString());
-								ListMap.put("kurtubi", listmap_cache.get((int)n).get("kurtubi").toString());
-								chapter.add(ListMap);
-							}
-							n++;
-						}
+				if (FileUtil.isExistFile(suraCacheFile)) {
+					try {
+						chapter = new Gson().fromJson(FileUtil.readFile(suraCacheFile), new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
 						ListView1.setAdapter(new ListView1Adapter(chapter));
 						((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
 						getsearch = new Gson().toJson(chapter);
 						searchimg.setVisibility(View.VISIBLE);
-					}catch(Exception e){
-						 
+						spin.setVisibility(View.GONE);
+						content.setVisibility(View.VISIBLE);
+						Nointernet.setVisibility(View.GONE);
+						spinber.setVisibility(View.GONE);
+					} catch (Exception e) {
+
 					}
 				} else {
-					if (!FileUtil.isExistFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"))) {
-						Toast.makeText(getApplicationContext(), "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show();
-						spinber.setVisibility(View.GONE);
-						Nointernet.setVisibility(View.VISIBLE);
-					}
+					Toast.makeText(getApplicationContext(), "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show();
+					spinber.setVisibility(View.GONE);
+					Nointernet.setVisibility(View.VISIBLE);
+				}
+				if (chapter.size() == 0) {
+					spin.setVisibility(View.VISIBLE);
+					content.setVisibility(View.GONE);
+					searchimg.setVisibility(View.GONE);
+				} else {
+					spin.setVisibility(View.GONE);
+					content.setVisibility(View.VISIBLE);
+					searchimg.setVisibility(View.VISIBLE);
 				}
 			}
 		};
 	}
-	
+
 	private void initializeLogic() {
 		_status_bar_color("#FF01837A", "#FF01837A");
 		_marquue(bookname, getIntent().getStringExtra("name"));
@@ -363,31 +314,11 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			spin.setVisibility(View.GONE);
 			searchimg.setVisibility(View.VISIBLE);
 		}
-		if (FileUtil.isExistFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"))) {
-			try{
-				listmap_cache = new Gson().fromJson(FileUtil.readFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র")), new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
-				n = 0;
-				for(int _repeat40 = 0; _repeat40 < (int)(listmap_cache.size()); _repeat40++) {
-					if (listmap_cache.get((int)n).get("sura").toString().equals(getIntent().getStringExtra("sura"))) {
-						ListMap = new HashMap<>();
-						ListMap.put("verses", listmap_cache.get((int)n).get("verses").toString());
-						ListMap.put("names", listmap_cache.get((int)n).get("names").toString());
-						ListMap.put("words", listmap_cache.get((int)n).get("words").toString());
-						ListMap.put("name", listmap_cache.get((int)n).get("name").toString());
-						ListMap.put("khazainul", listmap_cache.get((int)n).get("khazainul").toString());
-						ListMap.put("irfanul", listmap_cache.get((int)n).get("irfanul").toString());
-						ListMap.put("ibnabbas", listmap_cache.get((int)n).get("ibnabbas").toString());
-						ListMap.put("majhari", listmap_cache.get((int)n).get("majhari").toString());
-						ListMap.put("nurulirfan", listmap_cache.get((int)n).get("nurulirfan").toString());
-						ListMap.put("tabari", listmap_cache.get((int)n).get("tabari").toString());
-						ListMap.put("ibnkasir", listmap_cache.get((int)n).get("ibnkasir").toString());
-						ListMap.put("rejviya", listmap_cache.get((int)n).get("rejviya").toString());
-						ListMap.put("baizabi", listmap_cache.get((int)n).get("baizabi").toString());
-						ListMap.put("kurtubi", listmap_cache.get((int)n).get("kurtubi").toString());
-						chapter.add(ListMap);
-					}
-					n++;
-				}
+
+		if (FileUtil.isExistFile(suraCacheFile)) {
+			// আগে ডাউনলোড করা এই সূরার ফাইল থাকলে সরাসরি সেটা থেকে লোড করা (দ্রুত, অফলাইনেও কাজ করবে)
+			try {
+				chapter = new Gson().fromJson(FileUtil.readFile(suraCacheFile), new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
 				ListView1.setAdapter(new ListView1Adapter(chapter));
 				((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
 				getsearch = new Gson().toJson(chapter);
@@ -395,32 +326,25 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 				content.setVisibility(View.VISIBLE);
 				Nointernet.setVisibility(View.GONE);
 				searchimg.setVisibility(View.VISIBLE);
-			}catch(Exception e){
-				 
+			} catch (Exception e) {
+
 			}
 		} else {
-			if (!FileUtil.isExistFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"))) {
-				FileUtil.makeDir(FileUtil.getPackageDataDir(getApplicationContext()).concat("/".concat("/ইসলামী বিশ্বকোষ/.অনলাইন বই ২/")));
-				if (Rizwan.isConnected(getApplicationContext())) {
-					book.startRequestNetwork(RequestNetworkController.GET, BuildConfig.tafsir, "", _book_request_listener);
-				} else {
-					ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-					NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-					
-					if (activeNetwork == null || !activeNetwork.isConnected()) {
-						   Nointernet.setVisibility(View.VISIBLE); Toast.makeText(getApplicationContext(), "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show();
-					}
-					if (FileUtil.isExistFile(FileUtil.getPackageDataDir(getApplicationContext()).concat("//ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির সমগ্র"))) {
-						spin.setVisibility(View.GONE);
-						content.setVisibility(View.VISIBLE);
-						Nointernet.setVisibility(View.GONE);
-					} else {
-						Toast.makeText(getApplicationContext(), "ফাইল পাওয়া যায়নি", Toast.LENGTH_SHORT).show();
-						spin.setVisibility(View.VISIBLE);
-						content.setVisibility(View.GONE);
-						Nointernet.setVisibility(View.VISIBLE);
-					}
+			FileUtil.makeDir(FileUtil.getPackageDataDir(getApplicationContext()).concat("/".concat("/ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির/")));
+			if (suraLink != null && !suraLink.equals("") && Rizwan.isConnected(getApplicationContext())) {
+				spinber.setVisibility(View.VISIBLE);
+				book.startRequestNetwork(RequestNetworkController.GET, suraLink, "", _book_request_listener);
+			} else {
+				ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+				NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+
+				if (activeNetwork == null || !activeNetwork.isConnected()) {
+					   Nointernet.setVisibility(View.VISIBLE); Toast.makeText(getApplicationContext(), "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show();
 				}
+				Toast.makeText(getApplicationContext(), "ফাইল পাওয়া যায়নি", Toast.LENGTH_SHORT).show();
+				spin.setVisibility(View.VISIBLE);
+				content.setVisibility(View.GONE);
+				Nointernet.setVisibility(View.VISIBLE);
 			}
 		}
 
@@ -451,16 +375,16 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		_text.setFocusable(true);
 		_text.setFocusableInTouchMode(true);
 	}
-	
-	
+
+
 	public void _status_bar_color(final String _colour1, final String _colour2) {
 		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { 
 			   Window w = this.getWindow(); w.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS); w.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
 			   w.setStatusBarColor(Color.parseColor(_colour1)); w.setNavigationBarColor(Color.parseColor(_colour2));
 		}
 	}
-	
-	
+
+
 	public void _json_search(final String _charSeq) {
 		chapter = new Gson().fromJson(getsearch, new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
 		length = chapter.size();
@@ -469,10 +393,10 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			value1 = chapter.get((int)r).get("name").toString();
 			value2 = chapter.get((int)r).get("irfanul").toString();
 			if (!(_charSeq.length() > value1.length()) && value1.toLowerCase().contains(_charSeq.toLowerCase())) {
-				
+
 			} else {
 				if (!(_charSeq.length() > value2.length()) && value2.toLowerCase().contains(_charSeq.toLowerCase())) {
-					
+
 				} else {
 					chapter.remove((int)(r));
 				}
@@ -482,42 +406,42 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		ListView1.setAdapter(new ListView1Adapter(chapter));
 		((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
 	}
-	
-	
+
+
 	public String _replaceArabicNumber(final String _n) {
 		String result = _n.replace("1", "১").replace("2", "২").replace("3", "৩").replace("4", "৪").replace("5", "৫").replace("6", "৬").replace("7", "৭").replace("8", "৮").replace("9", "৯").replace("0", "০");
-		
+
 		return result;
 	}
-	
-	
+
+
 	public void _enable_copy_textview(final TextView _tv) {
 		_tv.setTextIsSelectable(true);
 	}
-	
+
 	public class ListView1Adapter extends BaseAdapter {
-		
+
 		ArrayList<HashMap<String, Object>> _data;
-		
+
 		public ListView1Adapter(ArrayList<HashMap<String, Object>> _arr) {
 			_data = _arr;
 		}
-		
+
 		@Override
 		public int getCount() {
 			return _data.size();
 		}
-		
+
 		@Override
 		public HashMap<String, Object> getItem(int _index) {
 			return _data.get(_index);
 		}
-		
+
 		@Override
 		public long getItemId(int _index) {
 			return _index;
 		}
-		
+
 		@Override
 		public View getView(final int _position, View _v, ViewGroup _container) {
 			LayoutInflater _inflater = getLayoutInflater();
@@ -525,7 +449,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			if (_view == null) {
 				_view = _inflater.inflate(R.layout.tafsir, null);
 			}
-			
+
 			final ScrollView vscrollmain = _view.findViewById(R.id.vscrollmain);
 			final LinearLayout main = _view.findViewById(R.id.main);
 			final LinearLayout linear2 = _view.findViewById(R.id.linear2);
@@ -594,10 +518,10 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 					texttafsirrezviya.setText(chapter.get((int)_position).get("rejviya").toString());
 					texttafsirbaizabi.setText(chapter.get((int)_position).get("baizabi").toString());
 				} else {
-					
+
 				}
 			}catch(Exception e){
-				 
+
 			}
 			texttafsiribnabbas.setVisibility(View.GONE);
 			texttafsirkhazainulirfan.setVisibility(View.GONE);
@@ -718,52 +642,52 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 					}
 				}
 			});
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsiribnabbas.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsiribnabbas.getText().toString())) {
 				maintafsiribnabbas.setVisibility(View.GONE);
 			} else {
 				maintafsiribnabbas.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirkhazainulirfan.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirkhazainulirfan.getText().toString())) {
 				mainkhazainulirfan.setVisibility(View.GONE);
 			} else {
 				mainkhazainulirfan.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirnurulirfan.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirnurulirfan.getText().toString())) {
 				maintafsirnurulirfan.setVisibility(View.GONE);
 			} else {
 				maintafsirnurulirfan.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirtabari.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirtabari.getText().toString())) {
 				maintafsirtabari.setVisibility(View.GONE);
 			} else {
 				maintafsirtabari.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirmajhari.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirmajhari.getText().toString())) {
 				maintafsirmajhari.setVisibility(View.GONE);
 			} else {
 				maintafsirmajhari.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsiribnkasir.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsiribnkasir.getText().toString())) {
 				maintafsiribnkasir.setVisibility(View.GONE);
 			} else {
 				maintafsiribnkasir.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirkurtubi.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirkurtubi.getText().toString())) {
 				maintafsirkurtubi.setVisibility(View.GONE);
 			} else {
 				maintafsirkurtubi.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirbaizabi.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirbaizabi.getText().toString())) {
 				maintafsirbaizabi.setVisibility(View.GONE);
 			} else {
 				maintafsirbaizabi.setVisibility(View.VISIBLE);
 			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirrezviya.getText().toString())) {
+			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirrezviya.getText().toString())) {
 				maintafsirrezbiya.setVisibility(View.GONE);
 			} else {
 				maintafsirrezbiya.setVisibility(View.VISIBLE);
 			}
-			if ("শব্দার্থ যুক্ত করা হয়নি".equals(words.getText().toString())) {
+			if ("শব্দার্থ যুক্ত করা হয়নি".equals(words.getText().toString())) {
 				words.setVisibility(View.GONE);
 			} else {
 				words.setVisibility(View.VISIBLE);
@@ -781,8 +705,8 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			_enable_copy_textview(texttafsirkurtubi);
 			_enable_copy_textview(texttafsirbaizabi);
 			_enable_copy_textview(texttafsirrezviya);
-			
+
 			return _view;
 		}
 	}
-}
+						}
