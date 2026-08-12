@@ -419,6 +419,17 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		_tv.setTextIsSelectable(true);
 	}
 
+	// key না থাকলে বা value null হলেও যেন পুরো try ব্লক ভেঙে না পড়ে, তাই
+	// প্রতিটা ফিল্ডের জন্য আলাদাভাবে নিরাপদে মান বের করার হেল্পার মেথড।
+	// key না পাওয়া গেলে _fallback (যেমন "তাফসির যুক্ত করা হয়নি") রিটার্ন হবে,
+	// যাতে হাইড/শো লজিক ঠিকঠাক কাজ করে।
+	public String _getVal(final HashMap<String, Object> _map, final String _key, final String _fallback) {
+		if (_map != null && _map.containsKey(_key) && _map.get(_key) != null) {
+			return _map.get(_key).toString();
+		}
+		return _fallback;
+	}
+
 	public class ListView1Adapter extends BaseAdapter {
 
 		ArrayList<HashMap<String, Object>> _data;
@@ -501,26 +512,23 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 				android.graphics.drawable.RippleDrawable SketchUi_RD = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{0xFF01837A}), SketchUi, null);
 				main.setBackground(SketchUi_RD);
 			}
-			try{
-				if (chapter.get((int)_position).containsKey("verses")) {
-					number.setText(_replaceArabicNumber(chapter.get((int)_position).get("verses").toString()));
-					ayaarabic.setText(chapter.get((int)_position).get("names").toString());
-					words.setText(chapter.get((int)_position).get("words").toString());
-					textkanzuliman.setText(_replaceArabicNumber(chapter.get((int)_position).get("verses").toString().concat(". ".concat(chapter.get((int)_position).get("name").toString()))));
-					texttafsirkhazainulirfan.setText(chapter.get((int)_position).get("khazainul").toString());
-					textifranulkuran.setText(chapter.get((int)_position).get("irfanul").toString());
-					texttafsiribnabbas.setText(chapter.get((int)_position).get("ibnabbas").toString());
-					texttafsirmajhari.setText(chapter.get((int)_position).get("majhari").toString());
-					texttafsirnurulirfan.setText(chapter.get((int)_position).get("nurulirfan").toString());
-					texttafsirtabari.setText(chapter.get((int)_position).get("tabari").toString());
-					texttafsiribnkasir.setText(chapter.get((int)_position).get("ibnkasir").toString());
-					texttafsirkurtubi.setText(chapter.get((int)_position).get("kurtubi").toString());
-					texttafsirrezviya.setText(chapter.get((int)_position).get("rejviya").toString());
-					texttafsirbaizabi.setText(chapter.get((int)_position).get("baizabi").toString());
-				} else {
-
-				}
-			}catch(Exception e){
+			if (chapter.get((int)_position).containsKey("verses")) {
+				final HashMap<String, Object> _row = chapter.get((int)_position);
+				number.setText(_replaceArabicNumber(_getVal(_row, "verses", "")));
+				ayaarabic.setText(_getVal(_row, "names", ""));
+				words.setText(_getVal(_row, "words", "শব্দার্থ যুক্ত করা হয়নি"));
+				textkanzuliman.setText(_replaceArabicNumber(_getVal(_row, "verses", "").concat(". ".concat(_getVal(_row, "name", "")))));
+				texttafsirkhazainulirfan.setText(_getVal(_row, "khazainul", "তাফসির যুক্ত করা হয়নি"));
+				textifranulkuran.setText(_getVal(_row, "irfanul", "তাফসির যুক্ত করা হয়নি"));
+				texttafsiribnabbas.setText(_getVal(_row, "ibnabbas", "তাফসির যুক্ত করা হয়নি"));
+				texttafsirmajhari.setText(_getVal(_row, "majhari", "তাফসির যুক্ত করা হয়নি"));
+				texttafsirnurulirfan.setText(_getVal(_row, "nurulirfan", "তাফসির যুক্ত করা হয়নি"));
+				texttafsirtabari.setText(_getVal(_row, "tabari", "তাফসির যুক্ত করা হয়নি"));
+				texttafsiribnkasir.setText(_getVal(_row, "ibnkasir", "তাফসির যুক্ত করা হয়নি"));
+				texttafsirkurtubi.setText(_getVal(_row, "kurtubi", "তাফসির যুক্ত করা হয়নি"));
+				texttafsirrezviya.setText(_getVal(_row, "rejviya", "তাফসির যুক্ত করা হয়নি"));
+				texttafsirbaizabi.setText(_getVal(_row, "baizabi", "তাফসির যুক্ত করা হয়নি"));
+			} else {
 
 			}
 			texttafsiribnabbas.setVisibility(View.GONE);
@@ -709,4 +717,4 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			return _view;
 		}
 	}
-						}
+											 }
