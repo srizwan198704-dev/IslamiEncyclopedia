@@ -88,8 +88,8 @@ object LastReadStore {
     private const val PREFS = "hadith_last_read"
     fun save(context: Context, bookId: Int, sectionId: Int, bookTitle: String, sectionTitle: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-        .putInt("bookId", bookId).putInt("sectionId", sectionId)
-        .putString("bookTitle", bookTitle).putString("sectionTitle", sectionTitle).apply()
+       .putInt("bookId", bookId).putInt("sectionId", sectionId)
+       .putString("bookTitle", bookTitle).putString("sectionTitle", sectionTitle).apply()
     }
     fun get(context: Context): Map<String, Any>? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -238,7 +238,6 @@ class HadithMeActivity : AppCompatActivity() {
             isSingleLine = true; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; isSelected = true; gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(8), 0, dp(8), 0) }
         }
-        // NEW: ⚙️ + 🔖 TextView side by side
         settingsButton = TextView(this).apply {
             text = "⚙️"; textSize = 18f; gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply { marginStart = dp(4) }
@@ -370,7 +369,7 @@ class HadithMeActivity : AppCompatActivity() {
                     val query = s?.toString()?.trim()?: ""
                     globalSearchRunnable?.let { globalSearchHandler.removeCallbacks(it) }
                     when {
-                        query.length < 2 -> { globalSearchGeneration++; globalSearchStatus.text = "কমপক্ষে ২টি অক্ষর লিখুন..."; showGlobalHint("🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন") }
+                        query.length < 2 -> { globalSearchGeneration++; globalSearchStatus.text = "কমপক্ষে ২টি অক্ষর লিখুন..."; showGlobalHint("🔍 ডাউনলোড + ক্যাশ থেকে সার্চ হবে") }
                         else -> { globalSearchStatus.text = "⏳ টাইপ করা থামলে সার্চ শুরু হবে..."; globalSearchRunnable = Runnable { performGlobalSearchFromDownloaded(query) }; globalSearchRunnable?.let { globalSearchHandler.postDelayed(it, 600) } }
                     }
                 }
@@ -386,7 +385,7 @@ class HadithMeActivity : AppCompatActivity() {
             setPadding(dp(12), dp(10), dp(12), dp(12)); clipToPadding = false; visibility = View.GONE
         }
         globalSearchHint = TextView(this).apply {
-            text = "🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন"; textSize = 15f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#999999")); gravity = Gravity.CENTER; setPadding(dp(24), dp(40), dp(24), dp(40))
+            text = "🔍 ডাউনলোড + ক্যাশ থেকে সার্চ হবে"; textSize = 15f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#999999")); gravity = Gravity.CENTER; setPadding(dp(24), dp(40), dp(24), dp(40))
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP)
         }
         resultsFrame.addView(globalSearchRecycler); resultsFrame.addView(globalSearchHint)
@@ -397,7 +396,7 @@ class HadithMeActivity : AppCompatActivity() {
     private fun buildBookmarkOverlay(): FrameLayout {
         val overlay = FrameLayout(this).apply { layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT); visibility = View.GONE }
         val popup = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE); layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT) }
-        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(Color.parseColor("#2E7D32")); setPadding(dp(12), dp(14), dp(12), dp(14)); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(Color.parseColor("#01837A")); setPadding(dp(12), dp(14), dp(12), dp(14)); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
         header.addView(ImageView(this).apply { setImageResource(R.drawable.back); setColorFilter(Color.WHITE); layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)); setOnClickListener { closeBookmark() } })
         header.addView(TextView(this).apply { text = "বুকমার্ক"; textSize = 17f; setTextColor(Color.WHITE); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(10), 0, 0, 0) } })
         bookmarkStatus = TextView(this).apply { text = ""; textSize = 13f; setTextColor(Color.parseColor("#666666")); typeface = getBengaliTypeface(); setBackgroundColor(Color.parseColor("#F9F9F9")); setPadding(dp(15), dp(8), dp(15), dp(8)); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
@@ -407,13 +406,17 @@ class HadithMeActivity : AppCompatActivity() {
     }
 
     private fun showSettingsDialog() {
-        val dialogView = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(20), dp(20), dp(20)) }
-        val title = TextView(this).apply { text = "⚙️ ফন্ট সেটিংস"; textSize = 18f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(16)) }
+        val dialogView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL;
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+            setBackgroundColor(Color.WHITE)
+        }
+        val title = TextView(this).apply { text = "⚙️ ফন্ট সেটিংস"; textSize = 18f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(16)); setBackgroundColor(Color.WHITE) }
         dialogView.addView(title)
 
         fun createSpinnerRow(label: String, currentSize: Float, onSelect: (Float) -> Unit): LinearLayout {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) } }
-            row.addView(TextView(this).apply { text = label; textSize = 14f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#333333")) })
+            val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) } }
+            row.addView(TextView(this).apply { text = label; textSize = 14f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#333333")); setBackgroundColor(Color.WHITE) })
             val preview = TextView(this).apply {
                 text = "উদাহরণ: ${label}"; typeface = getBengaliTypeface(); setBackgroundColor(Color.parseColor("#F5F5F5"))
                 setPadding(dp(8), dp(6), dp(8), dp(6)); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4); bottomMargin = dp(4) }
@@ -440,19 +443,19 @@ class HadithMeActivity : AppCompatActivity() {
         dialogView.addView(createSpinnerRow("বাংলা ফন্ট", banglaFontSize) { banglaFontSize = it; saveFontSize() })
         dialogView.addView(createSpinnerRow("শিরোনাম ফন্ট", banglaTitleSize) { banglaTitleSize = it; saveFontSize() })
 
-        val nightCheck = CheckBox(this).apply { text = "🌙 নাইট মোড"; isChecked = isNightMode; typeface = getBengaliTypeface() }
+        val nightCheck = CheckBox(this).apply { text = "🌙 নাইট মোড"; isChecked = isNightMode; typeface = getBengaliTypeface(); setBackgroundColor(Color.WHITE) }
         dialogView.addView(nightCheck)
 
         AlertDialog.Builder(this)
-          .setView(dialogView)
-          .setPositiveButton("ঠিক আছে") { d, _ ->
+         .setView(dialogView)
+         .setPositiveButton("ঠিক আছে") { d, _ ->
                 isNightMode = nightCheck.isChecked
                 saveFontSize()
                 recyclerView.adapter?.notifyDataSetChanged()
                 d.dismiss()
             }
-          .setNegativeButton("বন্ধ") { d, _ -> d.dismiss() }
-          .show()
+         .setNegativeButton("বন্ধ") { d, _ -> d.dismiss() }
+         .show()
     }
 
     private fun showFontMenu() {
@@ -478,8 +481,8 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private fun saveFontSize() {
         getSharedPreferences("hadith_font_prefs", Context.MODE_PRIVATE).edit()
-        .putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize)
-        .putBoolean("night_mode", isNightMode).apply()
+       .putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize)
+       .putBoolean("night_mode", isNightMode).apply()
     }
 
     private fun openBookmark() {
@@ -516,7 +519,7 @@ class HadithMeActivity : AppCompatActivity() {
             }
             withContext(Dispatchers.Main) {
                 if (list.isEmpty()) {
-                    bookmarkStatus.text = "বুকমার্ক আছে কিন্তু ডাটা ক্যাশে নেই, বই ডাউনলোড করুন"
+                    bookmarkStatus.text = "বুকমার্ক আছে কিন্তু ক্যাশে নেই, বই খুলুন বা ডাউনলোড করুন"
                 } else {
                     bookmarkRecycler.adapter = BookmarkAdapter(list,
                         onCopy = { item -> copyHadith(item.hadith, item.hadith.bookInnerTitle, item.sectionTitle) },
@@ -562,6 +565,9 @@ class HadithMeActivity : AppCompatActivity() {
         recyclerView.visibility = View.VISIBLE
         refreshButton.visibility = if (!isNetworkAvailable || isShowingCachedContent) View.VISIBLE else View.GONE
         moreButton.visibility = if (currentState is PageState.Hadith) View.VISIBLE else View.GONE
+        // Settings only in Books
+        settingsButton.visibility = if (currentState is PageState.Books) View.VISIBLE else View.GONE
+        bookmarkToolbarButton.visibility = View.VISIBLE
     }
     private fun cacheFileName(key: String): String { val md = MessageDigest.getInstance("MD5"); return md.digest(key.toByteArray()).joinToString("") { "%02x".format(it) } + ".json" }
     private fun getCachedData(key: String): String? { val f = File(File(filesDir, cacheDirName), cacheFileName(key)); return if (f.exists()) f.readText() else null }
@@ -728,8 +734,12 @@ class HadithMeActivity : AppCompatActivity() {
                 downloadProgress[book.id] = 2; notifyBookRowChanged(book.id)
                 for (section in sections) {
                     ensureActive()
-                    val hadithJson = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/${book.id}/hadith/${section.id}.json", "hadith_${book.id}_${section.id}")
-                    val list = parseHadith(hadithJson); HadithCache.hadith["${book.id}_${section.id}"] = list
+                    try {
+                        val hadithJson = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/${book.id}/hadith/${section.id}.json", "hadith_${book.id}_${section.id}")
+                        val list = parseHadith(hadithJson); HadithCache.hadith["${book.id}_${section.id}"] = list
+                    } catch (e: Exception) {
+                        // even if failed, keep trying next - cache already attempted
+                    }
                     done++; downloadProgress[book.id] = ((done * 100) / total).coerceIn(0,99); notifyBookRowChanged(book.id)
                 }
                 downloadingBookIds.remove(book.id); downloadProgress.remove(book.id); downloadedBookIds.add(book.id); DownloadStore.markDownloaded(this@HadithMeActivity, book.id); notifyBookRowChanged(book.id)
@@ -792,15 +802,15 @@ class HadithMeActivity : AppCompatActivity() {
     private fun closeGlobalSearch() { isGlobalSearchOpen = false; globalSearchOverlay.visibility = View.GONE; globalSearchInput.setText("") }
     private fun showGlobalHint(msg: String) { globalSearchHint.text = msg; globalSearchHint.visibility = View.VISIBLE; globalSearchRecycler.visibility = View.GONE }
     private fun performGlobalSearchFromDownloaded(query: String) {
-        if (downloadedBookIds.isEmpty()) { globalSearchStatus.text = "কোনো বই ডাউনলোড করা হয়নি।"; showGlobalHint("😔 বই ডাউনলোড করুন"); return }
         val gen = ++globalSearchGeneration; globalSearchHint.visibility = View.GONE; globalSearchRecycler.visibility = View.GONE
-        globalSearchStatus.text = "🔍 অনুসন্ধান চলছে..."
+        globalSearchStatus.text = "🔍 ডাউনলোড + ক্যাশ থেকে অনুসন্ধান চলছে..."
         val booksSource = currentBooks.ifEmpty { HadithCache.books?: emptyList() }
-        val targetBooks = booksSource.filter { downloadedBookIds.contains(it.id) }
         scope.launch(Dispatchers.Default) {
             val results = mutableListOf<GlobalSearchResult>(); val term = query.lowercase()
-            for (book in targetBooks) {
+            for (book in booksSource) {
                 if (gen!= globalSearchGeneration) return@launch
+                val hasCache = getCachedData("sections_${book.id}")!= null || downloadedBookIds.contains(book.id)
+                if (!hasCache) continue
                 val sections = HadithCache.sections[book.id]?: run {
                     val cached = getCachedData("sections_${book.id}")
                     if (cached!= null) parseSections(cached) else emptyList()
@@ -811,13 +821,13 @@ class HadithMeActivity : AppCompatActivity() {
                         val cached = getCachedData(k)
                         if (cached!= null) parseHadith(cached) else emptyList()
                     }
-                    hadithList.filter { h -> h.hadithNumber.toString().contains(term) || h.title.stripHtml().lowercase().contains(term) || h.description.stripHtml().lowercase().contains(term) }
-                  .forEach { h -> results.add(GlobalSearchResult(h, book.titleEn, book.id, section.title, section.id)) }
+                    hadithList.filter { h -> h.hadithNumber.toString().contains(term) || h.title.stripHtml().lowercase().contains(term) || h.description.stripHtml().lowercase().contains(term) || h.descriptionAr.contains(term) }
+                   .forEach { h -> results.add(GlobalSearchResult(h, book.titleEn, book.id, section.title, section.id)) }
                 }
             }
             withContext(Dispatchers.Main) {
-                if (results.isEmpty()) { globalSearchStatus.text = "কোনো ফলাফল নেই"; showGlobalHint("😔 পাওয়া যায়নি") }
-                else { globalSearchStatus.text = "✅ ${toBangla(results.size)} টি পাওয়া গেছে"; globalSearchHint.visibility = View.GONE; globalSearchRecycler.visibility = View.VISIBLE; globalSearchRecycler.adapter = GlobalSearchAdapter(results, query, onCopy = { r -> copyHadith(r.hadith, r.bookTitle, r.sectionTitle) }, onShare = { r -> shareHadith(r.hadith, r.bookTitle, r.sectionTitle) }, onBookmark = { r -> BookmarkStore.toggle(this@HadithMeActivity, BookmarkStore.makeKey(r.bookId, r.sectionId, r.hadith.hadithNumber)) }) }
+                if (results.isEmpty()) { globalSearchStatus.text = "কোনো ফলাফল নেই"; showGlobalHint("😔 পাওয়া যায়নি, বই খুলুন বা ডাউনলোড করুন") }
+                else { globalSearchStatus.text = "✅ ${toBangla(results.size)} টি পাওয়া গেছে (ক্যাশ+ডাউনলোড)"; globalSearchHint.visibility = View.GONE; globalSearchRecycler.visibility = View.VISIBLE; globalSearchRecycler.adapter = GlobalSearchAdapter(results, query, onCopy = { r -> copyHadith(r.hadith, r.bookTitle, r.sectionTitle) }, onShare = { r -> shareHadith(r.hadith, r.bookTitle, r.sectionTitle) }, onBookmark = { r -> BookmarkStore.toggle(this@HadithMeActivity, BookmarkStore.makeKey(r.bookId, r.sectionId, r.hadith.hadithNumber)) }) }
             }
         }
     }
@@ -952,8 +962,8 @@ class HadithMeActivity : AppCompatActivity() {
                     text = if (added) "📌" else "🔖"
                 }
             })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "⎙"; textSize = 18f; setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(6) }; setOnClickListener { onCopy(hadith) } })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "↗"; textSize = 18f; setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)); setOnClickListener { onShare(hadith) } })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.copy); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(8) }; setOnClickListener { onCopy(hadith) } })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.share); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)); setOnClickListener { onShare(hadith) } })
             holder.card.addView(headerRow)
             if (hadith.title.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaTitleSize; setTextColor(if (isNightMode) Color.parseColor("#80CBC4") else Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }; setSmartText(hadith.title.trim(), currentSearchHighlight) })
             if (hadith.descriptionAr.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = arabicFontSize; setTextColor(if (isNightMode) Color.WHITE else Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) }; setSmartText(hadith.descriptionAr.trim(), currentSearchHighlight) })
@@ -965,19 +975,19 @@ class HadithMeActivity : AppCompatActivity() {
     data class GlobalSearchResult(val hadith: HadithItem, val bookTitle: String, val bookId: Int, val sectionTitle: String, val sectionId: Int)
     inner class BookmarkAdapter(private val items: List<BookmarkItem>, private val onCopy: (BookmarkItem) -> Unit, private val onShare: (BookmarkItem) -> Unit, private val onRemove: (BookmarkItem) -> Unit) : RecyclerView.Adapter<BookmarkAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }; background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#2E7D32"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12)) })
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }; background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12)) })
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = items[position]; val hadith = item.hadith; holder.card.removeAllViews()
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "হাদিস নং - ${toBangla(hadith.hadithNumber)}"; textSize = 12f; setTextColor(Color.WHITE); typeface = getBengaliTypeface(); background = createRoundedSolid(Color.parseColor("#2E7D32"), dp(20)); setPadding(dp(10), dp(4), dp(10), dp(4)) })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = hadith.bookInnerTitle.ifBlank { item.sectionTitle }; textSize = 11f; setTextColor(Color.parseColor("#2E7D32")); typeface = getBengaliTypeface(); background = createRoundedBg(Color.parseColor("#E8F5E9"), Color.parseColor("#2E7D32"), dp(1), dp(12)); setPadding(dp(8), dp(4), dp(8), dp(4)); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(8), 0, dp(8), 0) } })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "❌"; textSize = 14f; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(4) }; setOnClickListener { onRemove(item) } })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "⎙"; textSize = 16f; setTextColor(Color.parseColor("#2E7D32")); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(4) }; setOnClickListener { onCopy(item) } })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "↗"; textSize = 16f; setTextColor(Color.parseColor("#2E7D32")); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)); setOnClickListener { onShare(item) } })
+            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "হাদিস নং - ${toBangla(hadith.hadithNumber)}"; textSize = 12f; setTextColor(Color.WHITE); typeface = getBengaliTypeface(); background = createRoundedSolid(Color.parseColor("#01837A"), dp(20)); setPadding(dp(10), dp(4), dp(10), dp(4)) })
+            headerRow.addView(TextView(this@HadithMeActivity).apply { text = hadith.bookInnerTitle.ifBlank { item.sectionTitle }; textSize = 11f; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface(); background = createRoundedBg(Color.parseColor("#E8F8F7"), Color.parseColor("#01837A"), dp(1), dp(12)); setPadding(dp(8), dp(4), dp(8), dp(4)); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(8), 0, dp(8), 0) } })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.copy); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(4) }; setOnClickListener { onCopy(item) } })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.share); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }; setOnClickListener { onShare(item) } })
+            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "❌"; textSize = 14f; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)); setOnClickListener { onRemove(item) } })
             holder.card.addView(headerRow)
-            if (hadith.title.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaTitleSize; setTextColor(Color.parseColor("#2E7D32")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.title) })
-            if (hadith.descriptionAr.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = arabicFontSize; setTextColor(Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.descriptionAr) })
-            if (hadith.description.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaFontSize; setTextColor(Color.parseColor("#444444")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.description) })
+            if (hadith.title.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaTitleSize; setTextColor(if (isNightMode) Color.parseColor("#80CBC4") else Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.title) })
+            if (hadith.descriptionAr.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = arabicFontSize; setTextColor(if (isNightMode) Color.WHITE else Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.descriptionAr) })
+            if (hadith.description.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaFontSize; setTextColor(if (isNightMode) Color.parseColor("#E0E0E0") else Color.parseColor("#444444")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.description) })
         }
         override fun getItemCount() = items.size
     }
@@ -992,12 +1002,12 @@ class HadithMeActivity : AppCompatActivity() {
             val key = BookmarkStore.makeKey(result.bookId, result.sectionId, hadith.hadithNumber)
             val isBm = BookmarkStore.isBookmarked(this@HadithMeActivity, key)
             headerRow.addView(TextView(this@HadithMeActivity).apply { text = if (isBm) "📌" else "🔖"; textSize = 16f; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(4) }; setOnClickListener { onBookmark(result); text = if (BookmarkStore.isBookmarked(this@HadithMeActivity, key)) "📌" else "🔖" } })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "⎙"; textSize = 16f; setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(4) }; setOnClickListener { onCopy(result) } })
-            headerRow.addView(TextView(this@HadithMeActivity).apply { text = "↗"; textSize = 16f; setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)); setOnClickListener { onShare(result) } })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.copy); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(4) }; setOnClickListener { onCopy(result) } })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.share); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)); setOnClickListener { onShare(result) } })
             holder.card.addView(headerRow)
-            if (hadith.title.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaTitleSize; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.title, highlightQuery) })
-            if (hadith.descriptionAr.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = arabicFontSize; setTextColor(Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.descriptionAr, highlightQuery) })
-            if (hadith.description.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaFontSize; setTextColor(Color.parseColor("#444444")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.description, highlightQuery) })
+            if (hadith.title.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaTitleSize; setTextColor(if (isNightMode) Color.parseColor("#80CBC4") else Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.title, highlightQuery) })
+            if (hadith.descriptionAr.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = arabicFontSize; setTextColor(if (isNightMode) Color.WHITE else Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.descriptionAr, highlightQuery) })
+            if (hadith.description.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaFontSize; setTextColor(if (isNightMode) Color.parseColor("#E0E0E0") else Color.parseColor("#444444")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.description, highlightQuery) })
         }
         override fun getItemCount() = items.size
     }
