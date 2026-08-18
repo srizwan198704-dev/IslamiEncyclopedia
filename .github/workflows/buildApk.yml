@@ -38,7 +38,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # --- 1. BUILD ORIGINAL ---
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
@@ -59,7 +58,6 @@ jobs:
             exit 1
           fi
 
-      # --- 2. RENAME PACKAGE ---
       - name: Prepare APK for Rename
         run: |
           mkdir -p apk/output
@@ -70,15 +68,17 @@ jobs:
         run: |
           apktool d ${{ env.apk_path }} -o apk/decoded -f
 
-      - name: Change Package Name to com.konasl.nagad
+      - name: Change Package Name Only in AndroidManifest.xml
         run: |
           NEW_PACKAGE="com.konasl.nagad"
           MANIFEST="apk/decoded/AndroidManifest.xml"
           OLD_PACKAGE=$(grep -oP 'package="\K[^"]+' $MANIFEST)
-          echo "Old: $OLD_PACKAGE -> New: $NEW_PACKAGE"
-          sed -i "s/package=\"$OLD_PACKAGE\"/package=\"$NEW_PACKAGE\"/" $MANIFEST
-          grep -rIl "$OLD_PACKAGE" apk/decoded --exclude-dir=.git | xargs sed -i "s/$OLD_PACKAGE/$NEW_PACKAGE/g" || true
-          sed -i "s/renameManifestPackage: .*/renameManifestPackage: $NEW_PACKAGE/" apk/decoded/apktool.yml || true
+          echo "Old Package: $OLD_PACKAGE"
+          echo "New Package: $NEW_PACKAGE"
+          # শুধু AndroidManifest.xml এর package attribute চেঞ্জ হবে
+          sed -i "s/package=\"$OLD_PACKAGE\"/package=\"$NEW_PACKAGE\"/" "$MANIFEST"
+          echo "Manifest Updated:"
+          grep -oP 'package="[^"]+' "$MANIFEST"
 
       - name: Rebuild and Sign Renamed APK
         run: |
@@ -89,16 +89,14 @@ jobs:
           aapt dump badging apk/output/com.konasl.nagad.apk | grep package
           ls -lh apk/output/
 
-      # --- 3. RELEASE ---
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v-${{ github.run_number }}-${{ github.run_id }}
           name: "IslamiPedia Build ${{ github.run_number }}"
           body: |
-            ✅ Original APK + AAB
-            ✅ Renamed APK (com.konasl.nagad)
-            Build: ${{ github.run_number }}
+            ✅ Original APK + AAB (original package)
+            ✅ Renamed APK (only Manifest package changed to com.konasl.nagad)
           files: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
