@@ -1,4 +1,4 @@
-name: Android CI
+name: Android CI - Build Rename Release
 
 on:
   workflow_dispatch:
@@ -7,11 +7,11 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-rename-release:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
@@ -38,63 +38,68 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # --- 1. BUILD ORIGINAL ---
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
       - name: Build Release AAB
         run: ./gradlew bundleRelease
 
-      - name: Install binutils
+      - name: Install binutils and apktool
         run: |
           sudo apt-get update
-          sudo apt-get install -y binutils unzip
+          sudo apt-get install -y binutils unzip apktool apksigner zipalign default-jdk aapt
 
-      - name: Extract AAB
+      - name: Check 16KB Page Size
         run: |
           unzip app/build/outputs/bundle/release/app-release.aab -d aab_check
-
-      - name: List .so files
-        run: |
-          find aab_check -name "*.so"
-
-      - name: Check page size
-        run: |
-          find aab_check -name "*.so" -exec sh -c '
-            echo "---- $1 ----";
-            readelf -l "$1" | grep LOAD
-          ' _ {} \;
-
-      - name: Fail if 4KB page size detected
-        run: |
+          find aab_check -name "*.so" -exec sh -c 'echo "---- $1 ----"; readelf -l "$1" | grep LOAD' _ {} \;
           if find aab_check -name "*.so" -exec readelf -l {} \; | grep -q "0x1000"; then
-            echo "ERROR: Found 4KB page size (0x1000). Not allowed!"
+            echo "ERROR: Found 4KB page size!"
             exit 1
-          else
-            echo "SUCCESS: All native libraries are 16KB compatible (0x4000)"
           fi
 
-      - name: Copy APK to apk folder
+      # --- 2. RENAME PACKAGE ---
+      - name: Prepare APK for Rename
         run: |
-          mkdir -p apk
-          cp app/build/outputs/apk/release/app-release.apk apk/app-release.apk
-          ls -lh apk/
+          mkdir -p apk/output
+          cp app/build/outputs/apk/release/app-release.apk apk/original.apk
+          echo "apk_path=apk/original.apk" >> $GITHUB_ENV
 
-      - name: Commit APK to repository
+      - name: Decode APK
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apk/
-          git diff --staged --quiet || git commit -m "update apk $(date +'%Y-%m-%d %H:%M')"
-          git push
+          apktool d ${{ env.apk_path }} -o apk/decoded -f
 
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: islamipedia-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+      - name: Change Package Name to com.konasl.nagad
+        run: |
+          NEW_PACKAGE="com.konasl.nagad"
+          MANIFEST="apk/decoded/AndroidManifest.xml"
+          OLD_PACKAGE=$(grep -oP 'package="\K[^"]+' $MANIFEST)
+          echo "Old: $OLD_PACKAGE -> New: $NEW_PACKAGE"
+          sed -i "s/package=\"$OLD_PACKAGE\"/package=\"$NEW_PACKAGE\"/" $MANIFEST
+          grep -rIl "$OLD_PACKAGE" apk/decoded --exclude-dir=.git | xargs sed -i "s/$OLD_PACKAGE/$NEW_PACKAGE/g" || true
+          sed -i "s/renameManifestPackage: .*/renameManifestPackage: $NEW_PACKAGE/" apk/decoded/apktool.yml || true
 
-      - name: Upload Release AAB
-        uses: actions/upload-artifact@v4
+      - name: Rebuild and Sign Renamed APK
+        run: |
+          apktool b apk/decoded -o apk/output/unsigned.apk
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          zipalign -v 4 apk/output/unsigned.apk apk/output/aligned.apk
+          apksigner sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out apk/output/com.konasl.nagad.apk apk/output/aligned.apk
+          aapt dump badging apk/output/com.konasl.nagad.apk | grep package
+          ls -lh apk/output/
+
+      # --- 3. RELEASE ---
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: islamipedia-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          tag_name: v-${{ github.run_number }}-${{ github.run_id }}
+          name: "IslamiPedia Build ${{ github.run_number }}"
+          body: |
+            ✅ Original APK + AAB
+            ✅ Renamed APK (com.konasl.nagad)
+            Build: ${{ github.run_number }}
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
+            apk/output/com.konasl.nagad.apk
