@@ -67,10 +67,8 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 	private double n = 0;
 	private HashMap<String, Object> ListMap = new HashMap<>();
 
-	// Intent এর মাধ্যমে পাওয়া বর্তমান সূরার তথ্য
 	private String suraNumber = "";
 	private String suraLink = "";
-	// এই সূরাটার তাফসির লোকালি ক্যাশ করার জন্য পাথ (প্রতিটা সূরার জন্য আলাদা ফাইল)
 	private String suraCacheFile = "";
 
 	private ArrayList<HashMap<String, Object>> chapter = new ArrayList<>();
@@ -153,7 +151,6 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		deleted = new AlertDialog.Builder(this);
 		onlineoffline = new AlertDialog.Builder(this);
 
-		// TafsironlineActivity থেকে পাঠানো sura নম্বর ও ওই সূরার নিজস্ব json লিংক
 		suraNumber = getIntent().getStringExtra("sura");
 		suraLink = getIntent().getStringExtra("link");
 		if (suraNumber == null) {
@@ -214,39 +211,25 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 					ListView1.setVisibility(View.VISIBLE);
 				}
 			}
-
 			@Override
-			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {
-
-			}
-
+			public void beforeTextChanged(CharSequence _param1, int _param2, int _param3, int _param4) {}
 			@Override
-			public void afterTextChanged(Editable _param1) {
-
-			}
+			public void afterTextChanged(Editable _param1) {}
 		});
 
-		// এই সূরার json ফাইল আগে থেকেই সম্পূর্ণভাবে ওই সূরার আয়াতগুলো ধারণ করে,
-		// তাই "sura" অনুযায়ী আলাদা করে ফিল্টার করার দরকার নেই।
 		_book_request_listener = new RequestNetwork.RequestListener() {
 			@Override
 			public void onResponse(String _param1, String _param2, HashMap<String, Object> _param3) {
-				final String _tag = _param1;
-				final String _response = _param2;
-				final HashMap<String, Object> _responseHeaders = _param3;
 				try {
-					chapter = new Gson().fromJson(_response, new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
+					chapter = new Gson().fromJson(_param2, new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
 					ListView1.setAdapter(new ListView1Adapter(chapter));
 					((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
 					getsearch = new Gson().toJson(chapter);
 					searchimg.setVisibility(View.VISIBLE);
 					spinber.setVisibility(View.GONE);
-					// পরের বার দ্রুত ও অফলাইনে দেখানোর জন্য এই সূরাটা লোকালি সংরক্ষণ করা
 					FileUtil.makeDir(FileUtil.getPackageDataDir(getApplicationContext()).concat("/".concat("/ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির/")));
-					FileUtil.writeFile(suraCacheFile, _response);
-				} catch (Exception e) {
-
-				}
+					FileUtil.writeFile(suraCacheFile, _param2);
+				} catch (Exception e) {}
 				if (chapter.size() == 0) {
 					spin.setVisibility(View.VISIBLE);
 					content.setVisibility(View.GONE);
@@ -257,11 +240,8 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 					searchimg.setVisibility(View.VISIBLE);
 				}
 			}
-
 			@Override
 			public void onErrorResponse(String _param1, String _param2) {
-				final String _tag = _param1;
-				final String _message = _param2;
 				if (FileUtil.isExistFile(suraCacheFile)) {
 					try {
 						chapter = new Gson().fromJson(FileUtil.readFile(suraCacheFile), new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
@@ -273,9 +253,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 						content.setVisibility(View.VISIBLE);
 						Nointernet.setVisibility(View.GONE);
 						spinber.setVisibility(View.GONE);
-					} catch (Exception e) {
-
-					}
+					} catch (Exception e) {}
 				} else {
 					Toast.makeText(getApplicationContext(), "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show();
 					spinber.setVisibility(View.GONE);
@@ -316,7 +294,6 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		}
 
 		if (FileUtil.isExistFile(suraCacheFile)) {
-			// আগে ডাউনলোড করা এই সূরার ফাইল থাকলে সরাসরি সেটা থেকে লোড করা (দ্রুত, অফলাইনেও কাজ করবে)
 			try {
 				chapter = new Gson().fromJson(FileUtil.readFile(suraCacheFile), new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
 				ListView1.setAdapter(new ListView1Adapter(chapter));
@@ -326,9 +303,7 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 				content.setVisibility(View.VISIBLE);
 				Nointernet.setVisibility(View.GONE);
 				searchimg.setVisibility(View.VISIBLE);
-			} catch (Exception e) {
-
-			}
+			} catch (Exception e) {}
 		} else {
 			FileUtil.makeDir(FileUtil.getPackageDataDir(getApplicationContext()).concat("/".concat("/ইসলামী বিশ্বকোষ/.অনলাইন বই ২/তাফসির/")));
 			if (suraLink != null && !suraLink.equals("") && Rizwan.isConnected(getApplicationContext())) {
@@ -337,7 +312,6 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			} else {
 				ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
 				NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-
 				if (activeNetwork == null || !activeNetwork.isConnected()) {
 					   Nointernet.setVisibility(View.VISIBLE); Toast.makeText(getApplicationContext(), "ইন্টারনেট সেটিং চেক করুন", Toast.LENGTH_SHORT).show();
 				}
@@ -347,7 +321,6 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 				Nointernet.setVisibility(View.VISIBLE);
 			}
 		}
-
 
 		getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
 			@Override
@@ -376,14 +349,12 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		_text.setFocusableInTouchMode(true);
 	}
 
-
 	public void _status_bar_color(final String _colour1, final String _colour2) {
 		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) { 
 			   Window w = this.getWindow(); w.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS); w.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
 			   w.setStatusBarColor(Color.parseColor(_colour1)); w.setNavigationBarColor(Color.parseColor(_colour2));
 		}
 	}
-
 
 	public void _json_search(final String _charSeq) {
 		chapter = new Gson().fromJson(getsearch, new TypeToken<ArrayList<HashMap<String, Object>>>(){}.getType());
@@ -393,10 +364,8 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 			value1 = chapter.get((int)r).get("name").toString();
 			value2 = chapter.get((int)r).get("irfanul").toString();
 			if (!(_charSeq.length() > value1.length()) && value1.toLowerCase().contains(_charSeq.toLowerCase())) {
-
 			} else {
 				if (!(_charSeq.length() > value2.length()) && value2.toLowerCase().contains(_charSeq.toLowerCase())) {
-
 				} else {
 					chapter.remove((int)(r));
 				}
@@ -407,51 +376,46 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 		((BaseAdapter)ListView1.getAdapter()).notifyDataSetChanged();
 	}
 
-
 	public String _replaceArabicNumber(final String _n) {
 		String result = _n.replace("1", "১").replace("2", "২").replace("3", "৩").replace("4", "৪").replace("5", "৫").replace("6", "৬").replace("7", "৭").replace("8", "৮").replace("9", "৯").replace("0", "০");
-
 		return result;
 	}
-
 
 	public void _enable_copy_textview(final TextView _tv) {
 		_tv.setTextIsSelectable(true);
 	}
 
-	// key না থাকলে বা value null হলেও যেন পুরো try ব্লক ভেঙে না পড়ে, তাই
-	// প্রতিটা ফিল্ডের জন্য আলাদাভাবে নিরাপদে মান বের করার হেল্পার মেথড।
-	// key না পাওয়া গেলে _fallback (যেমন "তাফসির যুক্ত করা হয়নি") রিটার্ন হবে,
-	// যাতে হাইড/শো লজিক ঠিকঠাক কাজ করে।
 	public String _getVal(final HashMap<String, Object> _map, final String _key, final String _fallback) {
 		if (_map != null && _map.containsKey(_key) && _map.get(_key) != null) {
-			return _map.get(_key).toString();
+			String v = _map.get(_key).toString().trim();
+			if (!v.isEmpty() && !v.equalsIgnoreCase("null")) {
+				return v;
+			}
 		}
 		return _fallback;
 	}
 
+	// তোমার চাওয়া লজিক: টেক্সটে "তাফসির যুক্ত করা হয়নি" বা "শব্দার্থ যুক্ত করা হয়নি" থাকলে বা খালি থাকলে GONE
+	public boolean _isEmptyTafsir(final String _val) {
+		if (_val == null) return true;
+		String t = _val.trim();
+		if (t.isEmpty()) return true;
+		if (t.contains("তাফসির যুক্ত করা হয়নি") || t.contains("তাফসির যুক্ত করা হয়নি")) return true;
+		if (t.contains("শব্দার্থ যুক্ত করা হয়নি") || t.contains("শব্দার্থ যুক্ত করা হয়নি")) return true;
+		return false;
+	}
+
 	public class ListView1Adapter extends BaseAdapter {
-
 		ArrayList<HashMap<String, Object>> _data;
-
 		public ListView1Adapter(ArrayList<HashMap<String, Object>> _arr) {
 			_data = _arr;
 		}
-
 		@Override
-		public int getCount() {
-			return _data.size();
-		}
-
+		public int getCount() { return _data.size(); }
 		@Override
-		public HashMap<String, Object> getItem(int _index) {
-			return _data.get(_index);
-		}
-
+		public HashMap<String, Object> getItem(int _index) { return _data.get(_index); }
 		@Override
-		public long getItemId(int _index) {
-			return _index;
-		}
+		public long getItemId(int _index) { return _index; }
 
 		@Override
 		public View getView(final int _position, View _v, ViewGroup _container) {
@@ -512,199 +476,104 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 				android.graphics.drawable.RippleDrawable SketchUi_RD = new android.graphics.drawable.RippleDrawable(new android.content.res.ColorStateList(new int[][]{new int[]{}}, new int[]{0xFF01837A}), SketchUi, null);
 				main.setBackground(SketchUi_RD);
 			}
-			if (chapter.get((int)_position).containsKey("verses")) {
-				final HashMap<String, Object> _row = chapter.get((int)_position);
-				number.setText(_replaceArabicNumber(_getVal(_row, "verses", "")));
-				ayaarabic.setText(_getVal(_row, "names", ""));
-				words.setText(_getVal(_row, "words", "শব্দার্থ যুক্ত করা হয়নি"));
-				textkanzuliman.setText(_replaceArabicNumber(_getVal(_row, "verses", "").concat(". ".concat(_getVal(_row, "name", "")))));
-				texttafsirkhazainulirfan.setText(_getVal(_row, "khazainul", "তাফসির যুক্ত করা হয়নি"));
-				textifranulkuran.setText(_getVal(_row, "irfanul", "তাফসির যুক্ত করা হয়নি"));
-				texttafsiribnabbas.setText(_getVal(_row, "ibnabbas", "তাফসির যুক্ত করা হয়নি"));
-				texttafsirmajhari.setText(_getVal(_row, "majhari", "তাফসির যুক্ত করা হয়নি"));
-				texttafsirnurulirfan.setText(_getVal(_row, "nurulirfan", "তাফসির যুক্ত করা হয়নি"));
-				texttafsirtabari.setText(_getVal(_row, "tabari", "তাফসির যুক্ত করা হয়নি"));
-				texttafsiribnkasir.setText(_getVal(_row, "ibnkasir", "তাফসির যুক্ত করা হয়নি"));
-				texttafsirkurtubi.setText(_getVal(_row, "kurtubi", "তাফসির যুক্ত করা হয়নি"));
-				texttafsirrezviya.setText(_getVal(_row, "rejviya", "তাফসির যুক্ত করা হয়নি"));
-				texttafsirbaizabi.setText(_getVal(_row, "baizabi", "তাফসির যুক্ত করা হয়নি"));
-			} else {
 
-			}
-			texttafsiribnabbas.setVisibility(View.GONE);
-			texttafsirkhazainulirfan.setVisibility(View.GONE);
-			texttafsirnurulirfan.setVisibility(View.GONE);
-			texttafsirtabari.setVisibility(View.GONE);
-			texttafsirmajhari.setVisibility(View.GONE);
-			texttafsiribnkasir.setVisibility(View.GONE);
-			texttafsirkurtubi.setVisibility(View.GONE);
-			texttafsirbaizabi.setVisibility(View.GONE);
-			texttafsirrezviya.setVisibility(View.GONE);
-			headingtafsiribnabbas.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsiribnabbas.getVisibility() == View.GONE) {
-						texttafsiribnabbas.setVisibility(View.VISIBLE);
-					} else {
-						texttafsiribnabbas.setVisibility(View.GONE);
-					}
+			if (_data.get((int)_position).containsKey("verses")) {
+				final HashMap<String, Object> _row = _data.get((int)_position);
+
+				String versesNo = _getVal(_row, "verses", "");
+				String arabic = _getVal(_row, "names", "");
+				String wordMeaning = _getVal(_row, "words", "শব্দার্থ যুক্ত করা হয়নি");
+				String kanzul = _getVal(_row, "name", "তাফসির যুক্ত করা হয়নি");
+				String khazainul = _getVal(_row, "khazainul", "তাফসির যুক্ত করা হয়নি");
+				String irfanul = _getVal(_row, "irfanul", "তাফসির যুক্ত করা হয়নি");
+				String ibnabbas = _getVal(_row, "ibnabbas", "তাফসির যুক্ত করা হয়নি");
+				String majhari = _getVal(_row, "majhari", "তাফসির যুক্ত করা হয়নি");
+				String nurulirfan = _getVal(_row, "nurulirfan", "তাফসির যুক্ত করা হয়নি");
+				String tabari = _getVal(_row, "tabari", "তাফসির যুক্ত করা হয়নি");
+				String ibnkasir = _getVal(_row, "ibnkasir", "তাফসির যুক্ত করা হয়নি");
+				String kurtubi = _getVal(_row, "kurtubi", "তাফসির যুক্ত করা হয়নি");
+				String rejviya = _getVal(_row, "rejviya", "তাফসির যুক্ত করা হয়নি");
+				String baizabi = _getVal(_row, "baizabi", "তাফসির যুক্ত করা হয়নি");
+
+				number.setText(_replaceArabicNumber(versesNo));
+				ayaarabic.setText(arabic);
+				words.setText(wordMeaning);
+				textkanzuliman.setText(_replaceArabicNumber(versesNo + ". " + kanzul));
+				texttafsirkhazainulirfan.setText(khazainul);
+				textifranulkuran.setText(irfanul);
+				texttafsiribnabbas.setText(ibnabbas);
+				texttafsirmajhari.setText(majhari);
+				texttafsirnurulirfan.setText(nurulirfan);
+				texttafsirtabari.setText(tabari);
+				texttafsiribnkasir.setText(ibnkasir);
+				texttafsirkurtubi.setText(kurtubi);
+				texttafsirrezviya.setText(rejviya);
+				texttafsirbaizabi.setText(baizabi);
+
+				// শব্দার্থ
+				if (_isEmptyTafsir(wordMeaning)) {
+					words.setVisibility(View.GONE);
+				} else {
+					words.setVisibility(View.VISIBLE);
 				}
-			});
-			headingkhazainulirfan.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsirkhazainulirfan.getVisibility() == View.GONE) {
-						texttafsirkhazainulirfan.setVisibility(View.VISIBLE);
-					} else {
-						texttafsirkhazainulirfan.setVisibility(View.GONE);
-					}
+
+				// --- তোমার চাওয়া মতো hide লজিক ---
+				// kanzul এবং irfanul এর text VISIBLE থাকবে আগের মতো
+				if (_isEmptyTafsir(kanzul)) {
+					mainkanzulimaanlayout.setVisibility(View.GONE);
+				} else {
+					mainkanzulimaanlayout.setVisibility(View.VISIBLE);
+					textkanzuliman.setVisibility(View.VISIBLE);
 				}
-			});
-			headingtafsirnurulirfan.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsirnurulirfan.getVisibility() == View.GONE) {
-						texttafsirnurulirfan.setVisibility(View.VISIBLE);
-					} else {
-						texttafsirnurulirfan.setVisibility(View.GONE);
-					}
+
+				if (_isEmptyTafsir(irfanul)) {
+					mainirfanullayout.setVisibility(View.GONE);
+				} else {
+					mainirfanullayout.setVisibility(View.VISIBLE);
+					textifranulkuran.setVisibility(View.VISIBLE);
 				}
+
+				// বাকি গুলো - parent GONE/VISIBLE, ভিতরের text শুরুতে GONE
+				mainkhazainulirfan.setVisibility(_isEmptyTafsir(khazainul) ? View.GONE : View.VISIBLE);
+				maintafsiribnabbas.setVisibility(_isEmptyTafsir(ibnabbas) ? View.GONE : View.VISIBLE);
+				maintafsirnurulirfan.setVisibility(_isEmptyTafsir(nurulirfan) ? View.GONE : View.VISIBLE);
+				maintafsirtabari.setVisibility(_isEmptyTafsir(tabari) ? View.GONE : View.VISIBLE);
+				maintafsirmajhari.setVisibility(_isEmptyTafsir(majhari) ? View.GONE : View.VISIBLE);
+				maintafsiribnkasir.setVisibility(_isEmptyTafsir(ibnkasir) ? View.GONE : View.VISIBLE);
+				maintafsirkurtubi.setVisibility(_isEmptyTafsir(kurtubi) ? View.GONE : View.VISIBLE);
+				maintafsirbaizabi.setVisibility(_isEmptyTafsir(baizabi) ? View.GONE : View.VISIBLE);
+				maintafsirrezbiya.setVisibility(_isEmptyTafsir(rejviya) ? View.GONE : View.VISIBLE);
+
+				// বাকি গুলোর ভিতরের text আগের মতো বন্ধ থাকবে
+				texttafsirkhazainulirfan.setVisibility(View.GONE);
+				texttafsiribnabbas.setVisibility(View.GONE);
+				texttafsirnurulirfan.setVisibility(View.GONE);
+				texttafsirtabari.setVisibility(View.GONE);
+				texttafsirmajhari.setVisibility(View.GONE);
+				texttafsiribnkasir.setVisibility(View.GONE);
+				texttafsirkurtubi.setVisibility(View.GONE);
+				texttafsirbaizabi.setVisibility(View.GONE);
+				texttafsirrezviya.setVisibility(View.GONE);
+			}
+
+			headingkanzulimaan.setOnClickListener(v -> {
+				if (textkanzuliman.getVisibility() == View.GONE) textkanzuliman.setVisibility(View.VISIBLE);
+				else textkanzuliman.setVisibility(View.GONE);
 			});
-			headingtafsirtabari.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsirtabari.getVisibility() == View.GONE) {
-						texttafsirtabari.setVisibility(View.VISIBLE);
-					} else {
-						texttafsirtabari.setVisibility(View.GONE);
-					}
-				}
+			headingirfanulkuran.setOnClickListener(v -> {
+				if (textifranulkuran.getVisibility() == View.GONE) textifranulkuran.setVisibility(View.VISIBLE);
+				else textifranulkuran.setVisibility(View.GONE);
 			});
-			headingtafsirmajhari.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsirmajhari.getVisibility() == View.GONE) {
-						texttafsirmajhari.setVisibility(View.VISIBLE);
-					} else {
-						texttafsirmajhari.setVisibility(View.GONE);
-					}
-				}
-			});
-			headingtafsirkurtubi.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsirkurtubi.getVisibility() == View.GONE) {
-						texttafsirkurtubi.setVisibility(View.VISIBLE);
-					} else {
-						texttafsirkurtubi.setVisibility(View.GONE);
-					}
-				}
-			});
-			headingtafsiribnkasir.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsiribnkasir.getVisibility() == View.GONE) {
-						texttafsiribnkasir.setVisibility(View.VISIBLE);
-					} else {
-						texttafsiribnkasir.setVisibility(View.GONE);
-					}
-				}
-			});
-			headingtafsirbaizabi.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsirbaizabi.getVisibility() == View.GONE) {
-						texttafsirbaizabi.setVisibility(View.VISIBLE);
-					} else {
-						texttafsirbaizabi.setVisibility(View.GONE);
-					}
-				}
-			});
-			headingtafsirrezbiya.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (texttafsirrezviya.getVisibility() == View.GONE) {
-						texttafsirrezviya.setVisibility(View.VISIBLE);
-					} else {
-						texttafsirrezviya.setVisibility(View.GONE);
-					}
-				}
-			});
-			headingkanzulimaan.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (textkanzuliman.getVisibility() == View.GONE) {
-						textkanzuliman.setVisibility(View.VISIBLE);
-					} else {
-						textkanzuliman.setVisibility(View.GONE);
-					}
-				}
-			});
-			headingirfanulkuran.setOnClickListener(new View.OnClickListener() {
-				@Override
-				public void onClick(View _view) {
-					if (textifranulkuran.getVisibility() == View.GONE) {
-						textifranulkuran.setVisibility(View.VISIBLE);
-					} else {
-						textifranulkuran.setVisibility(View.GONE);
-					}
-				}
-			});
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsiribnabbas.getText().toString())) {
-				maintafsiribnabbas.setVisibility(View.GONE);
-			} else {
-				maintafsiribnabbas.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirkhazainulirfan.getText().toString())) {
-				mainkhazainulirfan.setVisibility(View.GONE);
-			} else {
-				mainkhazainulirfan.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirnurulirfan.getText().toString())) {
-				maintafsirnurulirfan.setVisibility(View.GONE);
-			} else {
-				maintafsirnurulirfan.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirtabari.getText().toString())) {
-				maintafsirtabari.setVisibility(View.GONE);
-			} else {
-				maintafsirtabari.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirmajhari.getText().toString())) {
-				maintafsirmajhari.setVisibility(View.GONE);
-			} else {
-				maintafsirmajhari.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsiribnkasir.getText().toString())) {
-				maintafsiribnkasir.setVisibility(View.GONE);
-			} else {
-				maintafsiribnkasir.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirkurtubi.getText().toString())) {
-				maintafsirkurtubi.setVisibility(View.GONE);
-			} else {
-				maintafsirkurtubi.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirbaizabi.getText().toString())) {
-				maintafsirbaizabi.setVisibility(View.GONE);
-			} else {
-				maintafsirbaizabi.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(texttafsirrezviya.getText().toString())) {
-				maintafsirrezbiya.setVisibility(View.GONE);
-			} else {
-				maintafsirrezbiya.setVisibility(View.VISIBLE);
-			}
-			if ("তাফসির যুক্ত করা হয়নি".equals(textifranulkuran.getText().toString())) {
-				mainirfanullayout.setVisibility(View.GONE);
-			} else {
-				mainirfanullayout.setVisibility(View.VISIBLE);
-			}
-			if ("শব্দার্থ যুক্ত করা হয়নি".equals(words.getText().toString())) {
-				words.setVisibility(View.GONE);
-			} else {
-				words.setVisibility(View.VISIBLE);
-			}
+			headingkhazainulirfan.setOnClickListener(v -> toggle(texttafsirkhazainulirfan));
+			headingtafsiribnabbas.setOnClickListener(v -> toggle(texttafsiribnabbas));
+			headingtafsirnurulirfan.setOnClickListener(v -> toggle(texttafsirnurulirfan));
+			headingtafsirtabari.setOnClickListener(v -> toggle(texttafsirtabari));
+			headingtafsirmajhari.setOnClickListener(v -> toggle(texttafsirmajhari));
+			headingtafsiribnkasir.setOnClickListener(v -> toggle(texttafsiribnkasir));
+			headingtafsirkurtubi.setOnClickListener(v -> toggle(texttafsirkurtubi));
+			headingtafsirbaizabi.setOnClickListener(v -> toggle(texttafsirbaizabi));
+			headingtafsirrezbiya.setOnClickListener(v -> toggle(texttafsirrezviya));
+
 			_enable_copy_textview(ayaarabic);
 			_enable_copy_textview(words);
 			_enable_copy_textview(texttafsiribnabbas);
@@ -721,5 +590,10 @@ public class TafsironlineviewActivity extends AppCompatActivity {
 
 			return _view;
 		}
+
+		private void toggle(TextView tv) {
+			if (tv.getVisibility() == View.GONE) tv.setVisibility(View.VISIBLE);
+			else tv.setVisibility(View.GONE);
+		}
 	}
-	}
+			}
