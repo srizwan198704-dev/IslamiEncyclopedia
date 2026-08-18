@@ -13,6 +13,7 @@ import android.text.Editable
 import android.text.Html
 import android.text.Spanned
 import android.text.TextWatcher
+import android.text.style.BackgroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -31,6 +32,8 @@ import org.json.JSONObject
 import java.io.File
 import java.net.URL
 import java.security.MessageDigest
+import android.text.Spannable
+import android.text.SpannableString
 
 data class BookItem(val id: Int, val sequence: Int, val titleEn: String, val titleAr: String, val totalSection: Int, val totalHadith: Int, val originalPosition: Int = 0)
 data class SectionItem(val id: Int, val sequence: Int, val title: String, val titleAr: String, val totalHadith: Int, val rangeStart: Int, val rangeEnd: Int, val originalPosition: Int = 0)
@@ -41,7 +44,6 @@ sealed class PageState {
     data class Sections(val bookId: Int, val bookTitle: String) : PageState()
     data class Hadith(val bookId: Int, val sectionId: Int, val bookTitle: String, val sectionTitle: String) : PageState()
 }
-
 object ScrollState {
     var booksPosition: Int = 0; var booksOffset: Int = 0
     val sectionsPositions = mutableMapOf<Int, Pair<Int, Int>>()
@@ -50,9 +52,7 @@ object ScrollState {
 object HadithCache {
     var books: List<BookItem>? = null; var booksTimestamp: Long = 0
     val sections = mutableMapOf<Int, List<SectionItem>>()
-    val sectionsTimestamp = mutableMapOf<Int, Long>()
     val hadith = mutableMapOf<String, List<HadithItem>>()
-    val hadithTimestamp = mutableMapOf<String, Long>()
 }
 object DownloadStore {
     private const val PREFS = "hadith_downloads_prefs"
@@ -63,13 +63,43 @@ object DownloadStore {
         return raw.mapNotNull { it.toIntOrNull() }.toMutableSet()
     }
     private fun setDownloaded(context: Context, ids: Set<Int>) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putStringSet(KEY_DOWNLOADED, ids.map { it.toString() }.toSet()).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putStringSet(KEY_DOWNLOADED, ids.map { it.toString() }.toSet()).apply()
     }
     fun markDownloaded(context: Context, bookId: Int) {
         val set = getDownloaded(context); set.add(bookId); setDownloaded(context, set)
     }
 }
+object BookmarkStore {
+    private const val PREFS = "hadith_bookmark_prefs"
+    private const val KEY = "bookmarks"
+    fun getAll(context: Context): MutableSet<String> {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(KEY, emptySet())?.toMutableSet()?: mutableSetOf()
+    }
+    fun isBookmarked(context: Context, key: String): Boolean = getAll(context).contains(key)
+    fun toggle(context: Context, key: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val set = getAll(context)
+        val added = if (set.contains(key)) { set.remove(key); false } else { set.add(key); true }
+        prefs.edit().putStringSet(KEY, set).apply()
+        return added
+    }
+    fun makeKey(bookId: Int, sectionId: Int, hadithNumber: Int): String = "${bookId}_${sectionId}_${hadithNumber}"
+}
+object LastReadStore {
+    private const val PREFS = "hadith_last_read"
+    fun save(context: Context, bookId: Int, sectionId: Int, bookTitle: String, sectionTitle: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+          .putInt("bookId", bookId).putInt("sectionId", sectionId)
+          .putString("bookTitle", bookTitle).putString("sectionTitle", sectionTitle).apply()
+    }
+    fun get(context: Context): Map<String, Any>? {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!p.contains("bookId")) return null
+        return mapOf("bookId" to p.getInt("bookId", -1), "sectionId" to p.getInt("sectionId", -1),
+            "bookTitle" to (p.getString("bookTitle","")?: ""), "sectionTitle" to (p.getString("sectionTitle","")?: ""))
+    }
+}
+
 enum class SkeletonType { BOOK, SECTION, HADITH }
 fun String.toHtmlSpanned(): Spanned = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Html.fromHtml(this, Html.FROM_HTML_MODE_LEGACY) else @Suppress("DEPRECATION") Html.fromHtml(this)
 fun String.stripHtml(): String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) Html.fromHtml(this, Html.FROM_HTML_MODE_LEGACY).toString().trim() else @Suppress("DEPRECATION") Html.fromHtml(this).toString().trim()
@@ -107,7 +137,9 @@ class HadithMeActivity : AppCompatActivity() {
     private lateinit var globalSearchRecycler: RecyclerView
     private lateinit var globalSearchHint: TextView
     private lateinit var refreshButton: ImageView
-    private lateinit var moreButton: TextView // TEXTVIEW দিয়ে থ্রি ডট
+    private lateinit var moreButton: TextView
+    private lateinit var lastReadContainer: LinearLayout
+    private lateinit var lastReadTitle: TextView
 
     private var currentState: PageState = PageState.Books
     private var isSearchOpen = false
@@ -116,7 +148,6 @@ class HadithMeActivity : AppCompatActivity() {
     private var searchRunnable: Runnable? = null
     private val globalSearchHandler = Handler(Looper.getMainLooper())
     private var globalSearchRunnable: Runnable? = null
-    private val marqueeHandler = Handler(Looper.getMainLooper())
 
     private var currentBooks: List<BookItem> = emptyList()
     private var currentSections: List<SectionItem> = emptyList()
@@ -137,6 +168,8 @@ class HadithMeActivity : AppCompatActivity() {
     private var arabicFontSize = 20f
     private var banglaFontSize = 18f
     private var banglaTitleSize = 18f
+    private var isNightMode = false
+    private var currentSearchHighlight = ""
 
     private lateinit var onBackPressedCallback: OnBackPressedCallback
 
@@ -165,6 +198,7 @@ class HadithMeActivity : AppCompatActivity() {
         arabicFontSize = prefs.getFloat("ar_size", 20f)
         banglaFontSize = prefs.getFloat("bn_size", 18f)
         banglaTitleSize = prefs.getFloat("bn_title_size", 18f)
+        isNightMode = prefs.getBoolean("night_mode", false)
         checkNetworkState()
         loadBooks()
     }
@@ -245,6 +279,24 @@ class HadithMeActivity : AppCompatActivity() {
         }
         root.addView(offlineIndicator)
 
+        // NEW: শেষ পঠিত বক্স - বই লিস্টের উপরে
+        lastReadContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(Color.WHITE)
+            background = createRoundedBg(Color.WHITE, Color.parseColor("#2E7D32"), dp(2), dp(12))
+            setPadding(dp(14), dp(12), dp(14), dp(12)); elevation = dp(4).toFloat()
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(12), dp(12), dp(12), dp(0)) }
+        }
+        val lastReadIcon = TextView(this).apply { text = "▶️"; textSize = 16f; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(8) } }
+        lastReadTitle = TextView(this).apply {
+            textSize = 15f; setTextColor(Color.parseColor("#2E7D32")); typeface = getBengaliTypeface()
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val lastReadArrow = TextView(this).apply { text = "➡️"; textSize = 16f }
+        lastReadContainer.addView(lastReadIcon); lastReadContainer.addView(lastReadTitle); lastReadContainer.addView(lastReadArrow)
+        root.addView(lastReadContainer)
+
         val contentFrame = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f) }
         recyclerView = RecyclerView(this).apply {
             layoutManager = LinearLayoutManager(this@HadithMeActivity)
@@ -304,7 +356,7 @@ class HadithMeActivity : AppCompatActivity() {
                     val query = s?.toString()?.trim()?: ""
                     globalSearchRunnable?.let { globalSearchHandler.removeCallbacks(it) }
                     when {
-                        query.length < 2 -> { globalSearchGeneration++; globalSearchStatus.text = "কমপক্ষে ২টি অক্ষর লিখুন..."; showGlobalHint("🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন\n\nহাদিস নম্বর, বাংলা অনুবাদ বা আরবি টেক্সট দিয়ে সার্চ করা যাবে") }
+                        query.length < 2 -> { globalSearchGeneration++; globalSearchStatus.text = "কমপক্ষে ২টি অক্ষর লিখুন..."; showGlobalHint("🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন") }
                         else -> { globalSearchStatus.text = "⏳ টাইপ করা থামলে সার্চ শুরু হবে..."; globalSearchRunnable = Runnable { performGlobalSearchFromDownloaded(query) }; globalSearchRunnable?.let { globalSearchHandler.postDelayed(it, 600) } }
                     }
                 }
@@ -320,7 +372,7 @@ class HadithMeActivity : AppCompatActivity() {
             setPadding(dp(12), dp(10), dp(12), dp(12)); clipToPadding = false; visibility = View.GONE
         }
         globalSearchHint = TextView(this).apply {
-            text = "🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন\n\nহাদিস নম্বর, বাংলা অনুবাদ বা আরবি টেক্সট দিয়ে সার্চ করা যাবে"; textSize = 15f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#999999")); gravity = Gravity.CENTER; setPadding(dp(24), dp(40), dp(24), dp(40))
+            text = "🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন"; textSize = 15f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#999999")); gravity = Gravity.CENTER; setPadding(dp(24), dp(40), dp(24), dp(40))
             layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP)
         }
         resultsFrame.addView(globalSearchRecycler); resultsFrame.addView(globalSearchHint)
@@ -334,19 +386,25 @@ class HadithMeActivity : AppCompatActivity() {
         popup.menu.add(0, 2, 0, "আরবি ফন্ট ছোট (-)")
         popup.menu.add(0, 3, 0, "বাংলা ফন্ট বড় (+)")
         popup.menu.add(0, 4, 0, "বাংলা ফন্ট ছোট (-)")
+        popup.menu.add(0, 5, 0, if (isNightMode) "☀️ ডে মোড" else "🌙 নাইট মোড")
+        popup.menu.add(0, 6, 0, "⭐ বুকমার্ক দেখুন")
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> { arabicFontSize = (arabicFontSize + 2f).coerceAtMost(36f); saveFontSize(); recyclerView.adapter?.notifyDataSetChanged() }
                 2 -> { arabicFontSize = (arabicFontSize - 2f).coerceAtLeast(12f); saveFontSize(); recyclerView.adapter?.notifyDataSetChanged() }
                 3 -> { banglaFontSize = (banglaFontSize + 1f).coerceAtMost(28f); banglaTitleSize = (banglaTitleSize + 1f).coerceAtMost(28f); saveFontSize(); recyclerView.adapter?.notifyDataSetChanged() }
                 4 -> { banglaFontSize = (banglaFontSize - 1f).coerceAtLeast(12f); banglaTitleSize = (banglaTitleSize - 1f).coerceAtLeast(12f); saveFontSize(); recyclerView.adapter?.notifyDataSetChanged() }
+                5 -> { isNightMode =!isNightMode; saveFontSize(); recyclerView.adapter?.notifyDataSetChanged() }
+                6 -> { Toast.makeText(this, "${toBangla(BookmarkStore.getAll(this).size)} টি বুকমার্ক আছে - হাদিস লিস্টে ❤️ দেখুন", Toast.LENGTH_LONG).show() }
             }
             true
         }
         popup.show()
     }
     private fun saveFontSize() {
-        getSharedPreferences("hadith_font_prefs", Context.MODE_PRIVATE).edit().putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize).apply()
+        getSharedPreferences("hadith_font_prefs", Context.MODE_PRIVATE).edit()
+          .putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize)
+          .putBoolean("night_mode", isNightMode).apply()
     }
 
     private fun refreshCurrentPage() {
@@ -440,6 +498,23 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private fun loadBooks() {
         saveScrollPosition(); currentState = PageState.Books; updateToolbar("হাদিস সমগ্র"); closeSearchSilently(); isShowingCachedContent = false
+
+        // LAST READ BOX LOGIC
+        LastReadStore.get(this)?.let { last ->
+            val bookTitle = last["bookTitle"] as String
+            val sectionTitle = last["sectionTitle"] as String
+            if (bookTitle.isNotBlank() && sectionTitle.isNotBlank()) {
+                lastReadTitle.text = "শেষ পঠিত: $sectionTitle"
+                lastReadContainer.visibility = View.VISIBLE
+                lastReadContainer.setOnClickListener {
+                    val bId = last["bookId"] as Int; val sId = last["sectionId"] as Int
+                    loadHadith(bId, sId, bookTitle, sectionTitle)
+                }
+            } else {
+                lastReadContainer.visibility = View.GONE
+            }
+        }?: run { lastReadContainer.visibility = View.GONE }
+
         val gen = ++loadGeneration
         val memBooks = HadithCache.books
         if (memBooks!= null) {
@@ -452,7 +527,7 @@ class HadithMeActivity : AppCompatActivity() {
             try {
                 val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/book-title.json", "hadith_books_list")
                 if (gen!= loadGeneration) return@launch
-                val books = parseBooks(json); HadithCache.books = books; HadithCache.booksTimestamp = System.currentTimeMillis()
+                val books = parseBooks(json); HadithCache.books = books
                 currentBooks = books; filteredBooks = books
                 recyclerView.adapter = BookAdapter(filteredBooks) { book -> saveScrollPosition(); loadSections(book.id, book.titleEn) }
                 showContent(); attachKeyboardHideOnTouch(); restoreScrollPosition()
@@ -468,6 +543,7 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private fun loadSections(bookId: Int, bookTitle: String) {
         saveScrollPosition(); currentState = PageState.Sections(bookId, bookTitle); updateToolbar(bookTitle); closeSearchSilently(); isShowingCachedContent = false
+        lastReadContainer.visibility = View.GONE
         val gen = ++loadGeneration
         val memSections = HadithCache.sections[bookId]
         if (memSections!= null) {
@@ -495,11 +571,13 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private fun loadHadith(bookId: Int, sectionId: Int, bookTitle: String, sectionTitle: String) {
         saveScrollPosition(); currentState = PageState.Hadith(bookId, sectionId, bookTitle, sectionTitle); updateToolbar(sectionTitle); closeSearchSilently(); isShowingCachedContent = false
+        lastReadContainer.visibility = View.GONE
+        LastReadStore.save(this, bookId, sectionId, bookTitle, sectionTitle)
         val key = "${bookId}_$sectionId"; val gen = ++loadGeneration
         val memHadith = HadithCache.hadith[key]
         if (memHadith!= null) {
             currentHadithList = memHadith; filteredHadith = memHadith
-            recyclerView.adapter = HadithAdapter(filteredHadith, bookTitle, onCopy = { h -> copyHadith(h, bookTitle, sectionTitle) }, onShare = { h -> shareHadith(h, bookTitle, sectionTitle) })
+            recyclerView.adapter = HadithAdapter(filteredHadith, bookTitle, bookId, sectionId, onCopy = { h -> copyHadith(h, bookTitle, sectionTitle) }, onShare = { h -> shareHadith(h, bookTitle, sectionTitle) })
             showContent(); attachKeyboardHideOnTouch(); restoreScrollPosition(); return
         }
         showSkeleton(SkeletonType.HADITH); currentRequestJob?.cancel()
@@ -508,7 +586,7 @@ class HadithMeActivity : AppCompatActivity() {
                 val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/$bookId/hadith/$sectionId.json", "hadith_${bookId}_$sectionId")
                 if (gen!= loadGeneration) return@launch
                 val hadithList = parseHadith(json); HadithCache.hadith[key] = hadithList; currentHadithList = hadithList; filteredHadith = hadithList
-                recyclerView.adapter = HadithAdapter(filteredHadith, bookTitle, onCopy = { h -> copyHadith(h, bookTitle, sectionTitle) }, onShare = { h -> shareHadith(h, bookTitle, sectionTitle) })
+                recyclerView.adapter = HadithAdapter(filteredHadith, bookTitle, bookId, sectionId, onCopy = { h -> copyHadith(h, bookTitle, sectionTitle) }, onShare = { h -> shareHadith(h, bookTitle, sectionTitle) })
                 showContent(); attachKeyboardHideOnTouch(); restoreScrollPosition()
             } catch (e: Exception) { if (gen!= loadGeneration) return@launch; showError("হাদিস লোড করতে সমস্যা হয়েছে") { loadHadith(bookId, sectionId, bookTitle, sectionTitle) } }
         }
@@ -574,6 +652,7 @@ class HadithMeActivity : AppCompatActivity() {
     private fun closeSearch() {
         isSearchOpen = false; searchContainer.visibility = View.GONE; searchInput.setText("")
         searchRunnable?.let { searchHandler.removeCallbacks(it) }; hideKeyboard(searchInput)
+        currentSearchHighlight = ""
         filteredBooks = currentBooks; filteredSections = currentSections; filteredHadith = currentHadithList; restoreFullList()
     }
     private fun closeSearchSilently() {
@@ -584,28 +663,26 @@ class HadithMeActivity : AppCompatActivity() {
         when (val s = currentState) {
             is PageState.Books -> recyclerView.adapter = BookAdapter(filteredBooks) { book -> saveScrollPosition(); loadSections(book.id, book.titleEn) }
             is PageState.Sections -> recyclerView.adapter = SectionAdapter(filteredSections) { section -> saveScrollPosition(); loadHadith(s.bookId, section.id, s.bookTitle, section.title) }
-            is PageState.Hadith -> recyclerView.adapter = HadithAdapter(filteredHadith, s.bookTitle, onCopy = { h -> copyHadith(h, s.bookTitle, s.sectionTitle) }, onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) })
+            is PageState.Hadith -> recyclerView.adapter = HadithAdapter(filteredHadith, s.bookTitle, s.bookId, s.sectionId, onCopy = { h -> copyHadith(h, s.bookTitle, s.sectionTitle) }, onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) })
         }
         showContent(); restoreScrollPosition()
     }
     private fun performSearch(query: String) {
         val term = query.lowercase().trim()
-        if (term.isBlank()) { filteredBooks = currentBooks; filteredSections = currentSections; filteredHadith = currentHadithList; restoreFullList(); return }
+        currentSearchHighlight = term
+        if (term.isBlank()) { currentSearchHighlight = ""; filteredBooks = currentBooks; filteredSections = currentSections; filteredHadith = currentHadithList; restoreFullList(); return }
         when (val s = currentState) {
             is PageState.Books -> {
-                filteredBooks = currentBooks.filter { b -> b.titleEn.lowercase().contains(term) || b.titleAr.contains(term) || b.id.toString().contains(term) }
+                filteredBooks = currentBooks.filter { b -> b.titleEn.lowercase().contains(term) || b.titleAr.contains(term) }
                 recyclerView.adapter = BookAdapter(filteredBooks) { book -> saveScrollPosition(); loadSections(book.id, book.titleEn) }; showContent()
-                if (filteredBooks.isEmpty()) Toast.makeText(this, "কোনো ফলাফল পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
             }
             is PageState.Sections -> {
-                filteredSections = currentSections.filter { sec -> sec.title.lowercase().contains(term) || sec.titleAr.contains(term) || sec.id.toString().contains(term) }
+                filteredSections = currentSections.filter { sec -> sec.title.lowercase().contains(term) || sec.titleAr.contains(term) }
                 recyclerView.adapter = SectionAdapter(filteredSections) { section -> saveScrollPosition(); loadHadith(s.bookId, section.id, s.bookTitle, section.title) }; showContent()
-                if (filteredSections.isEmpty()) Toast.makeText(this, "কোনো ফলাফল পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
             }
             is PageState.Hadith -> {
                 filteredHadith = currentHadithList.filter { h -> h.hadithNumber.toString().contains(term) || h.title.stripHtml().lowercase().contains(term) || h.description.stripHtml().lowercase().contains(term) || h.descriptionAr.contains(term) || h.bookInnerTitle.lowercase().contains(term) }
-                recyclerView.adapter = HadithAdapter(filteredHadith, s.bookTitle, onCopy = { h -> copyHadith(h, s.bookTitle, s.sectionTitle) }, onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) }); showContent()
-                if (filteredHadith.isEmpty()) Toast.makeText(this, "কোনো ফলাফল পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
+                recyclerView.adapter = HadithAdapter(filteredHadith, s.bookTitle, s.bookId, s.sectionId, onCopy = { h -> copyHadith(h, s.bookTitle, s.sectionTitle) }, onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) }); showContent()
             }
         }
     }
@@ -613,28 +690,26 @@ class HadithMeActivity : AppCompatActivity() {
     private fun closeGlobalSearch() {
         isGlobalSearchOpen = false; globalSearchRunnable?.let { globalSearchHandler.removeCallbacks(it) }; globalSearchGeneration++
         globalSearchOverlay.visibility = View.GONE; globalSearchInput.setText(""); globalSearchStatus.text = "সার্চ করতে টাইপ করুন..."
-        showGlobalHint("🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন\n\nহাদিস নম্বর, বাংলা অনুবাদ বা আরবি টেক্সট দিয়ে সার্চ করা যাবে")
-        hideKeyboard(globalSearchInput)
+        showGlobalHint("🔍 ডাউনলোড করা হাদিস বই থেকে সার্চ করুন"); hideKeyboard(globalSearchInput)
     }
     private fun showGlobalHint(msg: String) { globalSearchHint.text = msg; globalSearchHint.visibility = View.VISIBLE; globalSearchRecycler.visibility = View.GONE; globalSearchRecycler.adapter = null }
     private fun performGlobalSearchFromDownloaded(query: String) {
         if (downloadedBookIds.isEmpty()) {
             globalSearchGeneration++; globalSearchStatus.text = "⚠ কোনো বই ডাউনলোড করা হয়নি।"
-            showGlobalHint("😔 এখনো কোনো বই ডাউনলোড করা হয়নি।\n\nবই তালিকা থেকে ডাউনলোড বাটনে চেপে একটি বই ডাউনলোড করুন, তারপর সার্চ করুন।"); return
+            showGlobalHint("😔 এখনো কোনো বই ডাউনলোড করা হয়নি।"); return
         }
         val gen = ++globalSearchGeneration; globalSearchHint.visibility = View.GONE; globalSearchRecycler.visibility = View.GONE
         globalSearchStatus.text = "🔍 ডাউনলোড করা বই থেকে অনুসন্ধান চলছে..."
         val booksSource = currentBooks.ifEmpty { HadithCache.books?: emptyList() }
         val targetBooks = booksSource.filter { downloadedBookIds.contains(it.id) }
         scope.launch(Dispatchers.Default) {
-            val results = mutableListOf<GlobalSearchResult>(); val term = query.lowercase(); var totalHadith = 0; var booksSearched = 0
+            val results = mutableListOf<GlobalSearchResult>(); val term = query.lowercase(); var totalHadith = 0
             for (book in targetBooks) {
                 if (gen!= globalSearchGeneration) return@launch
                 val sections = HadithCache.sections[book.id]?: run {
                     val cachedSectionsJson = getCachedData("sections_${book.id}")
                     if (cachedSectionsJson!= null) { val parsed = parseSections(cachedSectionsJson); HadithCache.sections[book.id] = parsed; parsed } else emptyList()
                 }
-                var bookHasData = false
                 for (section in sections) {
                     if (gen!= globalSearchGeneration) return@launch
                     val k = "${book.id}_${section.id}"
@@ -642,21 +717,20 @@ class HadithMeActivity : AppCompatActivity() {
                         val cachedHadithJson = getCachedData("hadith_${book.id}_${section.id}")
                         if (cachedHadithJson!= null) { val parsed = parseHadith(cachedHadithJson); HadithCache.hadith[k] = parsed; parsed } else emptyList()
                     }
-                    if (hadithList.isEmpty()) continue; bookHasData = true; totalHadith += hadithList.size
-                    hadithList.filter { h -> h.hadithNumber.toString().contains(term) || h.title.stripHtml().lowercase().contains(term) || h.description.stripHtml().lowercase().contains(term) || h.descriptionAr.contains(term) || h.bookInnerTitle.lowercase().contains(term) }
-                      .forEach { h -> results.add(GlobalSearchResult(h, book.titleEn.ifBlank { book.titleAr }, book.id, section.title, section.id)) }
+                    if (hadithList.isEmpty()) continue; totalHadith += hadithList.size
+                    hadithList.filter { h -> h.hadithNumber.toString().contains(term) || h.title.stripHtml().lowercase().contains(term) || h.description.stripHtml().lowercase().contains(term) || h.descriptionAr.contains(term) }
+                    .forEach { h -> results.add(GlobalSearchResult(h, book.titleEn.ifBlank { book.titleAr }, book.id, section.title, section.id)) }
                 }
-                if (bookHasData) { booksSearched++; val snap = booksSearched; val rSnap = results.size; if (gen == globalSearchGeneration) { withContext(Dispatchers.Main) { if (gen == globalSearchGeneration) globalSearchStatus.text = "🔍 ${toBangla(snap)} টি ডাউনলোড করা বই দেখা হয়েছে — ${toBangla(rSnap)} টি ফলাফল" } } }
             }
             if (gen!= globalSearchGeneration) return@launch
             withContext(Dispatchers.Main) {
                 if (gen!= globalSearchGeneration) return@withContext
                 when {
-                    totalHadith == 0 -> { globalSearchStatus.text = "ডাউনলোড করা বইয়ে কোনো হাদিস ডাটা নেই"; showGlobalHint("😔 ডাউনলোড করা বইগুলোর ডাটা এখনো প্রস্তুত হয়নি।") }
+                    totalHadith == 0 -> { globalSearchStatus.text = "ডাউনলোড করা বইয়ে কোনো হাদিস ডাটা নেই"; showGlobalHint("😔 ডাটা প্রস্তুত হয়নি।") }
                     results.isEmpty() -> { globalSearchStatus.text = "মোট ${toBangla(totalHadith)} টি হাদিস — কোনো ফলাফল নেই"; showGlobalHint("😔 \"$query\" এর জন্য কোনো হাদিস পাওয়া যায়নি।") }
                     else -> {
                         globalSearchStatus.text = "✅ ${toBangla(results.size)} টি হাদিস পাওয়া গেছে"; globalSearchHint.visibility = View.GONE; globalSearchRecycler.visibility = View.VISIBLE
-                        globalSearchRecycler.adapter = GlobalSearchAdapter(results, onCopy = { r -> copyHadith(r.hadith, r.bookTitle, r.sectionTitle) }, onShare = { r -> shareHadith(r.hadith, r.bookTitle, r.sectionTitle) })
+                        globalSearchRecycler.adapter = GlobalSearchAdapter(results, query, onCopy = { r -> copyHadith(r.hadith, r.bookTitle, r.sectionTitle) }, onShare = { r -> shareHadith(r.hadith, r.bookTitle, r.sectionTitle) })
                     }
                 }
             }
@@ -675,7 +749,7 @@ class HadithMeActivity : AppCompatActivity() {
         bookTitle.ifBlank { null }, sectionTitle.ifBlank { null },
         if (hadith.hadithNumber > 0) "হাদিস নং: ${toBangla(hadith.hadithNumber)} ${hadith.bookInnerTitle}" else hadith.bookInnerTitle.ifBlank { null },
         hadith.title.stripHtml().ifBlank { null }, hadith.descriptionAr.stripHtml().ifBlank { null }, hadith.description.stripHtml().ifBlank { null },
-        if (withAppLink) "\nঅ্যাপ: ইসলামী বিশ্বকোষ ও আল হাদিস\nhttps://play.google.com/store/apps/details?id=com.srizwan.islamipedia" else null
+        if (withAppLink) "\nঅ্যাপ: ইসলামী বিশ্বকোষ\nhttps://play.google.com/store/apps/details?id=com.srizwan.islamipedia" else null
     ).joinToString("\n")
     private fun handleBackPress() {
         when {
@@ -687,17 +761,29 @@ class HadithMeActivity : AppCompatActivity() {
         }
     }
     override fun onDestroy() {
-        super.onDestroy(); clearSkeletonAnimators(); scope.cancel(); marqueeHandler.removeCallbacksAndMessages(null)
+        super.onDestroy(); clearSkeletonAnimators(); scope.cancel()
         searchRunnable?.let { searchHandler.removeCallbacks(it) }; globalSearchRunnable?.let { globalSearchHandler.removeCallbacks(it) }
-        searchHandler.removeCallbacksAndMessages(null); globalSearchHandler.removeCallbacksAndMessages(null); currentRequestJob?.cancel()
+        currentRequestJob?.cancel()
     }
     private fun getBengaliTypeface() = try { android.graphics.Typeface.createFromAsset(assets, "fonts/SolaimanLipi.ttf") } catch (e: Exception) { android.graphics.Typeface.DEFAULT }
     private fun getArabicTypeface() = try { android.graphics.Typeface.createFromAsset(assets, "fonts/noorehuda.ttf") } catch (e: Exception) { android.graphics.Typeface.DEFAULT }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun createRoundedBg(fillColor: Int, strokeColor: Int, strokeWidth: Int, radius: Int): android.graphics.drawable.Drawable = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.RECTANGLE; setColor(fillColor); setStroke(strokeWidth, strokeColor); cornerRadius = radius.toFloat() }
     private fun createRoundedSolid(fillColor: Int, radius: Int): android.graphics.drawable.Drawable = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.RECTANGLE; setColor(fillColor); cornerRadius = radius.toFloat() }
-    private fun TextView.setSmartText(raw: String) { if (raw.containsHtml()) setText(raw.toHtmlSpanned()) else text = raw; setTextIsSelectable(true) }
-
+    private fun TextView.setSmartText(raw: String, highlight: String = "") {
+        val clean = if (raw.containsHtml()) raw.toHtmlSpanned().toString() else raw
+        if (highlight.isBlank()) {
+            if (raw.containsHtml()) text = raw.toHtmlSpanned() else text = raw
+            setTextIsSelectable(true); return
+        }
+        val spannable = SpannableString(clean)
+        var index = clean.lowercase().indexOf(highlight.lowercase())
+        while (index >= 0) {
+            spannable.setSpan(BackgroundColorSpan(Color.YELLOW), index, index + highlight.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            index = clean.lowercase().indexOf(highlight.lowercase(), index + highlight.length)
+        }
+        text = spannable; setTextIsSelectable(true)
+    }
     private fun buildDownloadControl(book: BookItem): View {
         val size = dp(34)
         val box = FrameLayout(this@HadithMeActivity).apply { layoutParams = LinearLayout.LayoutParams(size, size).apply { marginStart = dp(8) } }
@@ -708,7 +794,7 @@ class HadithMeActivity : AppCompatActivity() {
                 box.addView(TextView(this@HadithMeActivity).apply {
                     text = "${toBangla(downloadProgress[book.id]?: 0)}%"; textSize = 9f; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface(); gravity = Gravity.CENTER
                     layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
-                }); box.isClickable = false
+                })
             }
             else -> {
                 box.visibility = View.VISIBLE; box.background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(1), size / 2)
@@ -718,40 +804,37 @@ class HadithMeActivity : AppCompatActivity() {
         }
         return box
     }
-
     inner class SkeletonAdapter(private val type: SkeletonType) : RecyclerView.Adapter<SkeletonAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
         private fun bar(widthDp: Int, heightDp: Int, topMarginDp: Int = 0): View = View(this@HadithMeActivity).apply {
-            background = createRoundedSolid(Color.parseColor("#E4E4E4"), dp(6))
+            background = createRoundedSolid(if (isNightMode) Color.parseColor("#333333") else Color.parseColor("#E4E4E4"), dp(6))
             layoutParams = LinearLayout.LayoutParams(dp(widthDp), dp(heightDp)).apply { topMargin = dp(topMarginDp) }
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
             val card = LinearLayout(this@HadithMeActivity).apply {
                 orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(14) }
-                background = createRoundedBg(Color.WHITE, Color.parseColor("#EEEEEE"), dp(2), dp(10)); setPadding(dp(16), dp(14), dp(16), dp(14))
+                background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#EEEEEE"), dp(2), dp(10)); setPadding(dp(16), dp(14), dp(16), dp(14))
             }
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
             headerRow.addView(bar(30, 24)); headerRow.addView(bar(150, 18, 0).apply { (layoutParams as LinearLayout.LayoutParams).marginStart = dp(10) })
             card.addView(headerRow); card.addView(bar(220, 15, 12))
-            if (type!= SkeletonType.BOOK) card.addView(bar(160, 13, 8))
-            if (type == SkeletonType.HADITH) card.addView(bar(200, 13, 8))
-            val anim = android.animation.ObjectAnimator.ofFloat(card, "alpha", 1f, 0.45f, 1f).apply { duration = 900; repeatCount = android.animation.ObjectAnimator.INFINITE; startDelay = ((position_seed++ % 4) * 120).toLong(); start() }
+            val anim = android.animation.ObjectAnimator.ofFloat(card, "alpha", 1f, 0.45f, 1f).apply { duration = 900; repeatCount = android.animation.ObjectAnimator.INFINITE; start() }
             skeletonAnimators.add(anim); return VH(card)
         }
         override fun onBindViewHolder(holder: VH, position: Int) {}
         override fun getItemCount() = 8
     }
     private var position_seed = 0
-
     inner class BookAdapter(private val items: List<BookItem>, private val onClick: (BookItem) -> Unit) : RecyclerView.Adapter<BookAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply {
             orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(14) }
-            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(16), dp(14), dp(16), dp(14))
         })
         override fun onBindViewHolder(holder: VH, position: Int) {
             val book = items[position]; holder.card.removeAllViews()
             holder.card.setOnClickListener { hideKeyboard(searchInput); onClick(book) }
+            holder.card.background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10))
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
             headerRow.addView(TextView(this@HadithMeActivity).apply {
                 text = toBangla(book.originalPosition + 1); textSize = 13f; setTextColor(Color.WHITE); typeface = getBengaliTypeface()
@@ -759,10 +842,10 @@ class HadithMeActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(10) }
             })
             val displayTitle = book.titleEn.trim().ifBlank { book.titleAr.trim() }
-            if (displayTitle.isNotBlank()) headerRow.addView(TextView(this@HadithMeActivity).apply { text = displayTitle; textSize = 17f; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) })
+            if (displayTitle.isNotBlank()) headerRow.addView(TextView(this@HadithMeActivity).apply { text = displayTitle; textSize = 17f; setTextColor(if (isNightMode) Color.WHITE else Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) })
             headerRow.addView(buildDownloadControl(book)); holder.card.addView(headerRow)
             val arTitle = book.titleAr.trim()
-            if (arTitle.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { text = arTitle; textSize = 18f; setTextColor(Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10); bottomMargin = dp(10) } })
+            if (arTitle.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { text = arTitle; textSize = 18f; setTextColor(if (isNightMode) Color.parseColor("#CCCCCC") else Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10); bottomMargin = dp(10) } })
             holder.card.addView(View(this@HadithMeActivity).apply { setBackgroundColor(Color.parseColor("#DDDDDD")); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)) })
             val hasSectionCount = book.totalSection > 0; val hasHadithCount = book.totalHadith > 0
             if (hasSectionCount || hasHadithCount) {
@@ -774,16 +857,16 @@ class HadithMeActivity : AppCompatActivity() {
         }
         override fun getItemCount() = items.size
     }
-
     inner class SectionAdapter(private val items: List<SectionItem>, private val onClick: (SectionItem) -> Unit) : RecyclerView.Adapter<SectionAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply {
             orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(14) }
-            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(16), dp(14), dp(16), dp(14))
         })
         override fun onBindViewHolder(holder: VH, position: Int) {
             val section = items[position]; holder.card.removeAllViews()
             holder.card.setOnClickListener { hideKeyboard(searchInput); onClick(section) }
+            holder.card.background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10))
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
             headerRow.addView(TextView(this@HadithMeActivity).apply {
                 text = toBangla(section.originalPosition + 1); textSize = 13f; setTextColor(Color.WHITE); typeface = getBengaliTypeface()
@@ -791,10 +874,10 @@ class HadithMeActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(10) }
             })
             val sectionTitle = section.title.trim()
-            if (sectionTitle.isNotBlank()) headerRow.addView(TextView(this@HadithMeActivity).apply { text = sectionTitle; textSize = 17f; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) })
+            if (sectionTitle.isNotBlank()) headerRow.addView(TextView(this@HadithMeActivity).apply { text = sectionTitle; textSize = 17f; setTextColor(if (isNightMode) Color.WHITE else Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) })
             holder.card.addView(headerRow)
             val arTitle = section.titleAr.trim()
-            if (arTitle.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { text = arTitle; textSize = 18f; setTextColor(Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10); bottomMargin = dp(10) } })
+            if (arTitle.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { text = arTitle; textSize = 18f; setTextColor(if (isNightMode) Color.parseColor("#CCCCCC") else Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10); bottomMargin = dp(10) } })
             holder.card.addView(View(this@HadithMeActivity).apply { setBackgroundColor(Color.parseColor("#DDDDDD")); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)) })
             val hasHadithCount = section.totalHadith > 0; val hasRange = section.rangeStart > 0 && section.rangeEnd > 0
             if (hasHadithCount || hasRange) {
@@ -806,69 +889,85 @@ class HadithMeActivity : AppCompatActivity() {
         }
         override fun getItemCount() = items.size
     }
-
-    inner class HadithAdapter(private val items: List<HadithItem>, private val bookTitle: String, private val onCopy: (HadithItem) -> Unit, private val onShare: (HadithItem) -> Unit) : RecyclerView.Adapter<HadithAdapter.VH>() {
+    inner class HadithAdapter(private val items: List<HadithItem>, private val bookTitle: String, private val bookId: Int, private val sectionId: Int, private val onCopy: (HadithItem) -> Unit, private val onShare: (HadithItem) -> Unit) : RecyclerView.Adapter<HadithAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply {
             orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(14) }
-            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(16), dp(14), dp(16), dp(14))
         })
         override fun onBindViewHolder(holder: VH, position: Int) {
             val hadith = items[position]; holder.card.removeAllViews(); holder.card.setOnClickListener { hideKeyboard(searchInput) }
+            holder.card.background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10))
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
-            val numberText = if (hadith.bookInnerTitle.isNotBlank()) "হাদিস নং: ${toBangla(hadith.hadithNumber)} • ${hadith.bookInnerTitle}" else "হাদিস নং: ${toBangla(hadith.hadithNumber)}"
-            if (hadith.hadithNumber > 0 || hadith.bookInnerTitle.isNotBlank()) {
+            headerRow.addView(TextView(this@HadithMeActivity).apply {
+                text = "নং ${toBangla(hadith.hadithNumber)}"; textSize = 12f; setTextColor(Color.WHITE); typeface = getBengaliTypeface()
+                background = createRoundedSolid(Color.parseColor("#01837A"), dp(20)); setPadding(dp(10), dp(4), dp(10), dp(4))
+            })
+            if (hadith.bookInnerTitle.isNotBlank()) {
                 headerRow.addView(TextView(this@HadithMeActivity).apply {
-                    text = numberText; textSize = 13f; setTextColor(Color.WHITE); typeface = getBengaliTypeface()
-                    background = createRoundedSolid(Color.parseColor("#01837A"), dp(20)); setPadding(dp(12), dp(5), dp(12), dp(5))
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    text = hadith.bookInnerTitle; textSize = 12f; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface()
+                    background = createRoundedBg(Color.parseColor("#E8F8F7"), Color.parseColor("#01837A"), dp(1), dp(12))
+                    setPadding(dp(10), dp(4), dp(10), dp(4)); gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(8), 0, dp(8), 0) }
+                    isSingleLine = true; ellipsize = android.text.TextUtils.TruncateAt.END
                 })
-            }
-            headerRow.addView(View(this@HadithMeActivity).apply { layoutParams = LinearLayout.LayoutParams(0, 0, 1f) })
-            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.copy); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(10) }; setOnClickListener { onCopy(hadith) } })
-            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.share); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)); setOnClickListener { onShare(hadith) } })
+            } else { headerRow.addView(View(this@HadithMeActivity).apply { layoutParams = LinearLayout.LayoutParams(0, 0, 1f) }) }
+            val bookmarkKey = BookmarkStore.makeKey(bookId, sectionId, hadith.hadithNumber)
+            val isBookmarked = BookmarkStore.isBookmarked(this@HadithMeActivity, bookmarkKey)
+            headerRow.addView(TextView(this@HadithMeActivity).apply {
+                text = if (isBookmarked) "❤️" else "♡"; textSize = 16f; gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(4) }
+                setOnClickListener {
+                    val added = BookmarkStore.toggle(this@HadithMeActivity, bookmarkKey)
+                    text = if (added) "❤️" else "♡"
+                }
+            })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.copy); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(8) }; setOnClickListener { onCopy(hadith) } })
+            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.share); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)); setOnClickListener { onShare(hadith) } })
             holder.card.addView(headerRow)
             val titleText = hadith.title.trim()
             if (titleText.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply {
-                textSize = banglaTitleSize; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface()
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }; setSmartText(titleText)
+                textSize = banglaTitleSize; setTextColor(if (isNightMode) Color.parseColor("#80CBC4") else Color.parseColor("#01837A")); typeface = getBengaliTypeface()
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }; setSmartText(titleText, currentSearchHighlight)
             })
             val arText = hadith.descriptionAr.trim()
             if (arText.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply {
-                textSize = arabicFontSize; setTextColor(Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12); bottomMargin = dp(6) }; setSmartText(arText)
+                textSize = arabicFontSize; setTextColor(if (isNightMode) Color.WHITE else Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12); bottomMargin = dp(6) }; setSmartText(arText, currentSearchHighlight)
             })
             val bnText = hadith.description.trim()
             if (bnText.isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply {
-                textSize = banglaFontSize; setTextColor(Color.parseColor("#444444")); typeface = getBengaliTypeface()
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(bnText)
+                textSize = banglaFontSize; setTextColor(if (isNightMode) Color.parseColor("#E0E0E0") else Color.parseColor("#444444")); typeface = getBengaliTypeface()
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(bnText, currentSearchHighlight)
             })
         }
         override fun getItemCount() = items.size
     }
-
     data class GlobalSearchResult(val hadith: HadithItem, val bookTitle: String, val bookId: Int, val sectionTitle: String, val sectionId: Int)
-
-    inner class GlobalSearchAdapter(private val items: List<GlobalSearchResult>, private val onCopy: (GlobalSearchResult) -> Unit, private val onShare: (GlobalSearchResult) -> Unit) : RecyclerView.Adapter<GlobalSearchAdapter.VH>() {
+    inner class GlobalSearchAdapter(private val items: List<GlobalSearchResult>, private val highlightQuery: String, private val onCopy: (GlobalSearchResult) -> Unit, private val onShare: (GlobalSearchResult) -> Unit) : RecyclerView.Adapter<GlobalSearchAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply {
             orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }
-            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12))
         })
         override fun onBindViewHolder(holder: VH, position: Int) {
             val result = items[position]; val hadith = result.hadith; holder.card.removeAllViews()
+            holder.card.background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10))
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
             headerRow.addView(TextView(this@HadithMeActivity).apply {
-                text = "হাদিস নং: ${toBangla(hadith.hadithNumber)} • ${hadith.bookInnerTitle.ifBlank { result.bookTitle }}"; textSize = 12f; setTextColor(Color.WHITE); typeface = getBengaliTypeface()
+                text = "নং ${toBangla(hadith.hadithNumber)}"; textSize = 12f; setTextColor(Color.WHITE); typeface = getBengaliTypeface()
                 background = createRoundedSolid(Color.parseColor("#01837A"), dp(20)); setPadding(dp(10), dp(4), dp(10), dp(4))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
-            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.copy); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(8) }; setOnClickListener { onCopy(result) } })
-            headerRow.addView(ImageView(this@HadithMeActivity).apply { setImageResource(R.drawable.share); setColorFilter(Color.parseColor("#01837A")); layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)); setOnClickListener { onShare(result) } })
+            headerRow.addView(TextView(this@HadithMeActivity).apply {
+                text = hadith.bookInnerTitle.ifBlank { result.bookTitle }; textSize = 12f; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface()
+                background = createRoundedBg(Color.parseColor("#E8F8F7"), Color.parseColor("#01837A"), dp(1), dp(12))
+                setPadding(dp(10), dp(4), dp(10), dp(4)); gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(8), 0, dp(8), 0) }
+            })
             holder.card.addView(headerRow)
-            if (hadith.title.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaTitleSize; setTextColor(Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.title.trim()) })
-            if (hadith.descriptionAr.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = arabicFontSize; setTextColor(Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10); bottomMargin = dp(6) }; setSmartText(hadith.descriptionAr.trim()) })
-            if (hadith.description.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaFontSize; setTextColor(Color.parseColor("#444444")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.description.trim()) })
+            if (hadith.title.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaTitleSize; setTextColor(if (isNightMode) Color.parseColor("#80CBC4") else Color.parseColor("#01837A")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.title.trim(), highlightQuery) })
+            if (hadith.descriptionAr.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = arabicFontSize; setTextColor(if (isNightMode) Color.WHITE else Color.parseColor("#333333")); typeface = getArabicTypeface(); gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10); bottomMargin = dp(6) }; setSmartText(hadith.descriptionAr.trim(), highlightQuery) })
+            if (hadith.description.trim().isNotBlank()) holder.card.addView(TextView(this@HadithMeActivity).apply { textSize = banglaFontSize; setTextColor(if (isNightMode) Color.parseColor("#E0E0E0") else Color.parseColor("#444444")); typeface = getBengaliTypeface(); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }; setSmartText(hadith.description.trim(), highlightQuery) })
         }
         override fun getItemCount() = items.size
     }
