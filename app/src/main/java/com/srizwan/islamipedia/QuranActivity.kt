@@ -263,7 +263,14 @@ class QuranActivity : AppCompatActivity() {
 
         listView1 = ListView(this).apply {
             id = View.generateViewId()
-            layoutParams = ConstraintLayout.LayoutParams(0, 0).apply { topToBottom = nores.id; bottomToTop = ConstraintLayout.LayoutParams.PARENT_ID; startToStart = ConstraintLayout.LayoutParams.PARENT_ID; endToEnd = ConstraintLayout.LayoutParams.PARENT_ID; topMargin = (10*d).toInt(); bottomMargin = (70*d).toInt() }
+            layoutParams = ConstraintLayout.LayoutParams(0, 0).apply { 
+                topToBottom = progressContainer.id; 
+                bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID; 
+                startToStart = ConstraintLayout.LayoutParams.PARENT_ID; 
+                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID; 
+                topMargin = (10*d).toInt(); 
+                bottomMargin = (80*d).toInt() 
+            }
             divider = null; dividerHeight = 0; setBackgroundColor(Color.WHITE); selector = android.graphics.drawable.ColorDrawable(Color.WHITE); isFastScrollEnabled = true
         }
 
@@ -414,10 +421,13 @@ class QuranActivity : AppCompatActivity() {
             Mode.SURA_LIST -> {
                 headingTv.text = intent.getStringExtra("sub") ?: "আল কুরআন"
                 boxofsearch.hint = "সুরা সার্চ করুন"
-                audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; nores.visibility = View.GONE
+                audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; nores.visibility = if (filteredSura.isEmpty()) View.VISIBLE else View.GONE
                 fabGlobalSearch.visibility = View.VISIBLE
                 searchView.visibility = View.GONE
+                // Reload if empty
+                if (filteredSura.isEmpty()) { loadSuraList() }
                 listView1.adapter = QuranAdapter(this, filteredSura)
+                listView1.visibility = View.VISIBLE
             }
             Mode.AYA_LIST -> {
                 headingTv.text = currentSuraBangla
@@ -448,7 +458,9 @@ class QuranActivity : AppCompatActivity() {
     // Data loading
     private fun loadSuraList() {
         try {
-            val input = resources.assets.open(intent.getStringExtra("booklist") ?: "sura.json")
+            val fileName = intent.getStringExtra("booklist")?.takeIf { it.isNotEmpty() } ?: "sura.json"
+            android.util.Log.d("QuranActivity", "Loading file: $fileName")
+            val input = resources.assets.open(fileName)
             val arr = JSONArray(String(input.readBytes(), Charsets.UTF_8)); input.close()
             suraList = ArrayList()
             allSuraAuthors.clear(); suraInfoMap.clear()
@@ -459,7 +471,9 @@ class QuranActivity : AppCompatActivity() {
                 allSuraAuthors.add(o.getString("author")); suraInfoMap[o.getString("author")] = o
             }
             filteredSura = ArrayList(suraList)
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) { e.printStackTrace(); android.util.Log.e("QuranActivity", "Failed to load sura.json: ${e.message}"); suraList = ArrayList(); filteredSura = ArrayList() }
+        // Ensure adapter shows data
+        if (filteredSura.isEmpty() && suraList.isNotEmpty()) { filteredSura = ArrayList(suraList) }
     }
 
     private fun loadAyaList(fileName: String) {
