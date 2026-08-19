@@ -221,7 +221,7 @@ class QuranActivity : AppCompatActivity() {
             val hintColor = ContextCompat.getColor(context, R.color.purple_500); setHintTextColor(ColorStateList.valueOf(hintColor)); hint = "সুরা সার্চ করুন"
         }
         searchbox = EditText(this).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); setTextColor(Color.BLACK); textSize = 14f
             try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
         }
@@ -701,7 +701,7 @@ class QuranActivity : AppCompatActivity() {
     inner class QuranAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context; val d = ctx.resources.displayMetrics.density
-            val itemView = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT); setBackgroundColor(Color.WHITE) }
+            val itemView = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
             val lmain = LinearLayout(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (60*d).toInt()).apply { setMargins((3*d).toInt(), (3*d).toInt(), (3*d).toInt(), (3*d).toInt()) }
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(ContextCompat.getColor(context, R.color.teal_200)); elevation = 6f*d
@@ -743,7 +743,7 @@ class QuranActivity : AppCompatActivity() {
     inner class QuranviewAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context; val d = ctx.resources.displayMetrics.density
-            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT); setBackgroundColor(Color.WHITE) }
+            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
             val lmain = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }
                 setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE)
@@ -797,7 +797,7 @@ class QuranActivity : AppCompatActivity() {
         fun getItemAt(pos: Int): JSONObject? = if (pos < list.size) list[pos] else null
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context; val d = ctx.resources.displayMetrics.density
-            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT); setBackgroundColor(Color.WHITE) }
+            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
             val suraHeader = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()) }; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
             val lmain = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE) }
             val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (50*d).toInt()) }
@@ -837,7 +837,7 @@ class QuranActivity : AppCompatActivity() {
         fun getItemAt(pos: Int): JSONObject? = if (pos < list.size) list[pos] else null
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context; val d = ctx.resources.displayMetrics.density
-            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT); setBackgroundColor(Color.WHITE) }
+            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
             val header = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()) }; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
             val lmain = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE) }
             val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (50*d).toInt()) }
