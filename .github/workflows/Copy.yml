@@ -1,3 +1,4 @@
+<-----
 name: Sync JSON Books to Assets
 
 on:
@@ -61,3 +62,4 @@ jobs:
             git commit -m "chore: sync json books from SunniPedia/PdfTxtJson - $(date +'%Y-%m-%d')"
             git push
           fi
+          ------>
