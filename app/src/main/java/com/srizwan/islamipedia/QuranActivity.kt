@@ -87,6 +87,7 @@ class QuranActivity : AppCompatActivity() {
     private lateinit var suraBookId: Array<String>
     private lateinit var suraVerses: Array<String>
     private lateinit var suraNamesAr: Array<String>
+    private lateinit var suraType: Array<String>
     private var suraList: ArrayList<JSONObject> = ArrayList()
     private var filteredSura: ArrayList<JSONObject> = ArrayList()
 
@@ -155,9 +156,28 @@ class QuranActivity : AppCompatActivity() {
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (currentMode == Mode.GLOBAL_SEARCH) {
+                    if (searchView.visibility == View.VISIBLE && searchbox.text.toString().isEmpty()) {
+                        switchMode(Mode.SURA_LIST)
+                    } else if (searchView.visibility == View.VISIBLE) {
+                        searchbox.text.clear()
+                    } else {
+                        switchMode(Mode.SURA_LIST)
+                    }
+                    return
+                }
                 if (searchView.visibility == View.VISIBLE) {
                     if (searchbox.text.toString().isEmpty()) searchView.visibility = View.GONE else searchbox.text.clear()
                 } else if (currentMode != Mode.SURA_LIST) {
+                    // Stop audio when exiting AYA_LIST
+                    if (currentMode == Mode.AYA_LIST) {
+                        mediaPlayer?.stop()
+                        mediaPlayer?.release()
+                        mediaPlayer = null
+                        currentPlayingId = null
+                        currentIndex = 0
+                        try { playAudioIv.setImageResource(R.drawable.play) } catch (e: Exception) {}
+                    }
                     switchMode(Mode.SURA_LIST)
                 } else finish()
             }
@@ -493,7 +513,17 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        backIv.setOnClickListener { if (currentMode != Mode.SURA_LIST) switchMode(Mode.SURA_LIST) else finish() }
+        backIv.setOnClickListener { 
+            if (currentMode == Mode.AYA_LIST) {
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+                currentPlayingId = null
+                currentIndex = 0
+                try { playAudioIv.setImageResource(R.drawable.play) } catch (e: Exception) {}
+            }
+            if (currentMode != Mode.SURA_LIST) switchMode(Mode.SURA_LIST) else finish() 
+        }
         bookmarkViewBtn.setOnClickListener { loadBookmarksAndSwitch() }
         searchIv.setOnClickListener { searchView.visibility = if (searchView.visibility == View.VISIBLE) View.GONE else View.VISIBLE; if (searchView.visibility == View.VISIBLE) searchbox.requestFocus() }
         cancelIv.setOnClickListener { if (searchbox.text.toString() == "") searchView.visibility = View.GONE else searchbox.text.clear() }
@@ -520,6 +550,9 @@ class QuranActivity : AppCompatActivity() {
                         currentSuraBangla = selected.getString("name")
                         currentSuraAuthor = selected.getString("author")
                         currentSuraNumber = getSuraNumberFromAuthor(currentSuraAuthor)
+                        // Clear search box as requested
+                        searchbox.text.clear()
+                        searchView.visibility = View.GONE
                         loadAyaList("${currentSuraAuthor}.json")
                         switchMode(Mode.AYA_LIST)
                     }
@@ -651,10 +684,10 @@ class QuranActivity : AppCompatActivity() {
             val arr = JSONArray(String(input.readBytes(), Charsets.UTF_8)); input.close()
             suraList = ArrayList()
             allSuraAuthors.clear(); suraInfoMap.clear()
-            suraName = Array(arr.length()) { "" }; suraAuthor = Array(arr.length()) { "" }; suraBookId = Array(arr.length()) { "" }; suraVerses = Array(arr.length()) { "" }; suraNamesAr = Array(arr.length()) { "" }
+            suraName = Array(arr.length()) { "" }; suraAuthor = Array(arr.length()) { "" }; suraBookId = Array(arr.length()) { "" }; suraVerses = Array(arr.length()) { "" }; suraNamesAr = Array(arr.length()) { "" }; suraType = Array(arr.length()) { "" }
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i); suraList.add(o)
-                suraName[i] = o.getString("name"); suraAuthor[i] = o.getString("author"); suraBookId[i] = o.getString("bookid"); suraVerses[i] = o.getString("verses"); suraNamesAr[i] = o.getString("names")
+                suraName[i] = o.getString("name"); suraAuthor[i] = o.getString("author"); suraBookId[i] = o.getString("bookid"); suraVerses[i] = o.getString("verses"); suraNamesAr[i] = o.getString("names"); suraType[i] = o.optString("type", "")
                 allSuraAuthors.add(o.getString("author")); suraInfoMap[o.getString("author")] = o
             }
             filteredSura = ArrayList(suraList)
@@ -678,7 +711,7 @@ class QuranActivity : AppCompatActivity() {
         lastQuery = query
         filteredSura.clear()
         if (query.isEmpty()) filteredSura.addAll(suraList)
-        else { for (i in suraName.indices) if (suraName[i].contains(query, true) || suraNamesAr[i].contains(query, true) || suraBookId[i].contains(query, true)) { filteredSura.add(suraList[i]) } }
+        else { for (i in suraName.indices) if (suraName[i].contains(query, true) || suraNamesAr[i].contains(query, true) || suraBookId[i].contains(query, true) || suraType[i].contains(query, true) || getBanglaType(suraType[i]).contains(query, true)) { filteredSura.add(suraList[i]) } }
         nores.visibility = if (filteredSura.isEmpty()) View.VISIBLE else View.GONE
         if (filteredSura.isEmpty()) noresTv.text = "“$query” এর জন্য কোন সুরা পাওয়া যায়নি"
         listView1.adapter = QuranAdapter(this, filteredSura)
@@ -989,7 +1022,12 @@ class QuranActivity : AppCompatActivity() {
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 lp.rightMargin = dp(10)
                 layoutParams = lp
-                textSize = 15f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; setTypeface(null, Typeface.BOLD)
+                textSize = 16f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; setTypeface(null, Typeface.BOLD)
+                textDirection = View.TEXT_DIRECTION_RTL
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {
+                    try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (ee: Exception) {}
+                }
             }
             lmain.addView(linear5); lmain.addView(surabox); lmain.addView(spacer); lmain.addView(arabicTv)
             itemView.addView(lmain)
@@ -1005,10 +1043,13 @@ class QuranActivity : AppCompatActivity() {
                 val bookid1 = replaceArabicNumber(rawBookId)
                 val displayId = if (bookid1.startsWith("০") || bookid1.startsWith("0")) bookid1.drop(1) else bookid1
                 number.text = displayId
+                val typeBangla = getBanglaType(list[position].optString("type", suraType.getOrNull(position) ?: ""))
+                val typeSuffix = if (typeBangla.isNotEmpty()) " | $typeBangla" else ""
+                val totalText = "মোট আয়াত : ${replaceArabicNumber(rawVerses)}$typeSuffix"
                 if (lastQuery.isNotEmpty() && currentMode == Mode.SURA_LIST) {
                     nameTv.text = getHighlightedText(formattedName, replaceArabicNumber(lastQuery))
-                    ayaNumTv.text = getHighlightedText("মোট আয়াত : ${replaceArabicNumber(rawVerses)}", replaceArabicNumber(lastQuery))
-                } else { nameTv.text = formattedName; ayaNumTv.text = "মোট আয়াত : ${replaceArabicNumber(rawVerses)}" }
+                    ayaNumTv.text = getHighlightedText(totalText, replaceArabicNumber(lastQuery))
+                } else { nameTv.text = formattedName; ayaNumTv.text = totalText }
                 arabicTv.text = formattedArabic
             } catch (e: JSONException) { e.printStackTrace() }
             return itemView
@@ -1266,20 +1307,55 @@ class QuranActivity : AppCompatActivity() {
                 lp.setMargins(dp(10), dp(10), dp(10), dp(10))
                 layoutParams = lp
                 textSize = 26f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL
-                try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {}
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {
+                    try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (ee: Exception) {}
+                }
+            }
+            val kanzul = TextView(ctx).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(dp(10), dp(8), dp(10), dp(2))
+                layoutParams = lp
+                text = "কানযুল ঈমান"
+                setBackgroundColor(Color.parseColor("#E0F2F1"))
+                setTextColor(Color.parseColor("#00695C"))
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(dp(8), dp(4), dp(8), dp(4))
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
             }
             val nameTv = TextView(ctx).apply {
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.setMargins(dp(10), dp(6), dp(10), dp(10))
+                lp.setMargins(dp(10), dp(2), dp(10), dp(8))
                 layoutParams = lp
-                textSize = 16f; setTextColor(Color.BLACK)
+                textSize = 15f; setTextColor(Color.BLACK)
                 try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
             }
-            lmain.addView(topRow); lmain.addView(ayaArabic); lmain.addView(nameTv)
+            val irfan = TextView(ctx).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(dp(10), dp(4), dp(10), dp(2))
+                layoutParams = lp
+                text = "ইরফানুল কুরআন"
+                setBackgroundColor(Color.parseColor("#E3F2FD"))
+                setTextColor(Color.parseColor("#0D47A1"))
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(dp(8), dp(4), dp(8), dp(4))
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val irfanTv = TextView(ctx).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(dp(10), dp(2), dp(10), dp(10))
+                layoutParams = lp
+                textSize = 15f; setTextColor(Color.BLACK)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            lmain.addView(topRow); lmain.addView(ayaArabic); lmain.addView(kanzul); lmain.addView(nameTv); lmain.addView(irfan); lmain.addView(irfanTv)
             root.addView(header); root.addView(lmain)
             val item = list[position]
             header.text = "${item.optString("suraName")} - আয়াত ${replaceArabicNumber(item.optString("ayahNumber"))}"
-            ayaArabic.text = replaceArabicNumber(item.optString("names")); nameTv.text = replaceArabicNumber(item.optString("name"))
+            ayaArabic.text = replaceArabicNumber(item.optString("names"))
+            nameTv.text = replaceArabicNumber(item.optString("name"))
+            irfanTv.text = replaceArabicNumber(item.optString("author", item.optString("irfan", "")))
             cancelBtn.setOnClickListener {
                 val prefs = ctx.getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
                 val jsonStr = prefs.getString("bookmarks_json","[]")
@@ -1298,6 +1374,18 @@ class QuranActivity : AppCompatActivity() {
             copyBtn.setOnClickListener { val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager; clipboard.setPrimaryClip(ClipData.newPlainText("ayah", "${item.optString("names")}\n${item.optString("name")}")); Toast.makeText(ctx, "কপি হয়েছে", Toast.LENGTH_SHORT).show() }
             shareBtn.setOnClickListener { val share = Intent(Intent.ACTION_SEND); share.type = "text/plain"; share.putExtra(Intent.EXTRA_TEXT, "${item.optString("names")}\n${item.optString("name")}\n${item.optString("suraName")}"); ctx.startActivity(Intent.createChooser(share, "শেয়ার")) }
             return root
+        }
+    }
+
+    private fun getBanglaType(type: String): String {
+        return when (type.trim()) {
+            "مکی", "مكی", "مكّي", "مكی" -> "মাক্কী"
+            "مدنی", "مدنى", "مدني" -> "মাদানী"
+            else -> {
+                if (type.contains("مکی") || type.contains("مكی")) "মাক্কী"
+                else if (type.contains("مدنی") || type.contains("مدنى")) "মাদানী"
+                else type
+            }
         }
     }
 
