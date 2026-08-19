@@ -35,6 +35,7 @@ import java.net.URL
 import java.security.MessageDigest
 import android.text.Spannable
 import android.text.SpannableString
+import android.util.Log
 
 data class BookItem(val id: Int, val sequence: Int, val titleEn: String, val titleAr: String, val totalSection: Int, val totalHadith: Int, val originalPosition: Int = 0)
 data class SectionItem(val id: Int, val sequence: Int, val title: String, val titleAr: String, val totalHadith: Int, val rangeStart: Int, val rangeEnd: Int, val originalPosition: Int = 0)
@@ -88,8 +89,8 @@ object LastReadStore {
     private const val PREFS = "hadith_last_read"
     fun save(context: Context, bookId: Int, sectionId: Int, bookTitle: String, sectionTitle: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-    .putInt("bookId", bookId).putInt("sectionId", sectionId)
-    .putString("bookTitle", bookTitle).putString("sectionTitle", sectionTitle).apply()
+           .putInt("bookId", bookId).putInt("sectionId", sectionId)
+           .putString("bookTitle", bookTitle).putString("sectionTitle", sectionTitle).apply()
     }
     fun get(context: Context): Map<String, Any>? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -213,11 +214,124 @@ class HadithMeActivity : AppCompatActivity() {
             val capabilities = cm.getNetworkCapabilities(network)
             capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         } else { @Suppress("DEPRECATION") cm.activeNetworkInfo?.isConnected == true }
-        if (!isNetworkAvailable) {
-            offlineIndicator.visibility = View.VISIBLE
-            offlineIndicator.text = "⚠ অফলাইন মোড - ইন্টারনেট সংযোগ নেই"
+        offlineIndicator.visibility = if (!isNetworkAvailable) View.VISIBLE else View.GONE
+        offlineIndicator.text = if (!isNetworkAvailable) "⚠ অফলাইন মোড - ইন্টারনেট সংযোগ নেই" else ""
+    }
+
+    // --- NEW: Assets থেকে বই লোড ---
+    private fun loadBooksFromAssets(): List<BookItem>? {
+        return try {
+            val jsonString = assets.open("hadithbook/book-title.json").bufferedReader().use { it.readText() }
+            Log.d("ASSETS_LOAD", "Loaded from assets, size=${jsonString.length}")
+            parseBooks(jsonString)
+        } catch (e: Exception) {
+            Log.e("ASSETS_LOAD", "Assets file not found: ${e.message}")
+            null
+        }
+    }
+
+    // --- NEW: কাস্টম আপডেট পপ-আপ ---
+    private fun showUpdatePopup(newBooks: List<BookItem>, newJson: String) {
+        val dialogView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(16))
+        }
+        dialogView.addView(TextView(this).apply {
+            text = "✨ নতুন আপডেট পাওয়া গেছে"; textSize = 18f; typeface = getBengaliTypeface()
+            setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }
+        })
+        dialogView.addView(TextView(this).apply {
+            text = "অনলাইনে ${toBangla(newBooks.size)} টি কিতাব পাওয়া গেছে। আপনার অ্যাপে ${toBangla(currentBooks.size)} টি আছে। আপডেট করবেন?"; textSize = 15f
+            typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#333333"))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(20) }
+        })
+        val btnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
+        val btnLater = TextView(this).apply {
+            text = "পরে"; textSize = 14f; typeface = getBengaliTypeface(); setTextColor(Color.GRAY)
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+        }
+        val btnUpdate = TextView(this).apply {
+            text = "আপডেট করুন"; textSize = 14f; typeface = getBengaliTypeface(); setTextColor(Color.WHITE)
+            background = createRoundedSolid(Color.parseColor("#01837A"), dp(20))
+            setPadding(dp(20), dp(10), dp(20), dp(10))
+        }
+        btnRow.addView(btnLater); btnRow.addView(btnUpdate); dialogView.addView(btnRow)
+
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        btnLater.setOnClickListener { dialog.dismiss() }
+        btnUpdate.setOnClickListener {
+            // ক্যাশে সেভ করে UI আপডেট
+            cacheData("hadith_books_list", newJson)
+            HadithCache.books = newBooks
+            currentBooks = newBooks; filteredBooks = newBooks
+            recyclerView.adapter = BookAdapter(filteredBooks) { book -> handleBookClick(book) }
+            showContent()
+            Toast.makeText(this, "আপডেট করা হয়েছে", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
+
+    // --- NEW: ডাউনলোড ছাড়া কিতাবের পপ-আপ ---
+    private fun showBookActionPopup(book: BookItem) {
+        val dialogView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(16))
+        }
+        dialogView.addView(TextView(this).apply {
+            text = book.titleEn.ifBlank { book.titleAr }; textSize = 17f; typeface = getBengaliTypeface()
+            setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
+        })
+        dialogView.addView(TextView(this).apply {
+            text = "\"${book.titleEn}\" কিতাবটি ডাউনলোড করা নেই। আপনি কি অনলাইনে পড়বেন নাকি ডাউনলোড করে অফলাইনে পড়বেন?"; textSize = 14f
+            typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#444444"))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(20) }
+        })
+        val btnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
+        val btnOnline = TextView(this).apply {
+            text = "🌐 অনলাইনে পড়ুন"; textSize = 13f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#01837A"))
+            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(1), dp(20))
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(8) }
+            gravity = Gravity.CENTER
+        }
+        val btnDownload = TextView(this).apply {
+            text = "⬇ ডাউনলোড করুন"; textSize = 13f; typeface = getBengaliTypeface(); setTextColor(Color.WHITE)
+            background = createRoundedSolid(Color.parseColor("#01837A"), dp(20))
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) }
+            gravity = Gravity.CENTER
+        }
+        btnRow.addView(btnOnline); btnRow.addView(btnDownload); dialogView.addView(btnRow)
+
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        btnOnline.setOnClickListener {
+            dialog.dismiss(); saveScrollPosition(); loadSections(book.id, book.titleEn)
+        }
+        btnDownload.setOnClickListener {
+            dialog.dismiss(); startBookDownload(book)
+            Toast.makeText(this, "${book.titleEn} ডাউনলোড শুরু হয়েছে", Toast.LENGTH_SHORT).show()
+            saveScrollPosition(); loadSections(book.id, book.titleEn)
+        }
+        dialog.show()
+    }
+
+    private fun handleBookClick(book: BookItem) {
+        if (!downloadedBookIds.contains(book.id) && getCachedData("sections_${book.id}") == null) {
+            // ক্যাশেও নাই + ডাউনলোডও নাই -> পপ-আপ দেখাও
+            if (!isNetworkAvailable) {
+                showError("এই কিতাবটি অফলাইনে নেই। ডাউনলোড করতে ইন্টারনেট লাগবে।") { loadBooks() }
+                return
+            }
+            showBookActionPopup(book)
         } else {
-            offlineIndicator.visibility = View.GONE
+            saveScrollPosition(); loadSections(book.id, book.titleEn)
         }
     }
 
@@ -264,13 +378,7 @@ class HadithMeActivity : AppCompatActivity() {
             visibility = View.GONE
             setOnClickListener { showFontMenu() }
         }
-        toolbarLayout.addView(backButton)
-        toolbarLayout.addView(toolbarTitleView)
-        toolbarLayout.addView(settingsButton)
-        toolbarLayout.addView(bookmarkToolbarButton)
-        toolbarLayout.addView(searchToggleBtn)
-        toolbarLayout.addView(refreshButton)
-        toolbarLayout.addView(moreButton)
+        toolbarLayout.addView(backButton); toolbarLayout.addView(toolbarTitleView); toolbarLayout.addView(settingsButton); toolbarLayout.addView(bookmarkToolbarButton); toolbarLayout.addView(searchToggleBtn); toolbarLayout.addView(refreshButton); toolbarLayout.addView(moreButton)
         root.addView(toolbarLayout)
 
         searchContainer = LinearLayout(this).apply {
@@ -303,8 +411,7 @@ class HadithMeActivity : AppCompatActivity() {
         lastReadContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             background = createRoundedBg(Color.WHITE, Color.parseColor("#2E7D32"), dp(2), dp(12))
-            setPadding(dp(14), dp(12), dp(14), dp(12)); elevation = dp(4).toFloat()
-            visibility = View.GONE
+            setPadding(dp(14), dp(12), dp(14), dp(12)); elevation = dp(4).toFloat(); visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(12), dp(12), dp(12), dp(0)) }
         }
         val lastReadIcon = TextView(this).apply { text = "▶"; textSize = 16f; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(8) } }
@@ -413,15 +520,12 @@ class HadithMeActivity : AppCompatActivity() {
 
     private fun showSettingsDialog() {
         val dialogView = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(20))
-            setBackgroundColor(Color.WHITE)
+            orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(20), dp(20), dp(20)); setBackgroundColor(Color.WHITE)
         }
         val title = TextView(this).apply {
             text = "⚙ ফন্ট সেটিংস"; textSize = 18f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(16)); setBackgroundColor(Color.WHITE)
         }
         dialogView.addView(title)
-
         fun createSpinnerRow(label: String, currentSize: Float, onSelect: (Float) -> Unit): LinearLayout {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE)
@@ -457,14 +561,11 @@ class HadithMeActivity : AppCompatActivity() {
             preview.textSize = currentSize
             row.addView(preview); row.addView(spinner); return row
         }
-
         dialogView.addView(createSpinnerRow("আরবি ফন্ট", arabicFontSize) { arabicFontSize = it; saveFontSize() })
         dialogView.addView(createSpinnerRow("বাংলা ফন্ট", banglaFontSize) { banglaFontSize = it; saveFontSize() })
         dialogView.addView(createSpinnerRow("শিরোনাম ফন্ট", banglaTitleSize) { banglaTitleSize = it; saveFontSize() })
-
         val nightCheck = CheckBox(this).apply { text = "🌙 নাইট মোড"; isChecked = isNightMode; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#111111")); setBackgroundColor(Color.WHITE) }
         dialogView.addView(nightCheck)
-
         val builder = AlertDialog.Builder(this)
         builder.setView(dialogView)
         builder.setPositiveButton("ঠিক আছে") { d, _ -> isNightMode = nightCheck.isChecked; saveFontSize(); recyclerView.adapter?.notifyDataSetChanged(); d.dismiss() }
@@ -497,8 +598,8 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private fun saveFontSize() {
         getSharedPreferences("hadith_font_prefs", Context.MODE_PRIVATE).edit()
-    .putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize)
-    .putBoolean("night_mode", isNightMode).apply()
+           .putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize)
+           .putBoolean("night_mode", isNightMode).apply()
     }
 
     private fun openBookmark() {
@@ -565,24 +666,30 @@ class HadithMeActivity : AppCompatActivity() {
     private fun hideKeyboard(view: View) { val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager; imm.hideSoftInputFromWindow(view.windowToken, 0) }
     private fun updateToolbar(title: String) { toolbarTitleView.text = title }
     private fun clearSkeletonAnimators() { skeletonAnimators.forEach { it.cancel() }; skeletonAnimators.clear() }
-    private fun showSkeleton(type: SkeletonType) {
+    private fun showSkeleton(type: SkeletonType, isLongLoading: Boolean = false) {
         isCurrentlyLoading = true; clearSkeletonAnimators()
         statusView.visibility = View.VISIBLE; statusProgressBar.visibility = View.VISIBLE
-        statusText.text = "লোড হচ্ছে..."; statusText.setTextColor(Color.parseColor("#01837A")); statusText.visibility = View.VISIBLE
+        if(isLongLoading) {
+            statusText.text = "লোড হচ্ছে... (ডাউনলোড ছাড়া - ৩০s)"
+            statusProgressBar.isIndeterminate = false; statusProgressBar.max = 30
+            scope.launch {
+                for(i in 0..30){ delay(1000); if(!isCurrentlyLoading) break; statusProgressBar.progress = i; statusText.text = "লোড হচ্ছে... ${30-i} সেকেন্ড বাকি" }
+                statusProgressBar.isIndeterminate = true
+            }
+        } else {
+            statusText.text = "লোড হচ্ছে..."; statusProgressBar.isIndeterminate = true
+        }
+        statusText.setTextColor(Color.parseColor("#01837A")); statusText.visibility = View.VISIBLE
         retryButton.visibility = View.GONE; refreshButton.visibility = View.GONE
-        recyclerView.visibility = View.INVISIBLE
-        recyclerView.adapter = SkeletonAdapter(type)
+        recyclerView.visibility = View.INVISIBLE; recyclerView.adapter = SkeletonAdapter(type)
     }
-    // --- FIXED: Error UI এখন সবসময় Retry + Refresh দেখাবে ---
     private fun showError(message: String, retry: (() -> Unit)? = null) {
         isCurrentlyLoading = false; clearSkeletonAnimators(); recyclerView.visibility = View.INVISIBLE
         statusView.visibility = View.VISIBLE; statusProgressBar.visibility = View.GONE
-        statusText.text = "❌ $message"; statusText.setTextColor(Color.parseColor("#E74C3C"))
-        statusText.visibility = View.VISIBLE
+        statusText.text = "❌ $message"; statusText.setTextColor(Color.parseColor("#E74C3C")); statusText.visibility = View.VISIBLE
         retryButton.visibility = if (retry!= null) View.VISIBLE else View.GONE
         retryButton.text = "আবার চেষ্টা করুন"
         retry?.let { r -> retryButton.setOnClickListener { checkNetworkState(); r() } }
-        // প্রথমবার নেট না থাকলেও যাতে রিফ্রেশ বাটন দেখা যায়
         refreshButton.visibility = View.VISIBLE
     }
     private fun showContent() {
@@ -594,30 +701,34 @@ class HadithMeActivity : AppCompatActivity() {
         settingsButton.visibility = if (currentState is PageState.Books) View.VISIBLE else View.GONE
         bookmarkToolbarButton.visibility = View.VISIBLE
     }
-    // --- FIXED: 500ms delay যাতে লোডিং গায়েব হওয়ার পর কন্টেন্ট লাফ না দেয় ---
-    private fun showContentWithDelay() {
+    private fun showContentWithDelay(isLongLoading: Boolean = false) {
         scope.launch {
-            delay(500) // আধা সেকেন্ড বাড়ানো হলো
-            showContent()
-            restoreScrollPosition()
+            delay(if(isLongLoading) 30000L else 500L)
+            showContent(); restoreScrollPosition()
         }
     }
     private fun cacheFileName(key: String): String { val md = MessageDigest.getInstance("MD5"); return md.digest(key.toByteArray()).joinToString("") { "%02x".format(it) } + ".json" }
-    private fun getCachedData(key: String): String? { val f = File(File(filesDir, cacheDirName), cacheFileName(key)); return if (f.exists()) f.readText() else null }
-    private fun cacheData(key: String, data: String) { val dir = File(filesDir, cacheDirName); if (!dir.exists()) dir.mkdirs(); File(dir, cacheFileName(key)).writeText(data) }
-    private suspend fun fetchJson(url: String, cacheKey: String): String {
+    private fun getCachedData(key: String): String? {
+        val f = File(File(filesDir, cacheDirName), cacheFileName(key))
+        return if(f.exists()){
+            Log.d("CACHE_CHECK", "HIT $key size=${f.length()}"); f.readText()
+        } else { Log.d("CACHE_CHECK", "MISS $key"); null }
+    }
+    private fun cacheData(key: String, data: String) {
+        val dir = File(filesDir, cacheDirName); if (!dir.exists()) dir.mkdirs()
+        File(dir, cacheFileName(key)).writeText(data)
+    }
+    private suspend fun fetchJson(url: String, cacheKey: String, isLongTimeout: Boolean = false): String {
         val diskCached = withContext(Dispatchers.IO) { getCachedData(cacheKey) }
         if (diskCached!= null) { withContext(Dispatchers.Main) { offlineIndicator.visibility = View.GONE; isShowingCachedContent = true }; return diskCached }
-        // যদি নেট না থাকে আর ক্যাশও না থাকে, সাথে সাথে এরর থ্রো
-        if (!isNetworkAvailable) {
-            throw Exception("No internet and no cache for $cacheKey")
-        }
+        if (!isNetworkAvailable) throw Exception("No internet and no cache for $cacheKey")
         return withContext(Dispatchers.IO) {
             var lastException: Exception? = null
             repeat(3) { attempt ->
                 try {
                     val connection = URL(url).openConnection() as java.net.HttpURLConnection
-                    connection.connectTimeout = 15000; connection.readTimeout = 15000; connection.requestMethod = "GET"
+                    val timeout = if(isLongTimeout) 30000 else 15000
+                    connection.connectTimeout = timeout; connection.readTimeout = timeout; connection.requestMethod = "GET"
                     val text = connection.inputStream.bufferedReader().use { it.readText() }
                     if (text.isBlank()) throw Exception("Empty")
                     cacheData(cacheKey, text)
@@ -667,31 +778,55 @@ class HadithMeActivity : AppCompatActivity() {
                 }
             }
         }?: run { lastReadContainer.visibility = View.GONE }
+
+        // 1. INSTANT LOAD FROM ASSETS
+        val assetsBooks = loadBooksFromAssets()
+        if (assetsBooks!= null) {
+            currentBooks = assetsBooks; filteredBooks = assetsBooks; HadithCache.books = assetsBooks
+            recyclerView.adapter = BookAdapter(filteredBooks) { book -> handleBookClick(book) }
+            showContentWithDelay(false)
+            // 2. BACKGROUND UPDATE CHECK
+            scope.launch(Dispatchers.IO) {
+                try {
+                    if (!isNetworkAvailable) return@launch
+                    val conn = URL("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/book-title.json").openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 10000; conn.readTimeout = 10000
+                    val remoteJson = conn.inputStream.bufferedReader().use { it.readText() }
+                    val remoteBooks = parseBooks(remoteJson)
+                    // যদি রিমোটে বেশি বই থাকে বা হাদিস সংখ্যা বেশি হয়
+                    val needsUpdate = remoteBooks.size > assetsBooks.size || remoteBooks.sumOf { it.totalHadith } > assetsBooks.sumOf { it.totalHadith }
+                    if (needsUpdate) {
+                        withContext(Dispatchers.Main) { showUpdatePopup(remoteBooks, remoteJson) }
+                    } else {
+                        // ক্যাশে আপডেট করে রাখো, UI তে প্রভাব ফেলবে না
+                        cacheData("hadith_books_list", remoteJson)
+                    }
+                } catch (e: Exception) { Log.e("UPDATE_CHECK", e.message.toString()) }
+            }
+            return
+        }
+
+        // Assets না থাকলে আগের মতো নেট থেকে লোড
         val gen = ++loadGeneration
         val memBooks = HadithCache.books
         if (memBooks!= null) {
             currentBooks = memBooks; filteredBooks = memBooks
-            recyclerView.adapter = BookAdapter(filteredBooks) { book -> saveScrollPosition(); loadSections(book.id, book.titleEn) }
-            showContentWithDelay()
-            return
+            recyclerView.adapter = BookAdapter(filteredBooks) { book -> handleBookClick(book) }
+            showContentWithDelay(false); return
         }
-        showSkeleton(SkeletonType.BOOK); currentRequestJob?.cancel()
+        showSkeleton(SkeletonType.BOOK, false); currentRequestJob?.cancel()
         currentRequestJob = scope.launch {
             try {
-                val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/book-title.json", "hadith_books_list")
+                val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/book-title.json", "hadith_books_list", false)
                 if (gen!= loadGeneration) return@launch
                 val books = parseBooks(json); HadithCache.books = books
                 currentBooks = books; filteredBooks = books
-                recyclerView.adapter = BookAdapter(filteredBooks) { book -> saveScrollPosition(); loadSections(book.id, book.titleEn) }
-                showContentWithDelay()
+                recyclerView.adapter = BookAdapter(filteredBooks) { book -> handleBookClick(book) }
+                showContentWithDelay(false)
             } catch (e: Exception) {
-                if (gen!= loadGeneration) return@launch;
-                checkNetworkState()
-                if (!isNetworkAvailable) {
-                    showError("প্রথমবার চালু করতে ইন্টারনেট লাগবে। ইন্টারনেট চালু করে আবার চেষ্টা করুন।") { loadBooks() }
-                } else {
-                    showError("বই লোড করতে সমস্যা হয়েছে") { loadBooks() }
-                }
+                if (gen!= loadGeneration) return@launch; checkNetworkState()
+                if (!isNetworkAvailable) showError("প্রথমবার চালু করতে ইন্টারনেট লাগবে।") { loadBooks() }
+                else showError("বই লোড করতে সমস্যা হয়েছে") { loadBooks() }
             }
         }
     }
@@ -705,22 +840,22 @@ class HadithMeActivity : AppCompatActivity() {
     private fun loadSections(bookId: Int, bookTitle: String) {
         saveScrollPosition(); currentState = PageState.Sections(bookId, bookTitle); updateToolbar(bookTitle); closeSearchSilently(); isShowingCachedContent = false
         lastReadContainer.visibility = View.GONE
+        val isNotDownloaded =!downloadedBookIds.contains(bookId)
         val gen = ++loadGeneration
         val memSections = HadithCache.sections[bookId]
         if (memSections!= null) {
             currentSections = memSections; filteredSections = memSections
             recyclerView.adapter = SectionAdapter(filteredSections) { section -> saveScrollPosition(); loadHadith(bookId, section.id, bookTitle, section.title) }
-            showContentWithDelay()
-            return
+            showContentWithDelay(isNotDownloaded); return
         }
-        showSkeleton(SkeletonType.SECTION); currentRequestJob?.cancel()
+        showSkeleton(SkeletonType.SECTION, isNotDownloaded); currentRequestJob?.cancel()
         currentRequestJob = scope.launch {
             try {
-                val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/$bookId/title.json", "sections_$bookId")
+                val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/$bookId/title.json", "sections_$bookId", isNotDownloaded)
                 if (gen!= loadGeneration) return@launch
                 val sections = parseSections(json); HadithCache.sections[bookId] = sections; currentSections = sections; filteredSections = sections
                 recyclerView.adapter = SectionAdapter(filteredSections) { section -> saveScrollPosition(); loadHadith(bookId, section.id, bookTitle, section.title) }
-                showContentWithDelay()
+                showContentWithDelay(isNotDownloaded)
             } catch (e: Exception) { if (gen!= loadGeneration) return@launch; showError("অধ্যায় লোড করতে সমস্যা হয়েছে") { loadSections(bookId, bookTitle) } }
         }
     }
@@ -735,22 +870,22 @@ class HadithMeActivity : AppCompatActivity() {
         saveScrollPosition(); currentState = PageState.Hadith(bookId, sectionId, bookTitle, sectionTitle); updateToolbar(sectionTitle); closeSearchSilently(); isShowingCachedContent = false
         lastReadContainer.visibility = View.GONE
         LastReadStore.save(this, bookId, sectionId, bookTitle, sectionTitle)
+        val isNotDownloaded =!downloadedBookIds.contains(bookId)
         val key = "${bookId}_$sectionId"; val gen = ++loadGeneration
         val memHadith = HadithCache.hadith[key]
         if (memHadith!= null) {
             currentHadithList = memHadith; filteredHadith = memHadith
             recyclerView.adapter = HadithAdapter(filteredHadith, bookTitle, bookId, sectionId, onCopy = { h -> copyHadith(h, bookTitle, sectionTitle) }, onShare = { h -> shareHadith(h, bookTitle, sectionTitle) })
-            showContentWithDelay()
-            return
+            showContentWithDelay(isNotDownloaded); return
         }
-        showSkeleton(SkeletonType.HADITH); currentRequestJob?.cancel()
+        showSkeleton(SkeletonType.HADITH, isNotDownloaded); currentRequestJob?.cancel()
         currentRequestJob = scope.launch {
             try {
-                val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/$bookId/hadith/$sectionId.json", "hadith_${bookId}_$sectionId")
+                val json = fetchJson("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/$bookId/hadith/$sectionId.json", "hadith_${bookId}_$sectionId", isNotDownloaded)
                 if (gen!= loadGeneration) return@launch
                 val hadithList = parseHadith(json); HadithCache.hadith[key] = hadithList; currentHadithList = hadithList; filteredHadith = hadithList
                 recyclerView.adapter = HadithAdapter(filteredHadith, bookTitle, bookId, sectionId, onCopy = { h -> copyHadith(h, bookTitle, sectionTitle) }, onShare = { h -> shareHadith(h, bookTitle, sectionTitle) })
-                showContentWithDelay()
+                showContentWithDelay(isNotDownloaded)
             } catch (e: Exception) { if (gen!= loadGeneration) return@launch; showError("হাদিস লোড করতে সমস্যা হয়েছে") { loadHadith(bookId, sectionId, bookTitle, sectionTitle) } }
         }
     }
@@ -819,12 +954,11 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private fun restoreFullList() {
         when (val s = currentState) {
-            is PageState.Books -> recyclerView.adapter = BookAdapter(filteredBooks) { book -> saveScrollPosition(); loadSections(book.id, book.titleEn) }
+            is PageState.Books -> recyclerView.adapter = BookAdapter(filteredBooks) { book -> handleBookClick(book) }
             is PageState.Sections -> recyclerView.adapter = SectionAdapter(filteredSections) { section -> saveScrollPosition(); loadHadith(s.bookId, section.id, s.bookTitle, section.title) }
             is PageState.Hadith -> recyclerView.adapter = HadithAdapter(filteredHadith, s.bookTitle, s.bookId, s.sectionId, onCopy = { h -> copyHadith(h, s.bookTitle, s.sectionTitle) }, onShare = { h -> shareHadith(h, s.bookTitle, s.sectionTitle) })
         }
-        showContent()
-        restoreScrollPosition()
+        showContent(); restoreScrollPosition()
     }
     private fun performSearch(query: String) {
         val term = query.lowercase().trim()
@@ -833,7 +967,7 @@ class HadithMeActivity : AppCompatActivity() {
         when (val s = currentState) {
             is PageState.Books -> {
                 filteredBooks = currentBooks.filter { b -> b.titleEn.lowercase().contains(term) }
-                recyclerView.adapter = BookAdapter(filteredBooks) { book -> saveScrollPosition(); loadSections(book.id, book.titleEn) }; showContent()
+                recyclerView.adapter = BookAdapter(filteredBooks) { book -> handleBookClick(book) }; showContent()
             }
             is PageState.Sections -> {
                 filteredSections = currentSections.filter { sec -> sec.title.lowercase().contains(term) }
@@ -881,24 +1015,13 @@ class HadithMeActivity : AppCompatActivity() {
                     }
                     if (matched.isNotEmpty()) {
                         matched.forEach { h -> results.add(GlobalSearchResult(h, book.titleEn, book.id, section.title, section.id)) }
-                        // LIVE UPDATE
                         val currentCount = results.size
                         withContext(Dispatchers.Main) {
-                            if (gen== globalSearchGeneration) {
-                                globalSearchStatus.text = "🔍 ${toBangla(currentCount)} টি হাদিস পাওয়া যাচ্ছে... \"${query}\""
-                            }
+                            if (gen== globalSearchGeneration) globalSearchStatus.text = "🔍 ${toBangla(currentCount)} টি হাদিস পাওয়া যাচ্ছে... \"${query}\""
                         }
                     }
                 }
                 scannedBooks++
-                if (scannedBooks % 2 == 0) {
-                    val currentCount = results.size
-                    withContext(Dispatchers.Main) {
-                        if (gen== globalSearchGeneration && currentCount==0) {
-                            globalSearchStatus.text = "🔍 ${toBangla(scannedBooks)} টি বই স্ক্যান করা হচ্ছে... ${toBangla(currentCount)} টি পাওয়া গেছে"
-                        }
-                    }
-                }
             }
             withContext(Dispatchers.Main) {
                 if (gen!= globalSearchGeneration) return@withContext
@@ -1061,7 +1184,7 @@ class HadithMeActivity : AppCompatActivity() {
     data class GlobalSearchResult(val hadith: HadithItem, val bookTitle: String, val bookId: Int, val sectionTitle: String, val sectionId: Int)
     inner class BookmarkAdapter(private val items: List<BookmarkItem>, private val onCopy: (BookmarkItem) -> Unit, private val onShare: (BookmarkItem) -> Unit, private val onRemove: (BookmarkItem) -> Unit) : RecyclerView.Adapter<BookmarkAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }; background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12)) })
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }; background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12)) })
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = items[position]; val hadith = item.hadith; holder.card.removeAllViews()
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
