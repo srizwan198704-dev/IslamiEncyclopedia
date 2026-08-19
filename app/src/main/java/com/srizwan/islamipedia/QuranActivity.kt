@@ -424,8 +424,13 @@ class QuranActivity : AppCompatActivity() {
                 audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; nores.visibility = if (filteredSura.isEmpty()) View.VISIBLE else View.GONE
                 fabGlobalSearch.visibility = View.VISIBLE
                 searchView.visibility = View.GONE
-                // Reload if empty
-                if (filteredSura.isEmpty()) { loadSuraList() }
+                // Reload if empty and auto copy reason
+                if (filteredSura.isEmpty()) { 
+                    loadSuraList()
+                    if (filteredSura.isEmpty()) {
+                        copyBlankReasonToClipboard("SURA_LIST blank - sura.json not loaded or empty. Assets check failed.")
+                    }
+                }
                 listView1.adapter = QuranAdapter(this, filteredSura)
                 listView1.visibility = View.VISIBLE
             }
@@ -471,9 +476,12 @@ class QuranActivity : AppCompatActivity() {
                 allSuraAuthors.add(o.getString("author")); suraInfoMap[o.getString("author")] = o
             }
             filteredSura = ArrayList(suraList)
-        } catch (e: Exception) { e.printStackTrace(); android.util.Log.e("QuranActivity", "Failed to load sura.json: ${e.message}"); suraList = ArrayList(); filteredSura = ArrayList() }
+        } catch (e: Exception) { e.printStackTrace(); android.util.Log.e("QuranActivity", "Failed to load sura.json: ${e.message}"); copyBlankReasonToClipboard("Exception loading sura.json: ${e.message} - File: $fileName - Check assets/sura.json exists"); suraList = ArrayList(); filteredSura = ArrayList() }
         // Ensure adapter shows data
         if (filteredSura.isEmpty() && suraList.isNotEmpty()) { filteredSura = ArrayList(suraList) }
+        if (suraList.isEmpty()) {
+            copyBlankReasonToClipboard("suraList is empty after load - sura.json might be missing from assets or empty array")
+        }
     }
 
     private fun loadAyaList(fileName: String) {
@@ -656,6 +664,21 @@ class QuranActivity : AppCompatActivity() {
         for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); if (o.optString("_id") == _id && o.optString("suraAuthor") == suraAuthor) return true }
         return false
     }
+
+    private fun copyBlankReasonToClipboard(reason: String) {
+        try {
+            val fullReason = "QuranActivity Blank Reason:\n$reason\n\nMode: $currentMode\nSuraList size: ${suraList.size}\nFilteredSura size: ${filteredSura.size}\nAyaList size: ${ayaList.size}\nFilteredAya size: ${filteredAya.size}\nGlobalList size: ${globalList.size}\nBookmarkList size: ${bookmarkList.size}\nAssets sura.json exists: ${checkAssetExists("sura.json")}\nFile tried: ${intent.getStringExtra("booklist") ?: "sura.json"}"
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("blank_reason", fullReason))
+            android.util.Log.e("QuranActivity", fullReason)
+            Toast.makeText(this, "Blank reason copied to clipboard: $reason", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    private fun checkAssetExists(fileName: String): Boolean {
+        return try { resources.assets.open(fileName).close(); true } catch (e: Exception) { false }
+    }
+
     private fun loadBookmarksAndSwitch() {
         val prefsBm = getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
         val arr = try { JSONArray(prefsBm.getString("bookmarks_json", "[]")) } catch (e: Exception) { JSONArray() }
