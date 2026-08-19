@@ -414,11 +414,21 @@ class QuranActivity : AppCompatActivity() {
         nextLL.addView(nextImg)
         val between2 = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
         qariSelectorTv = TextView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
-            text = "🎧"
-            textSize = 22f
+            val lp = LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.rightMargin = dp(4)
+            layoutParams = lp
+            text = selectedQariName
+            textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
+            val bg = GradientDrawable()
+            bg.setColor(Color.parseColor("#00695C"))
+            bg.cornerRadius = dpF(20f)
+            background = bg
         }
         stopLL = LinearLayout(this).apply {
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -576,6 +586,8 @@ class QuranActivity : AppCompatActivity() {
                 val code = qariMap[banglaName] ?: "Alafasy_64kbps"
                 selectedQariName = banglaName; selectedQariCode = code
                 prefs.edit().putString("selected_qari_name", banglaName).putString("selected_qari_code", code).apply()
+                selectedQariName = banglaName
+                qariSelectorTv.text = banglaName
                 Toast.makeText(this, "ক্বারী: $banglaName", Toast.LENGTH_SHORT).show()
                 if (mediaPlayer != null) { mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null; startPlayingFromIndex(currentIndex) }
                 true
@@ -591,6 +603,7 @@ class QuranActivity : AppCompatActivity() {
                 headingTv.text = intent.getStringExtra("sub") ?: "আল কুরআন"
                 searchbox.hint = "সুরা সার্চ করুন"
                 audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE
+                bookmarkViewBtn.visibility = View.VISIBLE
                 fabGlobalSearch.visibility = View.VISIBLE
                 searchView.visibility = View.GONE
                 if (filteredSura.isEmpty()) loadSuraList()
@@ -604,6 +617,7 @@ class QuranActivity : AppCompatActivity() {
                 searchbox.hint = "আয়াত সার্চ করুন"
                 audiotab.visibility = View.VISIBLE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.VISIBLE; nores.visibility = View.GONE
                 fabGlobalSearch.visibility = View.GONE
+                bookmarkViewBtn.visibility = View.GONE
                 searchView.visibility = View.GONE
                 listView1.adapter = QuranviewAdapter(this, filteredAya)
             }
@@ -611,6 +625,7 @@ class QuranActivity : AppCompatActivity() {
                 headingTv.text = "গ্লোবাল সার্চ"
                 searchbox.hint = "পুরো কুরআনে সার্চ করুন"
                 searchView.visibility = View.VISIBLE; audiotab.visibility = View.GONE; jumpIv.visibility = View.GONE; progressContainer.visibility = View.VISIBLE; nores.visibility = View.GONE
+                bookmarkViewBtn.visibility = View.VISIBLE
                 fabGlobalSearch.visibility = View.GONE
                 globalList.clear()
                 listView1.adapter = GlobalSearchAdapter(this, globalList)
@@ -619,7 +634,7 @@ class QuranActivity : AppCompatActivity() {
             Mode.BOOKMARK -> {
                 headingTv.text = "বুকমার্ক"
                 searchbox.hint = "বুকমার্ক সার্চ"
-                audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; searchView.visibility = View.GONE; fabGlobalSearch.visibility = View.GONE
+                audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; searchView.visibility = View.GONE; fabGlobalSearch.visibility = View.GONE; bookmarkViewBtn.visibility = View.VISIBLE
                 if (bookmarkList.isEmpty()) {
                     nores.visibility = View.VISIBLE
                     noresTv.text = "কোন বুকমার্ক নেই\n⭐ আইকনে ক্লিক করে বুকমার্ক যোগ করুন"
@@ -1021,7 +1036,14 @@ class QuranActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER
                 try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) { val g = GradientDrawable(); g.setColor(Color.parseColor("#E0F2F1")); g.cornerRadius = dpF(25f); background = g }
             }
-            val number = TextView(ctx).apply { layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); textSize = 12f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER }
+            val number = TextView(ctx).apply { 
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                textSize = 13f
+                setTextColor(Color.parseColor("#004D40"))
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
             linear11.addView(number)
             val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
             val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
@@ -1139,21 +1161,61 @@ class QuranActivity : AppCompatActivity() {
                 textSize = 26f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setTypeface(null, Typeface.BOLD)
                 try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {}
             }
-            val nameTv = TextView(ctx).apply {
+            val kanzul = TextView(ctx).apply {
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.setMargins(dp(10), dp(6), dp(10), dp(10))
+                lp.setMargins(dp(10), dp(10), dp(10), dp(4))
                 layoutParams = lp
-                textSize = 16f; setTextColor(Color.BLACK)
+                text = "কানযুল ঈমান"
+                setBackgroundColor(Color.parseColor("#E0F2F1"))
+                setTextColor(Color.parseColor("#00695C"))
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(dp(8), dp(4), dp(8), dp(4))
                 try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
             }
-            lmain.addView(topRow); lmain.addView(ayaArabic); lmain.addView(nameTv)
+            val nameTv = TextView(ctx).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(dp(10), dp(2), dp(10), dp(8))
+                layoutParams = lp
+                textSize = 15f; setTextColor(Color.BLACK)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val irfan = TextView(ctx).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(dp(10), dp(4), dp(10), dp(4))
+                layoutParams = lp
+                text = "ইরফানুল কুরআন"
+                setBackgroundColor(Color.parseColor("#E3F2FD"))
+                setTextColor(Color.parseColor("#0D47A1"))
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(dp(8), dp(4), dp(8), dp(4))
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val irfanTv = TextView(ctx).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.setMargins(dp(10), dp(2), dp(10), dp(10))
+                layoutParams = lp
+                textSize = 15f; setTextColor(Color.BLACK)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            lmain.addView(topRow); lmain.addView(ayaArabic); lmain.addView(kanzul); lmain.addView(nameTv); lmain.addView(irfan); lmain.addView(irfanTv)
             root.addView(suraHeader); root.addView(lmain)
             val item = list[position]
             suraHeader.text = "${item.optString("suraName")} - আয়াত ${replaceArabicNumber(item.optString("verses"))}"
             num.text = replaceArabicNumber(item.optString("verses"))
-            val rawArabic = item.optString("names"); val rawName = item.optString("name")
-            if (lastQuery.isNotEmpty()) { ayaArabic.text = getHighlightedText(replaceArabicNumber(rawArabic), lastQuery); nameTv.text = getHighlightedText(replaceArabicNumber(rawName), lastQuery) }
-            else { ayaArabic.text = replaceArabicNumber(rawArabic); nameTv.text = replaceArabicNumber(rawName) }
+            val rawArabic = item.optString("names")
+            val rawName = item.optString("name")
+            val rawIrfan = item.optString("author")
+            if (lastQuery.isNotEmpty()) {
+                ayaArabic.text = getHighlightedText(replaceArabicNumber(rawArabic), lastQuery)
+                nameTv.text = getHighlightedText(replaceArabicNumber(rawName), lastQuery)
+                irfanTv.text = getHighlightedText(replaceArabicNumber(rawIrfan), lastQuery)
+            } else {
+                ayaArabic.text = replaceArabicNumber(rawArabic)
+                nameTv.text = replaceArabicNumber(rawName)
+                irfanTv.text = replaceArabicNumber(rawIrfan)
+            }
             playBtn.setOnClickListener {
                 currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
                 loadAyaList("${currentSuraAuthor}.json"); switchMode(Mode.AYA_LIST)
