@@ -7,11 +7,15 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.BackgroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -50,6 +54,7 @@ class QuranActivity : AppCompatActivity() {
     enum class Mode { SURA_LIST, AYA_LIST, GLOBAL_SEARCH, BOOKMARK }
 
     private var currentMode = Mode.SURA_LIST
+    private var lastQuery = ""
     private lateinit var root: ConstraintLayout
     private lateinit var topBar: LinearLayout
     private lateinit var backIv: ImageView
@@ -58,12 +63,15 @@ class QuranActivity : AppCompatActivity() {
     private lateinit var jumpIv: ImageView
     private lateinit var searchIv: ImageView
     private lateinit var searchView: LinearLayout
+    private lateinit var searchIconInside: ImageView
     private lateinit var searchbox: EditText
     private lateinit var cancelIv: ImageView
     private lateinit var progressContainer: LinearLayout
     private lateinit var progressBar: ProgressBar
     private lateinit var progressText: TextView
     private lateinit var nores: LinearLayout
+    private lateinit var noresTv: TextView
+    private lateinit var noresImg: ImageView
     private lateinit var listView1: ListView
     private lateinit var audiotab: LinearLayout
     private lateinit var previousLL: LinearLayout
@@ -134,6 +142,7 @@ class QuranActivity : AppCompatActivity() {
                 w.navigationBarColor = Color.parseColor(getString(R.string.color))
             } catch (e: Exception) {
                 w.statusBarColor = Color.parseColor("#01837A")
+                w.navigationBarColor = Color.parseColor("#01837A")
             }
         }
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
@@ -152,11 +161,13 @@ class QuranActivity : AppCompatActivity() {
         })
     }
 
+    private fun dp(v: Float): Int = (v * resources.displayMetrics.density).toInt()
+    private fun dpF(v: Float): Float = v * resources.displayMetrics.density
+
     private fun createMainLayout(): ConstraintLayout {
-        val d = resources.displayMetrics.density
         val rootLayout = ConstraintLayout(this).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            try { background = ContextCompat.getDrawable(context, R.drawable.back1ground) } catch (e: Exception) { setBackgroundColor(Color.WHITE) }
+            try { background = ContextCompat.getDrawable(context, R.drawable.back1ground) } catch (e: Exception) { setBackgroundColor(Color.parseColor("#F5F5F5")) }
             fitsSystemWindows = true
         }
 
@@ -164,83 +175,95 @@ class QuranActivity : AppCompatActivity() {
             id = View.generateViewId()
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(ContextCompat.getColor(context, R.color.teal_200))
-            elevation = 5f * d
-            val lp = ConstraintLayout.LayoutParams(0, (65 * d).toInt())
+            setBackgroundColor(Color.parseColor("#01837A"))
+            elevation = dpF(5f)
+            val lp = ConstraintLayout.LayoutParams(0, dp(65))
             lp.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
             lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
             layoutParams = lp
         }
         backIv = ImageView(this).apply {
-            layoutParams = LinearLayout.LayoutParams((56 * d).toInt(), (56 * d).toInt())
-            setPadding((15 * d).toInt(), (15 * d).toInt(), (15 * d).toInt(), (15 * d).toInt())
+            layoutParams = LinearLayout.LayoutParams(dp(56), dp(56))
+            setPadding(dp(15), dp(15), dp(15), dp(15))
             scaleType = ImageView.ScaleType.CENTER_CROP
-            try { setImageResource(R.drawable.ic_arrow_back_white) } catch (e: Exception) {}
+            try { setImageResource(R.drawable.ic_arrow_back_white) } catch (e: Exception) { setImageResource(android.R.drawable.ic_media_previous) }
+            setColorFilter(Color.WHITE)
         }
         headingTv = TextView(this).apply {
             val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            lp.leftMargin = (5 * d).toInt()
+            lp.leftMargin = dp(5)
             layoutParams = lp
             setTextColor(Color.WHITE); textSize = 18f
             try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
-            isSingleLine = true; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; isFocusable = true; isFocusableInTouchMode = true; setHorizontallyScrolling(true); gravity = Gravity.CENTER_VERTICAL; setTypeface(typeface, android.graphics.Typeface.BOLD)
+            isSingleLine = true; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; isFocusable = true; isFocusableInTouchMode = true; setHorizontallyScrolling(true); gravity = Gravity.CENTER_VERTICAL
+            setTypeface(typeface, Typeface.BOLD)
             text = intent.getStringExtra("sub") ?: "আল কুরআন"
         }
         bookmarkViewBtn = TextView(this).apply {
-            val lp = LinearLayout.LayoutParams((40 * d).toInt(), (40 * d).toInt())
-            lp.rightMargin = (5 * d).toInt()
-            layoutParams = lp
-            text = "⭐"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+            text = "⭐"; textSize = 22f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
         }
         jumpIv = ImageView(this).apply {
-            val lp = LinearLayout.LayoutParams((30 * d).toInt(), (30 * d).toInt())
-            lp.rightMargin = (10 * d).toInt()
-            layoutParams = lp
+            layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)).apply { rightMargin = dp(10) }
             scaleType = ImageView.ScaleType.FIT_CENTER
-            try { setImageResource(R.drawable.ic_jump_page) } catch (e: Exception) {}
+            try { setImageResource(R.drawable.ic_jump_page) } catch (e: Exception) { }
+            setColorFilter(Color.WHITE)
             visibility = View.GONE
         }
         searchIv = ImageView(this).apply {
-            val lp = LinearLayout.LayoutParams((30 * d).toInt(), (30 * d).toInt())
-            lp.rightMargin = (5 * d).toInt()
-            layoutParams = lp
+            layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)).apply { rightMargin = dp(8) }
             scaleType = ImageView.ScaleType.FIT_CENTER
-            try { setImageResource(R.drawable.searchme) } catch (e: Exception) {}
+            try { setImageResource(R.drawable.searchme) } catch (e: Exception) { }
+            setColorFilter(Color.WHITE)
         }
         topBar.addView(backIv); topBar.addView(headingTv); topBar.addView(bookmarkViewBtn); topBar.addView(jumpIv); topBar.addView(searchIv)
 
         searchView = LinearLayout(this).apply {
             id = View.generateViewId()
-            orientation = LinearLayout.HORIZONTAL; visibility = View.GONE
+            orientation = LinearLayout.HORIZONTAL; visibility = View.GONE; gravity = Gravity.CENTER_VERTICAL
             val lp = ConstraintLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.topToBottom = topBar.id
             lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            lp.topMargin = (10 * d).toInt()
+            lp.topMargin = dp(10); lp.leftMargin = dp(10); lp.rightMargin = dp(10)
             layoutParams = lp
-            setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt())
-            val bg = GradientDrawable(); bg.setColor(Color.WHITE); bg.cornerRadius = 100f; bg.setStroke((1*d).toInt(), Color.parseColor("#01837A")); background = bg
+            val bg = GradientDrawable(); bg.setColor(Color.WHITE); bg.cornerRadius = 100f; bg.setStroke(dp(1), Color.parseColor("#01837A")); background = bg
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            elevation = dpF(2f)
+        }
+        searchIconInside = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply { leftMargin = dp(6) }
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            try { setImageResource(R.drawable.searchme) } catch (e: Exception) {}
+            setColorFilter(Color.parseColor("#01837A"))
+            alpha = 0.7f
         }
         searchbox = EditText(this).apply {
             val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            lp.leftMargin = dp(6)
             layoutParams = lp
-            setPadding((16*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); setTextColor(Color.BLACK); textSize = 14f; hint = "সুরা সার্চ করুন"; background = null
+            setPadding(dp(8), dp(12), dp(8), dp(12))
+            setTextColor(Color.BLACK)
+            setHintTextColor(Color.parseColor("#9901837A"))
+            textSize = 15f
+            hint = "সুরা সার্চ করুন"
+            background = null
+            isSingleLine = true
             try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
         }
         cancelIv = ImageView(this).apply {
-            val lp = LinearLayout.LayoutParams((30*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT)
-            lp.rightMargin = (5*d).toInt()
-            layoutParams = lp
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply { rightMargin = dp(4) }
             scaleType = ImageView.ScaleType.FIT_CENTER
-            try { setImageResource(R.drawable.cancel) } catch (e: Exception) {}
+            try { setImageResource(R.drawable.cancel) } catch (e: Exception) { setImageResource(android.R.drawable.ic_menu_close_clear_cancel) }
+            setColorFilter(Color.parseColor("#01837A"))
         }
-        searchView.addView(searchbox); searchView.addView(cancelIv)
+        searchView.addView(searchIconInside); searchView.addView(searchbox); searchView.addView(cancelIv)
 
         progressContainer = LinearLayout(this).apply {
             id = View.generateViewId()
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; visibility = View.GONE
-            setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt())
+            setPadding(dp(12), dp(8), dp(12), dp(8))
             val lp = ConstraintLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.topToBottom = searchView.id
             lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
@@ -248,101 +271,98 @@ class QuranActivity : AppCompatActivity() {
             layoutParams = lp
         }
         progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            val lp = LinearLayout.LayoutParams(0, (8*d).toInt(), 1f)
-            layoutParams = lp
+            layoutParams = LinearLayout.LayoutParams(0, dp(8), 1f)
             max = 100
+            progressTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
         }
         progressText = TextView(this).apply {
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.leftMargin = (8*d).toInt()
-            layoutParams = lp
-            text = "⏳ সার্চ চলছে... ০ টি পাওয়া গেছে"; textSize = 14f; setTextColor(Color.parseColor("#607D8B"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) }
+            text = "⏳ সার্চ চলছে..."; textSize = 13f; setTextColor(Color.parseColor("#607D8B"))
             try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
         }
         progressContainer.addView(progressBar); progressContainer.addView(progressText)
 
         nores = LinearLayout(this).apply {
             id = View.generateViewId()
-            visibility = View.GONE; orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setBackgroundColor(Color.WHITE); setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt())
+            visibility = View.GONE; orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setBackgroundColor(Color.WHITE)
+            setPadding(dp(16), dp(24), dp(16), dp(24))
             val lp = ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.topToBottom = progressContainer.id
             lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
             layoutParams = lp
+            val bg = GradientDrawable(); bg.setColor(Color.WHITE); bg.cornerRadius = dpF(12f); background = bg
+            elevation = dpF(2f)
         }
-        val noresImg = ImageView(this).apply {
-            val lp = LinearLayout.LayoutParams((100*d).toInt(), (100*d).toInt())
-            lp.gravity = Gravity.CENTER
-            layoutParams = lp
+        noresImg = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(100), dp(100)).apply { gravity = Gravity.CENTER }
             scaleType = ImageView.ScaleType.FIT_CENTER
             try { setImageResource(R.drawable.noresult) } catch (e: Exception) {}
         }
-        val noresTv = TextView(this).apply {
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.gravity = Gravity.CENTER
-            layoutParams = lp
+        noresTv = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { gravity = Gravity.CENTER; topMargin = dp(8) }
             text = "কোন সার্চ রেজাল্ট পাওয়া যায়নি"; textSize = 16f; setTextColor(Color.BLACK); gravity = Gravity.CENTER
             try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
         }
         nores.addView(noresImg); nores.addView(noresTv)
 
-        listView1 = ListView(this).apply {
-            id = View.generateViewId()
-            val lp = ConstraintLayout.LayoutParams(0, 0)
-            lp.topToBottom = nores.id
-            lp.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-            lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            lp.topMargin = (10*d).toInt()
-            lp.bottomMargin = (80*d).toInt()
-            layoutParams = lp
-            divider = null; dividerHeight = 0; setBackgroundColor(Color.WHITE); selector = android.graphics.drawable.ColorDrawable(Color.WHITE); isFastScrollEnabled = true
-        }
-
+        // FIX: listView bottom to audiotab top, no fixed bottom margin -> no blank space
         audiotab = LinearLayout(this).apply {
             id = View.generateViewId()
             visibility = View.GONE; orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER_VERTICAL
-            setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt())
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             val lp = ConstraintLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
             lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
             layoutParams = lp
+            elevation = dpF(8f)
         }
-        previousLL = LinearLayout(this).apply {
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.leftMargin = (10*d).toInt()
-            layoutParams = lp
-            setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt())
-            orientation = LinearLayout.HORIZONTAL
-        }
-        val prevImg = ImageView(this).apply { val lp = LinearLayout.LayoutParams((30*d).toInt(), (30*d).toInt()); layoutParams = lp; scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.previous) } catch (e: Exception) {} }
+        previousLL = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(10) }; setPadding(dp(8), dp(8), dp(8), dp(8)) }
+        val prevImg = ImageView(this).apply { layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.previous) } catch (e: Exception) {}; setColorFilter(Color.WHITE) }
         previousLL.addView(prevImg)
-        val between0 = LinearLayout(this).apply { val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f); layoutParams = lp }
-        playAudioLL = LinearLayout(this).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins(0,0,0,0); layoutParams = lp; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()) }
-        playAudioIv = ImageView(this).apply { val lp = LinearLayout.LayoutParams((30*d).toInt(), (30*d).toInt()); layoutParams = lp; scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.play) } catch (e: Exception) {} }
+        val between0 = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        playAudioLL = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); setPadding(dp(8), dp(8), dp(8), dp(8)) }
+        playAudioIv = ImageView(this).apply { layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.play) } catch (e: Exception) {}; setColorFilter(Color.WHITE) }
         playAudioLL.addView(playAudioIv)
-        val between1 = LinearLayout(this).apply { val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f); layoutParams = lp }
-        nextLL = LinearLayout(this).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); layoutParams = lp; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()) }
-        val nextImg = ImageView(this).apply { val lp = LinearLayout.LayoutParams((30*d).toInt(), (30*d).toInt()); layoutParams = lp; scaleType = ImageView.ScaleType.FIT_CENTER; rotation = 180f; try { setImageResource(R.drawable.previous) } catch (e: Exception) {} }
+        val between1 = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        nextLL = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); setPadding(dp(8), dp(8), dp(8), dp(8)) }
+        val nextImg = ImageView(this).apply { layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)); scaleType = ImageView.ScaleType.FIT_CENTER; rotation = 180f; try { setImageResource(R.drawable.previous) } catch (e: Exception) {}; setColorFilter(Color.WHITE) }
         nextLL.addView(nextImg)
-        val between2 = LinearLayout(this).apply { val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f); layoutParams = lp }
-        qariSelectorTv = TextView(this).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), (40*d).toInt()); layoutParams = lp; text = "🎧"; textSize = 22f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) }
-        stopLL = LinearLayout(this).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.rightMargin = (10*d).toInt(); layoutParams = lp; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()) }
-        val stopImg = ImageView(this).apply { val lp = LinearLayout.LayoutParams((30*d).toInt(), (30*d).toInt()); layoutParams = lp; scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.stop) } catch (e: Exception) {} }
+        val between2 = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        qariSelectorTv = TextView(this).apply { layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)); text = "🎧"; textSize = 22f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) }
+        stopLL = LinearLayout(this).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(10) }; setPadding(dp(8), dp(8), dp(8), dp(8)) }
+        val stopImg = ImageView(this).apply { layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.stop) } catch (e: Exception) {}; setColorFilter(Color.WHITE) }
         stopLL.addView(stopImg)
         audiotab.addView(previousLL); audiotab.addView(between0); audiotab.addView(playAudioLL); audiotab.addView(between1); audiotab.addView(nextLL); audiotab.addView(between2); audiotab.addView(qariSelectorTv); audiotab.addView(stopLL)
 
-        fabGlobalSearch = FloatingActionButton(this).apply {
-            val lp = ConstraintLayout.LayoutParams((56*d).toInt(), (56*d).toInt())
-            lp.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+        listView1 = ListView(this).apply {
+            id = View.generateViewId()
+            val lp = ConstraintLayout.LayoutParams(0, 0)
+            lp.topToBottom = nores.id
+            lp.bottomToTop = audiotab.id
+            lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-            lp.bottomMargin = (16*d).toInt()
-            lp.rightMargin = (16*d).toInt()
-            lp.setMargins(0,0,(16*d).toInt(),(16*d).toInt())
+            lp.topMargin = dp(6)
             layoutParams = lp
-            try { setImageResource(R.drawable.searchme) } catch (e: Exception) {}
+            divider = null; dividerHeight = 0; setBackgroundColor(Color.parseColor("#F5F5F5"))
+            selector = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
+            isFastScrollEnabled = true
+            clipToPadding = false
+            setPadding(0,0,0, dp(80))
+        }
+
+        fabGlobalSearch = FloatingActionButton(this).apply {
+            val lp = ConstraintLayout.LayoutParams(dp(56), dp(56))
+            lp.bottomToTop = audiotab.id
+            lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+            lp.bottomMargin = dp(16); lp.rightMargin = dp(16)
+            lp.setMargins(0,0,dp(16),dp(16))
+            layoutParams = lp
+            try { setImageResource(R.drawable.searchme) } catch (e: Exception) { setImageResource(android.R.drawable.ic_search_category_default) }
             backgroundTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
+            imageTintList = ColorStateList.valueOf(Color.WHITE)
+            size = FloatingActionButton.SIZE_NORMAL
         }
 
         rootLayout.addView(topBar); rootLayout.addView(searchView); rootLayout.addView(progressContainer); rootLayout.addView(nores); rootLayout.addView(listView1); rootLayout.addView(audiotab); rootLayout.addView(fabGlobalSearch)
@@ -352,17 +372,19 @@ class QuranActivity : AppCompatActivity() {
     private fun setupListeners() {
         backIv.setOnClickListener { if (currentMode != Mode.SURA_LIST) switchMode(Mode.SURA_LIST) else finish() }
         bookmarkViewBtn.setOnClickListener { loadBookmarksAndSwitch() }
-        searchIv.setOnClickListener { searchView.visibility = if (searchView.visibility == View.VISIBLE) View.GONE else View.VISIBLE }
+        searchIv.setOnClickListener { searchView.visibility = if (searchView.visibility == View.VISIBLE) View.GONE else View.VISIBLE; if (searchView.visibility == View.VISIBLE) searchbox.requestFocus() }
         cancelIv.setOnClickListener { if (searchbox.text.toString() == "") searchView.visibility = View.GONE else searchbox.text.clear() }
         jumpIv.setOnClickListener { showPageJumpDialog() }
-        fabGlobalSearch.setOnClickListener { switchMode(Mode.GLOBAL_SEARCH) }
+        fabGlobalSearch.setOnClickListener { switchMode(Mode.GLOBAL_SEARCH); searchView.visibility = View.VISIBLE; searchbox.requestFocus(); searchbox.hint = "পুরো কুরআনে সার্চ করুন" }
 
         searchbox.addTextChangedListener { s ->
             val q = s.toString()
+            lastQuery = q
             when (currentMode) {
                 Mode.SURA_LIST -> filterSuraList(q)
                 Mode.AYA_LIST -> filterAyaList(q)
-                Mode.GLOBAL_SEARCH -> { if (q.length >= 2) performGlobalSearch(q) }
+                Mode.GLOBAL_SEARCH -> { if (q.length >= 2) performGlobalSearch(q) else { globalList.clear(); listView1.adapter = GlobalSearchAdapter(this, globalList); progressText.text = "কমপক্ষে ২ অক্ষর লিখুন" } }
+                Mode.BOOKMARK -> filterBookmarkList(q)
                 else -> {}
             }
         }
@@ -372,16 +394,15 @@ class QuranActivity : AppCompatActivity() {
                 Mode.SURA_LIST -> {
                     if (position < filteredSura.size) {
                         val selected = filteredSura[position]
-                        val bookAuthor = selected.getString("author")
                         currentSuraBangla = selected.getString("name")
-                        currentSuraAuthor = bookAuthor
-                        currentSuraNumber = getSuraNumberFromAuthor(bookAuthor)
-                        loadAyaList("${bookAuthor}.json")
+                        currentSuraAuthor = selected.getString("author")
+                        currentSuraNumber = getSuraNumberFromAuthor(currentSuraAuthor)
+                        loadAyaList("${currentSuraAuthor}.json")
                         switchMode(Mode.AYA_LIST)
                     }
                 }
                 Mode.BOOKMARK -> {
-                    val item = if (listView1.adapter is BookmarkAdapter) (listView1.adapter as BookmarkAdapter).getItemAt(position) else null
+                    val item = (listView1.adapter as? BookmarkAdapter)?.getItemAt(position)
                     item?.let {
                         currentSuraAuthor = it.optString("suraAuthor")
                         currentSuraBangla = it.optString("suraName")
@@ -389,13 +410,13 @@ class QuranActivity : AppCompatActivity() {
                         loadAyaList("${currentSuraAuthor}.json")
                         switchMode(Mode.AYA_LIST)
                         listView1.postDelayed({
-                            val targetVerses = it.optString("ayahNumber")
-                            for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == targetVerses) { listView1.setSelection(i); break }
+                            val target = it.optString("ayahNumber")
+                            for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == target) { listView1.setSelection(i); break }
                         }, 300)
                     }
                 }
                 Mode.GLOBAL_SEARCH -> {
-                    val item = if (listView1.adapter is GlobalSearchAdapter) (listView1.adapter as GlobalSearchAdapter).getItemAt(position) else null
+                    val item = (listView1.adapter as? GlobalSearchAdapter)?.getItemAt(position)
                     item?.let {
                         currentSuraAuthor = it.optString("suraAuthor")
                         currentSuraBangla = it.optString("suraName")
@@ -455,17 +476,20 @@ class QuranActivity : AppCompatActivity() {
             Mode.SURA_LIST -> {
                 headingTv.text = intent.getStringExtra("sub") ?: "আল কুরআন"
                 searchbox.hint = "সুরা সার্চ করুন"
+                searchbox.setHintTextColor(Color.parseColor("#9901837A"))
                 audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE
                 fabGlobalSearch.visibility = View.VISIBLE
                 searchView.visibility = View.GONE
                 if (filteredSura.isEmpty()) loadSuraList()
                 nores.visibility = if (filteredSura.isEmpty()) View.VISIBLE else View.GONE
+                if (filteredSura.isEmpty()) { noresTv.text = "কোন সুরা পাওয়া যায়নি"; try { noresImg.setImageResource(R.drawable.noresult) } catch (e: Exception) {} }
                 listView1.visibility = View.VISIBLE
                 listView1.adapter = QuranAdapter(this, filteredSura)
             }
             Mode.AYA_LIST -> {
                 headingTv.text = currentSuraBangla
                 searchbox.hint = "আয়াত সার্চ করুন"
+                searchbox.setHintTextColor(Color.parseColor("#9901837A"))
                 audiotab.visibility = View.VISIBLE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.VISIBLE; nores.visibility = View.GONE
                 fabGlobalSearch.visibility = View.GONE
                 searchView.visibility = View.GONE
@@ -474,16 +498,23 @@ class QuranActivity : AppCompatActivity() {
             Mode.GLOBAL_SEARCH -> {
                 headingTv.text = "গ্লোবাল সার্চ"
                 searchbox.hint = "পুরো কুরআনে সার্চ করুন"
+                searchbox.setHintTextColor(Color.parseColor("#9901837A"))
                 searchView.visibility = View.VISIBLE; audiotab.visibility = View.GONE; jumpIv.visibility = View.GONE; progressContainer.visibility = View.VISIBLE; nores.visibility = View.GONE
                 fabGlobalSearch.visibility = View.GONE
                 globalList.clear()
                 listView1.adapter = GlobalSearchAdapter(this, globalList)
-                progressBar.progress = 0; progressText.text = "⏳ সার্চ চলছে... ০ টি পাওয়া গেছে"
+                progressBar.progress = 0; progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন"
             }
             Mode.BOOKMARK -> {
                 headingTv.text = "বুকমার্ক"
-                searchbox.hint = "বুকমার্ক সার্চ"; audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; searchView.visibility = View.GONE; fabGlobalSearch.visibility = View.GONE
-                if (bookmarkList.isEmpty()) nores.visibility = View.VISIBLE else nores.visibility = View.GONE
+                searchbox.hint = "বুকমার্ক সার্চ"
+                searchbox.setHintTextColor(Color.parseColor("#9901837A"))
+                audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; searchView.visibility = View.GONE; fabGlobalSearch.visibility = View.GONE
+                if (bookmarkList.isEmpty()) {
+                    nores.visibility = View.VISIBLE
+                    noresTv.text = "কোন বুকমার্ক নেই\n⭐ আইকনে ক্লিক করে বুকমার্ক যোগ করুন"
+                    try { noresImg.setImageResource(R.drawable.noresult) } catch (e: Exception) {}
+                } else nores.visibility = View.GONE
                 listView1.adapter = BookmarkAdapter(this, bookmarkList)
             }
         }
@@ -503,11 +534,8 @@ class QuranActivity : AppCompatActivity() {
                 allSuraAuthors.add(o.getString("author")); suraInfoMap[o.getString("author")] = o
             }
             filteredSura = ArrayList(suraList)
-            copyBlankReasonToClipboard("Loaded ${suraList.size} suras from $fileName")
         } catch (e: Exception) {
-            e.printStackTrace()
-            copyBlankReasonToClipboard("Failed to load $fileName: ${e.message} - Check assets/$fileName exists")
-            suraList = ArrayList(); filteredSura = ArrayList()
+            e.printStackTrace(); suraList = ArrayList(); filteredSura = ArrayList()
         }
     }
 
@@ -525,27 +553,42 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun filterSuraList(query: String) {
+        lastQuery = query
         filteredSura.clear()
         if (query.isEmpty()) filteredSura.addAll(suraList)
         else {
-            for (i in suraName.indices) if (suraName[i].contains(query, true)) {
-                filteredSura.add(JSONObject().apply { put("name", suraName[i]); put("author", suraAuthor[i]); put("bookid", suraBookId[i]); put("verses", suraVerses[i]); put("names", suraNamesAr[i]) })
+            for (i in suraName.indices) if (suraName[i].contains(query, true) || suraNamesAr[i].contains(query, true) || suraBookId[i].contains(query, true)) {
+                filteredSura.add(suraList[i])
             }
         }
         nores.visibility = if (filteredSura.isEmpty()) View.VISIBLE else View.GONE
+        if (filteredSura.isEmpty()) noresTv.text = "“$query” এর জন্য কোন সুরা পাওয়া যায়নি"
         listView1.adapter = QuranAdapter(this, filteredSura)
     }
 
     private fun filterAyaList(query: String) {
+        lastQuery = query
         filteredAya.clear()
         if (query.isEmpty()) filteredAya.addAll(ayaList)
         else {
-            for (i in ayaName.indices) if (ayaName[i].contains(query, true) || ayaNamesAr[i].contains(query, true)) {
+            for (i in ayaName.indices) if (ayaName[i].contains(query, true) || ayaNamesAr[i].contains(query, true) || ayaVerses[i].contains(query, true)) {
                 filteredAya.add(ayaList[i])
             }
         }
         nores.visibility = if (filteredAya.isEmpty()) View.VISIBLE else View.GONE
+        if (filteredAya.isEmpty()) noresTv.text = "“$query” এর জন্য কোন আয়াত পাওয়া যায়নি"
         listView1.adapter = QuranviewAdapter(this, filteredAya)
+    }
+
+    private fun filterBookmarkList(query: String) {
+        if (query.isEmpty()) {
+            listView1.adapter = BookmarkAdapter(this, bookmarkList)
+            nores.visibility = if (bookmarkList.isEmpty()) View.VISIBLE else View.GONE
+            return
+        }
+        val filtered = bookmarkList.filter { it.optString("name").contains(query, true) || it.optString("names").contains(query, true) }
+        listView1.adapter = BookmarkAdapter(this, ArrayList(filtered))
+        nores.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun getSuraNumberFromAuthor(author: String): Int {
@@ -687,17 +730,7 @@ class QuranActivity : AppCompatActivity() {
         for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); if (o.optString("_id") == _id && o.optString("suraAuthor") == suraAuthor) return true }
         return false
     }
-    private fun copyBlankReasonToClipboard(reason: String) {
-        try {
-            val fullReason = "Blank Reason: $reason | Mode: $currentMode | SuraList: ${suraList.size} | Filtered: ${filteredSura.size} | Assets sura.json exists: ${checkAssetExists("sura.json")}"
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("blank_reason", fullReason))
-            android.util.Log.e("QuranActivity", fullReason)
-        } catch (e: Exception) {}
-    }
-    private fun checkAssetExists(fileName: String): Boolean {
-        return try { resources.assets.open(fileName).close(); true } catch (e: Exception) { false }
-    }
+
     private fun loadBookmarksAndSwitch() {
         val prefsBm = getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
         val arr = try { JSONArray(prefsBm.getString("bookmarks_json", "[]")) } catch (e: Exception) { JSONArray() }
@@ -707,6 +740,7 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun performGlobalSearch(query: String) {
+        lastQuery = query
         globalList.clear(); progressBar.progress = 0; progressText.text = "⏳ সার্চ চলছে... ০ টি পাওয়া গেছে"
         Thread {
             var found = 0; var scanned = 0; val total = allSuraAuthors.size
@@ -721,76 +755,166 @@ class QuranActivity : AppCompatActivity() {
                         val name = obj.optString("name",""); val names = obj.optString("names",""); val tafsir = obj.optString("author","")
                         if (name.contains(query, true) || names.contains(query, true) || tafsir.contains(query, true)) {
                             val suraInfo = suraInfoMap[author]
-                            obj.put("suraName", suraInfo?.optString("name") ?: author); obj.put("suraAuthor", author); obj.put("suraNumber", suraInfo?.optString("bookid") ?: "1")
-                            matches.add(obj)
+                            val newObj = JSONObject(obj.toString())
+                            newObj.put("suraName", suraInfo?.optString("name") ?: author); newObj.put("suraAuthor", author); newObj.put("suraNumber", suraInfo?.optString("bookid") ?: "1")
+                            matches.add(newObj)
                         }
                     }
                 } catch (e: Exception) {}
                 found += matches.size; globalList.addAll(matches)
                 runOnUiThread {
                     progressBar.progress = scanned * 100 / total
-                    progressText.text = "⏳ সার্চ চলছে... $scanned/$total স্ক্যান - $found টি আয়াত পাওয়া গেছে"
-                    nores.visibility = if (globalList.isEmpty()) View.VISIBLE else View.GONE
+                    progressText.text = "⏳ $scanned/$total স্ক্যান - $found টি আয়াত পাওয়া গেছে"
+                    nores.visibility = if (globalList.isEmpty()) View.GONE else View.GONE
+                    if (found > 0) nores.visibility = View.GONE
                     listView1.adapter = GlobalSearchAdapter(this, ArrayList(globalList))
                 }
             }
-            runOnUiThread { progressText.text = "✅ $found টি আয়াত পাওয়া গেছে" }
+            runOnUiThread {
+                progressText.text = "✅ $found টি আয়াত পাওয়া গেছে"
+                if (globalList.isEmpty()) {
+                    nores.visibility = View.VISIBLE
+                    noresTv.text = "“$query” এর জন্য কোন আয়াত পাওয়া যায়নি"
+                } else {
+                    nores.visibility = View.GONE
+                }
+            }
         }.start()
     }
 
+    // FIXED JUMP DIALOG - like dialog_page_jump.xml
     private fun showPageJumpDialog() {
-        val input = EditText(this).apply { hint = "আয়াত নম্বর লিখুন"; inputType = android.text.InputType.TYPE_CLASS_NUMBER }
-        AlertDialog.Builder(this).setTitle("আয়াতে যান").setView(input)
+        val d = resources.displayMetrics.density
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            setBackgroundColor(Color.WHITE)
+        }
+        val header = TextView(this).apply {
+            text = "কোন আয়াতে যাবেন?"
+            setTextColor(Color.WHITE)
+            textSize = 20f
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setBackgroundColor(Color.parseColor("#01837A"))
+            try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }
+        }
+        val input = EditText(this).apply {
+            hint = "আয়াত নম্বর লিখুন"
+            setHintTextColor(Color.parseColor("#9901837A"))
+            setTextColor(ContextCompat.getColor(context, R.color.purple_500))
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            try {
+                background = ContextCompat.getDrawable(context, R.drawable.edit)
+            } catch (e: Exception) {
+                val bg = GradientDrawable(); bg.setColor(Color.WHITE); bg.setStroke(dp(1), Color.parseColor("#01837A")); bg.cornerRadius = dpF(8f); background = bg
+            }
+            try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48))
+        }
+        container.addView(header); container.addView(input)
+
+        AlertDialog.Builder(this)
+            .setView(container)
             .setPositiveButton("যান") { _, _ ->
                 val num = input.text.toString().toIntOrNull()
-                if (num != null) for (i in filteredAya.indices) if (filteredAya[i].optString("verses").toIntOrNull() == num) { listView1.setSelection(i); break }
-            }.setNegativeButton("বাতিল", null).show()
+                if (num != null) {
+                    var found = false
+                    for (i in filteredAya.indices) if (filteredAya[i].optString("verses").toIntOrNull() == num) { listView1.setSelection(i); found = true; break }
+                    if (!found) Toast.makeText(this, "আয়াত $num পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("বাতিল", null)
+            .show()
     }
 
     override fun onDestroy() { super.onDestroy(); mediaPlayer?.release(); mediaPlayer = null }
 
+    // HIGHLIGHT HELPER - Yellow
+    private fun getHighlightedText(fullText: String, query: String): SpannableString {
+        val spannable = SpannableString(fullText)
+        if (query.isEmpty()) return spannable
+        try {
+            val lowerFull = fullText.lowercase()
+            val lowerQuery = query.lowercase()
+            var start = lowerFull.indexOf(lowerQuery)
+            while (start >= 0) {
+                spannable.setSpan(BackgroundColorSpan(Color.YELLOW), start, start + query.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                start = lowerFull.indexOf(lowerQuery, start + query.length)
+            }
+        } catch (e: Exception) {}
+        return spannable
+    }
+
     inner class QuranAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context; val d = ctx.resources.displayMetrics.density
-            val itemView = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
-            val lmain = LinearLayout(ctx).apply {
-                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (60*d).toInt())
-                lp.setMargins((3*d).toInt(), (3*d).toInt(), (3*d).toInt(), (3*d).toInt())
-                layoutParams = lp
-                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(ContextCompat.getColor(context, R.color.teal_200)); elevation = 6f*d
+            val itemView = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT)
+                setBackgroundColor(Color.TRANSPARENT)
+                setPadding(dp(3), dp(3), dp(3), dp(0))
             }
-            val sketchUi = GradientDrawable().apply { val di = ctx.resources.displayMetrics.density.toInt(); setStroke(di, Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = di * 12f }
-            val ripple = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), sketchUi, null); lmain.background = ripple
-            val linear5 = LinearLayout(ctx).apply {
-                val lp = LinearLayout.LayoutParams((46*d).toInt(), (46*d).toInt())
-                lp.leftMargin = (10*d).toInt()
+            val lmain = LinearLayout(ctx).apply {
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(68))
+                lp.setMargins(dp(3), dp(3), dp(3), dp(3))
                 layoutParams = lp
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                elevation = 6f*d
+            }
+            val sketchUi = GradientDrawable().apply { setStroke(d.toInt(), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*d }
+            lmain.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), sketchUi, null)
+
+            val linear5 = LinearLayout(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(46), dp(46)).apply { leftMargin = dp(10) }
                 gravity = Gravity.CENTER
-                try { background = ContextCompat.getDrawable(ctx, R.drawable.quran) } catch (e: Exception) { setBackgroundColor(Color.LTGRAY) }
+                try { background = ContextCompat.getDrawable(ctx, R.drawable.quran) } catch (e: Exception) { val g = GradientDrawable(); g.setColor(Color.parseColor("#E0F2F1")); g.cornerRadius = 12f*d; background = g }
             }
             val number = TextView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); textSize = 10f; setTextColor(Color.parseColor("#5A0202")); setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER
-                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}; setPadding(0,0,0,(10*d).toInt())
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                textSize = 11f; setTextColor(Color.parseColor("#5A0202")); setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+                setPadding(0,0,0, dp(10))
             }
             linear5.addView(number)
-            val surabox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.leftMargin = (4*d).toInt(); layoutParams = lp }
-            val nameTv = TextView(ctx).apply { layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); textSize = 16f; setTextColor(Color.BLACK); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
-            val ayaNumTv = TextView(ctx).apply { layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); textSize = 14f; setTextColor(Color.BLACK); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
+            val surabox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(4) } }
+            val nameTv = TextView(ctx).apply { textSize = 16f; setTextColor(Color.BLACK); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
+            val ayaNumTv = TextView(ctx).apply { textSize = 13f; setTextColor(Color.parseColor("#607D8B")); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
             surabox.addView(nameTv); surabox.addView(ayaNumTv)
-            val spacer = LinearLayout(ctx).apply { val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f); layoutParams = lp }
-            val arabicTv = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.rightMargin = (5*d).toInt(); layoutParams = lp; textSize = 14f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; setTypeface(null, android.graphics.Typeface.BOLD) }
+            val spacer = LinearLayout(ctx).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+            val arabicTv = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(10) }
+                textSize = 15f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; setTypeface(null, Typeface.BOLD)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
             lmain.addView(linear5); lmain.addView(surabox); lmain.addView(spacer); lmain.addView(arabicTv)
             itemView.addView(lmain)
-            val line = LinearLayout(ctx).apply { val lp = LinearLayout.LayoutParams((100*d).toInt(), (1*d).toInt()); lp.setMargins((3*d).toInt(), (3*d).toInt(), (3*d).toInt(), (3*d).toInt()); lp.gravity = Gravity.CENTER; layoutParams = lp; setBackgroundColor(ContextCompat.getColor(context, R.color.teal_200)) }
-            itemView.addView(line)
+
             try {
-                nameTv.text = replaceArabicNumber(list[position].getString("name"))
-                arabicTv.text = replaceArabicNumber(list[position].getString("names"))
-                val bookid1 = replaceArabicNumber(list[position].getString("bookid"))
-                number.text = if (bookid1.startsWith("০") || bookid1.startsWith("0")) bookid1.drop(1) else bookid1
-                ayaNumTv.text = "মোট আয়াত : ${replaceArabicNumber(list[position].getString("verses"))}"
+                val obj = list[position]
+                val rawName = obj.getString("name")
+                val rawVerses = obj.getString("verses")
+                val rawBookId = obj.getString("bookid")
+                val rawArabic = obj.getString("names")
+                val formattedName = replaceArabicNumber(rawName)
+                val formattedArabic = replaceArabicNumber(rawArabic)
+                val bookid1 = replaceArabicNumber(rawBookId)
+                val displayId = if (bookid1.startsWith("০") || bookid1.startsWith("0")) bookid1.drop(1) else bookid1
+
+                number.text = displayId
+                // Highlight search
+                if (lastQuery.isNotEmpty() && currentMode == Mode.SURA_LIST) {
+                    nameTv.text = getHighlightedText(formattedName, replaceArabicNumber(lastQuery))
+                    ayaNumTv.text = getHighlightedText("মোট আয়াত : ${replaceArabicNumber(rawVerses)}", replaceArabicNumber(lastQuery))
+                } else {
+                    nameTv.text = formattedName
+                    ayaNumTv.text = "মোট আয়াত : ${replaceArabicNumber(rawVerses)}"
+                }
+                arabicTv.text = formattedArabic
             } catch (e: JSONException) { e.printStackTrace() }
-            val animation = android.view.animation.ScaleAnimation(0f,1f,0f,1f, android.view.animation.ScaleAnimation.RELATIVE_TO_SELF,0f, android.view.animation.ScaleAnimation.RELATIVE_TO_SELF,1f).apply { fillAfter=true; duration=300 }
+
+            val animation = android.view.animation.ScaleAnimation(0f,1f,0f,1f, android.view.animation.ScaleAnimation.RELATIVE_TO_SELF,0f, android.view.animation.ScaleAnimation.RELATIVE_TO_SELF,1f).apply { fillAfter=true; duration=250 }
             lmain.startAnimation(animation)
             return itemView
         }
@@ -798,56 +922,100 @@ class QuranActivity : AppCompatActivity() {
 
     inner class QuranviewAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val ctx = context; val d = ctx.resources.displayMetrics.density
-            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
+            val ctx = context
+            val root = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT)
+                setBackgroundColor(Color.TRANSPARENT)
+                setPadding(dp(6), dp(6), dp(6), dp(6))
+            }
             val lmain = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
-                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt())
-                layoutParams = lp
-                setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                elevation = 4f*ctx.resources.displayMetrics.density
             }
-            val linear4 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (50*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }
-            val linear11 = LinearLayout(ctx).apply { val lp = LinearLayout.LayoutParams((50*d).toInt(), (50*d).toInt()); layoutParams = lp; gravity = Gravity.CENTER; try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) {} }
-            val number = TextView(ctx).apply { layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); textSize = 11f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, android.graphics.Typeface.BOLD) }
+            val linear4 = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)); setPadding(dp(5), dp(5), dp(5), dp(5)) }
+            val linear11 = LinearLayout(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(50), dp(50))
+                gravity = Gravity.CENTER
+                try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) { val g = GradientDrawable(); g.setColor(Color.parseColor("#E0F2F1")); g.cornerRadius = 25f*ctx.resources.displayMetrics.density; background = g }
+            }
+            val number = TextView(ctx).apply { layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); textSize = 12f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER }
             linear11.addView(number)
-            val spacer0 = LinearLayout(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, 0f); layoutParams = lp }
-            val playBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
-            val shareBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
-            val copyBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
-            val bookmarkBtn = TextView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; text = "📑"; textSize = 20f; gravity = Gravity.CENTER; isFocusable = false }
-            val linear3 = LinearLayout(ctx).apply { val lp = LinearLayout.LayoutParams(0, 0); layoutParams = lp; try { background = ContextCompat.getDrawable(ctx, R.drawable.baseline_content_copy_24) } catch (e: Exception) {} }
-            linear4.addView(linear11); linear4.addView(spacer0); linear4.addView(playBtn); linear4.addView(shareBtn); linear4.addView(copyBtn); linear4.addView(bookmarkBtn); linear4.addView(linear3)
-            val ayaArabic = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; textSize = 28f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {} }
-            val kanzul = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; text = "কানযুল ঈমান"; setBackgroundColor(Color.parseColor("#E0F2F1")); setTextColor(Color.parseColor("#009688")); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()) }
-            val nameTv = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; textSize = 16f; setTextColor(Color.BLACK) }
-            val irfan = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; text = "ইরফানুল কুরআন"; setBackgroundColor(Color.parseColor("#E3F2FD")); setTextColor(Color.parseColor("#1E88E5")); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()) }
-            val ayaNumber = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; textSize = 16f; setTextColor(Color.BLACK) }
+
+            val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
+            val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
+            val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
+            val bookmarkBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; text = "📑"; textSize = 20f; gravity = Gravity.CENTER; isFocusable = false }
+
+            linear4.addView(linear11); linear4.addView(playBtn); linear4.addView(shareBtn); linear4.addView(copyBtn); linear4.addView(bookmarkBtn)
+
+            val ayaArabic = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(10), dp(10), dp(10)) }
+                textSize = 28f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setTypeface(null, Typeface.BOLD)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) { try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (ee: Exception) {} }
+            }
+            val kanzul = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(10), dp(10), dp(10)) }
+                text = "কানযুল ঈমান"; setBackgroundColor(Color.parseColor("#E0F2F1")); setTextColor(Color.parseColor("#00695C")); textSize = 13f; setTypeface(null, Typeface.BOLD); setPadding(dp(10), dp(6), dp(10), dp(6))
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val nameTv = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(4), dp(10), dp(10)) }
+                textSize = 16f; setTextColor(Color.BLACK); lineSpacingExtra = 4f
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val irfan = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(10), dp(10), dp(10)) }
+                text = "ইরফানুল কুরআন"; setBackgroundColor(Color.parseColor("#E3F2FD")); setTextColor(Color.parseColor("#0D47A1")); textSize = 13f; setTypeface(null, Typeface.BOLD); setPadding(dp(10), dp(6), dp(10), dp(6))
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val ayaNumber = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(4), dp(10), dp(10)) }
+                textSize = 16f; setTextColor(Color.BLACK); lineSpacingExtra = 4f
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
             lmain.addView(linear4); lmain.addView(ayaArabic); lmain.addView(kanzul); lmain.addView(nameTv); lmain.addView(irfan); lmain.addView(ayaNumber)
             root.addView(lmain)
+
             val item = list[position]
             val itemId = item.optString("_id")
+
             if (itemId == currentPlayingId) {
-                if (isAudioPlaying()) playBtn.setImageResource(R.drawable.pause_circle) else playBtn.setImageResource(R.drawable.play_circle)
-                val highlightDrawable = GradientDrawable().apply { setStroke((2*d).toInt(), Color.parseColor("#01837A")); setColor(Color.parseColor("#E0F7FA")); cornerRadius = 12f*d }
-                lmain.background = highlightDrawable; lmain.elevation = 8f*d
+                playBtn.setImageResource(if (isAudioPlaying()) R.drawable.pause_circle else R.drawable.play_circle)
+                val highlightDrawable = GradientDrawable().apply { setStroke(dp(2), Color.parseColor("#01837A")); setColor(Color.parseColor("#E0F7FA")); cornerRadius = 12f*ctx.resources.displayMetrics.density }
+                lmain.background = highlightDrawable; lmain.elevation = 8f*ctx.resources.displayMetrics.density
             } else {
-                playBtn.setImageResource(R.drawable.play_circle)
-                val normalDrawable = GradientDrawable().apply { setStroke(d.toInt(), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*d }
-                lmain.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), normalDrawable, null); lmain.elevation = 6f*d
+                try { playBtn.setImageResource(R.drawable.play_circle) } catch (e: Exception) {}
+                val normalDrawable = GradientDrawable().apply { setStroke(dp(1), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*ctx.resources.displayMetrics.density }
+                lmain.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), normalDrawable, null); lmain.elevation = 4f*ctx.resources.displayMetrics.density
             }
-            val bm = isBookmarked(itemId, currentSuraAuthor)
-            bookmarkBtn.text = if (bm) "🔖" else "📑"
+            bookmarkBtn.text = if (isBookmarked(itemId, currentSuraAuthor)) "🔖" else "📑"
+
             try {
-                nameTv.text = replaceArabicNumber("${list[position].getString("verses")}. ${list[position].getString("name")}")
-                ayaArabic.text = replaceArabicNumber(list[position].getString("names"))
-                ayaNumber.text = replaceArabicNumber(list[position].getString("author"))
-                number.text = replaceArabicNumber(list[position].getString("verses"))
+                val rawName = "${list[position].getString("verses")}. ${list[position].getString("name")}"
+                val rawArabic = list[position].getString("names")
+                val rawTafsir = list[position].getString("author")
+                val rawVerses = list[position].getString("verses")
+
+                number.text = replaceArabicNumber(rawVerses)
+
+                if (lastQuery.isNotEmpty() && currentMode == Mode.AYA_LIST) {
+                    ayaArabic.text = getHighlightedText(replaceArabicNumber(rawArabic), lastQuery)
+                    nameTv.text = getHighlightedText(replaceArabicNumber(rawName), lastQuery)
+                    ayaNumber.text = getHighlightedText(replaceArabicNumber(rawTafsir), lastQuery)
+                } else {
+                    ayaArabic.text = replaceArabicNumber(rawArabic)
+                    nameTv.text = replaceArabicNumber(rawName)
+                    ayaNumber.text = replaceArabicNumber(rawTafsir)
+                }
             } catch (e: JSONException) { e.printStackTrace() }
-            playBtn.setOnClickListener { playme(item); if (isAudioPlaying()) playAudioIv.setImageResource(R.drawable.pause) else playAudioIv.setImageResource(R.drawable.play) }
+
+            playBtn.setOnClickListener { playme(item) }
             copyBtn.setOnClickListener { copyme(item) }
             shareBtn.setOnClickListener { shareme(item) }
-            bookmarkBtn.setOnClickListener { toggleBookmark(item) }
+            bookmarkBtn.setOnClickListener { toggleBookmark(item); bookmarkBtn.text = if (isBookmarked(itemId, currentSuraAuthor)) "🔖" else "📑" }
             return root
         }
     }
@@ -855,24 +1023,69 @@ class QuranActivity : AppCompatActivity() {
     inner class GlobalSearchAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
         fun getItemAt(pos: Int): JSONObject? = if (pos < list.size) list[pos] else null
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val ctx = context; val d = ctx.resources.displayMetrics.density
-            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
-            val suraHeader = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()); layoutParams = lp; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
-            val lmain = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE) }
-            val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (50*d).toInt()); layoutParams = lp }
-            val num = TextView(ctx).apply { val lp = LinearLayout.LayoutParams((50*d).toInt(), (50*d).toInt()); layoutParams = lp; gravity = Gravity.CENTER; try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) {}; textSize = 11f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, android.graphics.Typeface.BOLD) }
-            val playBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
-            val copyBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
-            val shareBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
-            val bookmarkBtn = TextView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; text = "📑"; textSize = 20f; gravity = Gravity.CENTER; isFocusable = false }
+            val ctx = context
+            val root = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT)
+                setBackgroundColor(Color.TRANSPARENT)
+                setPadding(dp(6), dp(6), dp(6), dp(6))
+            }
+            val suraHeader = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(12), dp(6), dp(10), dp(2)) }
+                textSize = 13f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, Typeface.BOLD)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            // Same card as QuranviewAdapter
+            val lmain = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(6), dp(6), dp(6), dp(6)) }
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                elevation = 4f*ctx.resources.displayMetrics.density
+                val normalDrawable = GradientDrawable().apply { setStroke(dp(1), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*ctx.resources.displayMetrics.density }
+                background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), normalDrawable, null)
+            }
+            val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)) }
+            val num = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(50), dp(50))
+                gravity = Gravity.CENTER
+                try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) { val g = GradientDrawable(); g.setColor(Color.parseColor("#E0F2F1")); g.cornerRadius = 25f*ctx.resources.displayMetrics.density; background = g }
+                textSize = 12f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, Typeface.BOLD)
+            }
+            val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
+            val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
+            val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
+            val bookmarkBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; text = "📑"; textSize = 20f; gravity = Gravity.CENTER }
+
             topRow.addView(num); topRow.addView(playBtn); topRow.addView(copyBtn); topRow.addView(shareBtn); topRow.addView(bookmarkBtn)
-            val ayaArabic = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; textSize = 24f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {} }
-            val nameTv = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; textSize = 16f; setTextColor(Color.BLACK) }
+
+            val ayaArabic = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(10), dp(10), dp(10)) }
+                textSize = 26f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setTypeface(null, Typeface.BOLD)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) { try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (ee: Exception) {} }
+            }
+            val nameTv = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(6), dp(10), dp(10)) }
+                textSize = 16f; setTextColor(Color.BLACK); lineSpacingExtra = 4f
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
             lmain.addView(topRow); lmain.addView(ayaArabic); lmain.addView(nameTv)
             root.addView(suraHeader); root.addView(lmain)
+
             val item = list[position]
-            suraHeader.text = "${item.optString("suraName")} - আয়াত ${item.optString("verses")}"
-            num.text = item.optString("verses"); ayaArabic.text = replaceArabicNumber(item.optString("names")); nameTv.text = replaceArabicNumber(item.optString("name"))
+            suraHeader.text = "${item.optString("suraName")} - আয়াত ${replaceArabicNumber(item.optString("verses"))}"
+            num.text = replaceArabicNumber(item.optString("verses"))
+
+            // Highlight
+            val rawArabic = item.optString("names")
+            val rawName = item.optString("name")
+            if (lastQuery.isNotEmpty()) {
+                ayaArabic.text = getHighlightedText(replaceArabicNumber(rawArabic), lastQuery)
+                nameTv.text = getHighlightedText(replaceArabicNumber(rawName), lastQuery)
+            } else {
+                ayaArabic.text = replaceArabicNumber(rawArabic)
+                nameTv.text = replaceArabicNumber(rawName)
+            }
+
             playBtn.setOnClickListener {
                 currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
                 loadAyaList("${currentSuraAuthor}.json"); switchMode(Mode.AYA_LIST)
@@ -881,8 +1094,7 @@ class QuranActivity : AppCompatActivity() {
             copyBtn.setOnClickListener { val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager; clipboard.setPrimaryClip(ClipData.newPlainText("ayah", "${item.optString("names")}\n${item.optString("name")}")); Toast.makeText(ctx, "কপি হয়েছে", Toast.LENGTH_SHORT).show() }
             shareBtn.setOnClickListener { val share = Intent(Intent.ACTION_SEND); share.type = "text/plain"; share.putExtra(Intent.EXTRA_TEXT, "${item.optString("names")}\n${item.optString("name")}\n${item.optString("suraName")}"); ctx.startActivity(Intent.createChooser(share, "শেয়ার")) }
             bookmarkBtn.setOnClickListener { toggleBookmark(item) }
-            val drawable = GradientDrawable().apply { setStroke(d.toInt(), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*d }
-            lmain.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), drawable, null); lmain.elevation = 6f*d
+            bookmarkBtn.text = if (isBookmarked(item.optString("_id"), item.optString("suraAuthor"))) "🔖" else "📑"
             return root
         }
     }
@@ -890,23 +1102,49 @@ class QuranActivity : AppCompatActivity() {
     inner class BookmarkAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
         fun getItemAt(pos: Int): JSONObject? = if (pos < list.size) list[pos] else null
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val ctx = context; val d = ctx.resources.displayMetrics.density
-            val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
-            val header = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()); layoutParams = lp; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
-            val lmain = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE) }
-            val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (50*d).toInt()); layoutParams = lp }
-            val cancelBtn = TextView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; text = "❌"; textSize = 20f; gravity = Gravity.CENTER; isFocusable = false }
-            val playBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
-            val copyBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
-            val shareBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); layoutParams = lp; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
+            val ctx = context
+            val root = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT)
+                setBackgroundColor(Color.TRANSPARENT); setPadding(dp(6), dp(6), dp(6), dp(6))
+            }
+            val header = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(12), dp(6), dp(10), dp(2)) }
+                textSize = 13f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, Typeface.BOLD)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val lmain = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(6), dp(6), dp(6), dp(6)) }
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                elevation = 4f*ctx.resources.displayMetrics.density
+                val d = GradientDrawable().apply { setStroke(dp(1), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*ctx.resources.displayMetrics.density }
+                background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), d, null)
+            }
+            val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50)) }
+            val cancelBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; text = "❌"; textSize = 18f; gravity = Gravity.CENTER; isFocusable = false }
+            val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
+            val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
+            val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
             topRow.addView(cancelBtn); topRow.addView(playBtn); topRow.addView(copyBtn); topRow.addView(shareBtn)
-            val ayaArabic = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; textSize = 24f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {} }
-            val nameTv = TextView(ctx).apply { val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); lp.setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()); layoutParams = lp; textSize = 16f; setTextColor(Color.BLACK) }
+
+            val ayaArabic = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(10), dp(10), dp(10)) }
+                textSize = 26f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {}
+            }
+            val nameTv = TextView(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(6), dp(10), dp(10)) }
+                textSize = 16f; setTextColor(Color.BLACK)
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
             lmain.addView(topRow); lmain.addView(ayaArabic); lmain.addView(nameTv)
             root.addView(header); root.addView(lmain)
+
             val item = list[position]
-            header.text = "${item.optString("suraName")} - আয়াত ${item.optString("ayahNumber")}"
+            header.text = "${item.optString("suraName")} - আয়াত ${replaceArabicNumber(item.optString("ayahNumber"))}"
             ayaArabic.text = replaceArabicNumber(item.optString("names")); nameTv.text = replaceArabicNumber(item.optString("name"))
+
             cancelBtn.setOnClickListener {
                 val prefs = ctx.getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
                 val jsonStr = prefs.getString("bookmarks_json","[]")
@@ -915,7 +1153,7 @@ class QuranActivity : AppCompatActivity() {
                 prefs.edit().putString("bookmarks_json", newArr.toString()).apply()
                 list.removeAt(position); notifyDataSetChanged()
                 Toast.makeText(ctx, "বুকমার্ক থেকে বাতিল করা হয়েছে", Toast.LENGTH_SHORT).show()
-                if (list.isEmpty()) nores.visibility = View.VISIBLE
+                if (list.isEmpty()) { nores.visibility = View.VISIBLE; noresTv.text = "কোন বুকমার্ক নেই\n⭐ আইকনে ক্লিক করে বুকমার্ক যোগ করুন" }
             }
             playBtn.setOnClickListener {
                 currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
@@ -924,8 +1162,6 @@ class QuranActivity : AppCompatActivity() {
             }
             copyBtn.setOnClickListener { val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager; clipboard.setPrimaryClip(ClipData.newPlainText("ayah", "${item.optString("names")}\n${item.optString("name")}")); Toast.makeText(ctx, "কপি হয়েছে", Toast.LENGTH_SHORT).show() }
             shareBtn.setOnClickListener { val share = Intent(Intent.ACTION_SEND); share.type = "text/plain"; share.putExtra(Intent.EXTRA_TEXT, "${item.optString("names")}\n${item.optString("name")}\n${item.optString("suraName")}"); ctx.startActivity(Intent.createChooser(share, "শেয়ার")) }
-            val drawable = GradientDrawable().apply { setStroke(d.toInt(), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*d }
-            lmain.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), drawable, null); lmain.elevation = 6f*d
             return root
         }
     }
