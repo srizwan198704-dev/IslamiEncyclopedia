@@ -35,12 +35,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputLayout
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -48,17 +44,15 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
-// ================= SINGLE FILE - SINGLE ACTIVITY - ALL ADAPTERS =================
-// DRAWABLE LOCK ABSOLUTE: playme=@drawable/play_circle, pause=@drawable/pause_circle, copyme=@drawable/content_copy, shareme=@drawable/share_round, previous=@drawable/previous, play=@drawable/play, pause=@drawable/pause, stop=@drawable/stop, quran=@drawable/quran, ic_1_4=@drawable/ic_1_4, ic_arrow_back_white, ic_jump_page, searchme, cancel, noresult, back1ground, baseline_content_copy_24 always ImageView with drawable. Only bookmarkBtn 📑/🔖, qariSelector 🎧, bookmarkViewBtn ⭐, bookmarkCancel ❌ are TextView emoji because no drawable exists.
+// SINGLE FILE - SINGLE ACTIVITY - ALL ADAPTERS
+// DRAWABLE LOCK: playme=@drawable/play_circle, copyme=@drawable/content_copy, shareme=@drawable/share_round always ImageView. Only bookmarkCancel ❌, bookmarkBtn 📑/🔖, qariSelector 🎧, bookmarkViewBtn ⭐ are TextView
 
 class QuranActivity : AppCompatActivity() {
 
     enum class Mode { SURA_LIST, AYA_LIST, GLOBAL_SEARCH, BOOKMARK }
-
     private var currentMode = Mode.SURA_LIST
     private lateinit var root: ConstraintLayout
     private lateinit var topBar: LinearLayout
@@ -85,7 +79,6 @@ class QuranActivity : AppCompatActivity() {
     private lateinit var qariSelectorTv: TextView
     private lateinit var fabGlobalSearch: FloatingActionButton
 
-    // Data
     private lateinit var suraName: Array<String>
     private lateinit var suraAuthor: Array<String>
     private lateinit var suraBookId: Array<String>
@@ -93,7 +86,6 @@ class QuranActivity : AppCompatActivity() {
     private lateinit var suraNamesAr: Array<String>
     private var suraList: ArrayList<JSONObject> = ArrayList()
     private var filteredSura: ArrayList<JSONObject> = ArrayList()
-
     private lateinit var ayaName: Array<String>
     private lateinit var ayaAuthor: Array<String>
     private lateinit var ayaBookId: Array<String>
@@ -101,13 +93,11 @@ class QuranActivity : AppCompatActivity() {
     private lateinit var ayaNamesAr: Array<String>
     private var ayaList: ArrayList<JSONObject> = ArrayList()
     private var filteredAya: ArrayList<JSONObject> = ArrayList()
-
     private var globalList: ArrayList<JSONObject> = ArrayList()
     private var bookmarkList: ArrayList<JSONObject> = ArrayList()
     private var allSuraAuthors: ArrayList<String> = ArrayList()
     private var suraInfoMap: MutableMap<String, JSONObject> = mutableMapOf()
 
-    // Audio
     private var mediaPlayer: MediaPlayer? = null
     private var currentIndex = 0
     private var currentPlayingId: String? = null
@@ -122,8 +112,8 @@ class QuranActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("quran_pref", Context.MODE_PRIVATE)
-        selectedQariName = prefs.getString("selected_qari_name", "মিশারী রাশিদ আল-আফাসী") ?: "মিশারী রাশিদ আল-আফাসী"
-        selectedQariCode = prefs.getString("selected_qari_code", "Alafasy_64kbps") ?: "Alafasy_64kbps"
+        selectedQariName = prefs.getString("selected_qari_name", "মিশারী রাশিদ আল-আফাসী")?: "মিশারী রাশিদ আল-আফাসী"
+        selectedQariCode = prefs.getString("selected_qari_code", "Alafasy_64kbps")?: "Alafasy_64kbps"
         qariMap = linkedMapOf(
             "মিশারী রাশিদ আল-আফাসী" to "Alafasy_64kbps",
             "আব্দুর রহমান আস-সুদাইস" to "Abdurrahmaan_As-Sudais_64kbps",
@@ -158,7 +148,7 @@ class QuranActivity : AppCompatActivity() {
             override fun handleOnBackPressed() {
                 if (searchView.visibility == View.VISIBLE) {
                     if (searchbox.text.toString().isEmpty()) searchView.visibility = View.GONE else searchbox.text.clear()
-                } else if (currentMode != Mode.SURA_LIST) {
+                } else if (currentMode!= Mode.SURA_LIST) {
                     switchMode(Mode.SURA_LIST)
                 } else finish()
             }
@@ -183,7 +173,7 @@ class QuranActivity : AppCompatActivity() {
         }
         backIv = ImageView(this).apply {
             layoutParams = LinearLayout.LayoutParams((56 * d).toInt(), (56 * d).toInt())
-            setPadding((15 * d).toInt(), (15 * d).toInt(), (15 * d).toInt(), (15 * d).toInt())
+            setPadding((15 * d).toInt(), (15 * d).toInt())
             scaleType = ImageView.ScaleType.CENTER_CROP
             try { setImageResource(R.drawable.ic_arrow_back_white) } catch (e: Exception) {}
         }
@@ -192,7 +182,7 @@ class QuranActivity : AppCompatActivity() {
             setTextColor(Color.WHITE); textSize = 18f
             try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
             isSingleLine = true; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; isFocusable = true; isFocusableInTouchMode = true; setHorizontallyScrolling(true); gravity = Gravity.CENTER_VERTICAL; setTypeface(typeface, android.graphics.Typeface.BOLD)
-            text = intent.getStringExtra("sub") ?: "আল কুরআন"
+            text = intent.getStringExtra("sub")?: "আল কুরআন"
         }
         bookmarkViewBtn = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams((40 * d).toInt(), (40 * d).toInt()).apply { rightMargin = (5 * d).toInt() }
@@ -212,6 +202,7 @@ class QuranActivity : AppCompatActivity() {
         topBar.addView(backIv); topBar.addView(headingTv); topBar.addView(bookmarkViewBtn); topBar.addView(jumpIv); topBar.addView(searchIv)
 
         searchView = LinearLayout(this).apply {
+            id = View.generateViewId()
             orientation = LinearLayout.HORIZONTAL; visibility = View.GONE
             layoutParams = ConstraintLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topToBottom = topBar.id; startToStart = ConstraintLayout.LayoutParams.PARENT_ID; endToEnd = ConstraintLayout.LayoutParams.PARENT_ID; topMargin = (10 * d).toInt() }
         }
@@ -234,6 +225,7 @@ class QuranActivity : AppCompatActivity() {
         searchView.addView(boxofsearch); searchView.addView(cancelIv)
 
         progressContainer = LinearLayout(this).apply {
+            id = View.generateViewId()
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; visibility = View.GONE
             setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt())
             layoutParams = ConstraintLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topToBottom = searchView.id; startToStart = ConstraintLayout.LayoutParams.PARENT_ID; endToEnd = ConstraintLayout.LayoutParams.PARENT_ID }
@@ -263,13 +255,13 @@ class QuranActivity : AppCompatActivity() {
 
         listView1 = ListView(this).apply {
             id = View.generateViewId()
-            layoutParams = ConstraintLayout.LayoutParams(0, 0).apply { 
-                topToBottom = progressContainer.id; 
-                bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID; 
-                startToStart = ConstraintLayout.LayoutParams.PARENT_ID; 
-                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID; 
-                topMargin = (10*d).toInt(); 
-                bottomMargin = (80*d).toInt() 
+            layoutParams = ConstraintLayout.LayoutParams(0, 0).apply {
+                topToBottom = progressContainer.id;
+                bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+                startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+                topMargin = (10*d).toInt();
+                bottomMargin = (80*d).toInt()
             }
             divider = null; dividerHeight = 0; setBackgroundColor(Color.WHITE); selector = android.graphics.drawable.ColorDrawable(Color.WHITE); isFastScrollEnabled = true
         }
@@ -308,15 +300,12 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        backIv.setOnClickListener {
-            if (currentMode != Mode.SURA_LIST) switchMode(Mode.SURA_LIST) else finish()
-        }
+        backIv.setOnClickListener { if (currentMode!= Mode.SURA_LIST) switchMode(Mode.SURA_LIST) else finish() }
         bookmarkViewBtn.setOnClickListener { loadBookmarksAndSwitch() }
         searchIv.setOnClickListener { searchView.visibility = if (searchView.visibility == View.VISIBLE) View.GONE else View.VISIBLE }
         cancelIv.setOnClickListener { if (searchbox.text.toString() == "") searchView.visibility = View.GONE else searchbox.text.clear() }
         jumpIv.setOnClickListener { showPageJumpDialog() }
         fabGlobalSearch.setOnClickListener { switchMode(Mode.GLOBAL_SEARCH) }
-
         searchbox.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {}
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -330,7 +319,6 @@ class QuranActivity : AppCompatActivity() {
                 }
             }
         })
-
         listView1.setOnItemClickListener { _, _, position, _ ->
             when (currentMode) {
                 Mode.SURA_LIST -> {
@@ -344,43 +332,13 @@ class QuranActivity : AppCompatActivity() {
                         switchMode(Mode.AYA_LIST)
                     }
                 }
-                Mode.BOOKMARK -> {
-                    val item = if (listView1.adapter is BookmarkAdapter) (listView1.adapter as BookmarkAdapter).getItemAt(position) else null
-                    item?.let {
-                        currentSuraAuthor = it.optString("suraAuthor")
-                        currentSuraBangla = it.optString("suraName")
-                        currentSuraNumber = it.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
-                        loadAyaList("${currentSuraAuthor}.json")
-                        switchMode(Mode.AYA_LIST)
-                        // scroll after load
-                        listView1.postDelayed({
-                            val targetVerses = it.optString("ayahNumber")
-                            for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == targetVerses) { listView1.setSelection(i); break }
-                        }, 300)
-                    }
-                }
-                Mode.GLOBAL_SEARCH -> {
-                    val item = if (listView1.adapter is GlobalSearchAdapter) (listView1.adapter as GlobalSearchAdapter).getItemAt(position) else null
-                    item?.let {
-                        currentSuraAuthor = it.optString("suraAuthor")
-                        currentSuraBangla = it.optString("suraName")
-                        currentSuraNumber = it.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
-                        loadAyaList("${currentSuraAuthor}.json")
-                        switchMode(Mode.AYA_LIST)
-                        listView1.postDelayed({
-                            val target = it.optString("verses")
-                            for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == target) { listView1.setSelection(i); break }
-                        }, 300)
-                    }
-                }
                 else -> {}
             }
         }
-
         previousLL.setOnClickListener { if (currentIndex > 0) currentIndex--; startPlayingFromIndex(currentIndex) }
         nextLL.setOnClickListener { if (currentIndex < filteredAya.size - 1) currentIndex++; startPlayingFromIndex(currentIndex) }
         stopLL.setOnClickListener {
-            if (mediaPlayer != null && mediaPlayer!!.isPlaying) {
+            if (mediaPlayer!= null && mediaPlayer!!.isPlaying) {
                 mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null; currentPlayingId = null; currentIndex = 0
                 playAudioIv.setImageResource(R.drawable.play); notifyAyaList()
                 Toast.makeText(this, "অডিও প্লে বন্ধ হয়েছে।", Toast.LENGTH_SHORT).show()
@@ -388,7 +346,7 @@ class QuranActivity : AppCompatActivity() {
         }
         playAudioLL.setOnClickListener { playAudioIv.performClick() }
         playAudioIv.setOnClickListener {
-            if (mediaPlayer != null) {
+            if (mediaPlayer!= null) {
                 if (mediaPlayer!!.isPlaying) { mediaPlayer?.pause(); notifyAyaList(); playAudioIv.setImageResource(R.drawable.play) }
                 else {
                     if (currentIndex >= filteredAya.size) { currentIndex = 0; startPlayingFromIndex(currentIndex); notifyAyaList(); playAudioIv.setImageResource(R.drawable.pause) }
@@ -404,11 +362,11 @@ class QuranActivity : AppCompatActivity() {
             qariMap.keys.forEach { popup.menu.add(it) }
             popup.setOnMenuItemClickListener { item ->
                 val banglaName = item.title.toString()
-                val code = qariMap[banglaName] ?: "Alafasy_64kbps"
+                val code = qariMap[banglaName]?: "Alafasy_64kbps"
                 selectedQariName = banglaName; selectedQariCode = code
                 prefs.edit().putString("selected_qari_name", banglaName).putString("selected_qari_code", code).apply()
                 Toast.makeText(this, "ক্বারী: $banglaName", Toast.LENGTH_SHORT).show()
-                if (mediaPlayer != null) { mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null; startPlayingFromIndex(currentIndex) }
+                if (mediaPlayer!= null) { mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null; startPlayingFromIndex(currentIndex) }
                 true
             }
             popup.show()
@@ -419,16 +377,16 @@ class QuranActivity : AppCompatActivity() {
         currentMode = mode
         when (mode) {
             Mode.SURA_LIST -> {
-                headingTv.text = intent.getStringExtra("sub") ?: "আল কুরআন"
+                headingTv.text = intent.getStringExtra("sub")?: "আল কুরআন"
                 boxofsearch.hint = "সুরা সার্চ করুন"
-                audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE; nores.visibility = if (filteredSura.isEmpty()) View.VISIBLE else View.GONE
+                audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE
+                nores.visibility = if (filteredSura.isEmpty()) View.VISIBLE else View.GONE
                 fabGlobalSearch.visibility = View.VISIBLE
                 searchView.visibility = View.GONE
-                // Reload if empty and auto copy reason
-                if (filteredSura.isEmpty()) { 
+                if (filteredSura.isEmpty()) {
                     loadSuraList()
                     if (filteredSura.isEmpty()) {
-                        copyBlankReasonToClipboard("SURA_LIST blank - sura.json not loaded or empty. Assets check failed.")
+                        copyBlankReasonToClipboard("SURA_LIST blank - sura.json not loaded")
                     }
                 }
                 listView1.adapter = QuranAdapter(this, filteredSura)
@@ -460,10 +418,23 @@ class QuranActivity : AppCompatActivity() {
         }
     }
 
-    // Data loading
-    private fun loadSuraList() {
+    private fun copyBlankReasonToClipboard(reason: String) {
         try {
-            val fileName = intent.getStringExtra("booklist")?.takeIf { it.isNotEmpty() } ?: "sura.json"
+            val fullReason = "QuranActivity Blank Reason:\n$reason\n\nMode: $currentMode\nSuraList size: ${suraList.size}\nFilteredSura size: ${filteredSura.size}\nAssets sura.json exists: ${checkAssetExists("sura.json")}\nFile tried: ${intent.getStringExtra("booklist")?: "sura.json"}"
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("blank_reason", fullReason))
+            android.util.Log.e("QuranActivity", fullReason)
+            Toast.makeText(this, "Blank reason copied: $reason", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    private fun checkAssetExists(fileName: String): Boolean {
+        return try { resources.assets.open(fileName).close(); true } catch (e: Exception) { false }
+    }
+
+    private fun loadSuraList() {
+        val fileName = intent.getStringExtra("booklist")?.takeIf { it.isNotEmpty() }?: "sura.json"
+        try {
             android.util.Log.d("QuranActivity", "Loading file: $fileName")
             val input = resources.assets.open(fileName)
             val arr = JSONArray(String(input.readBytes(), Charsets.UTF_8)); input.close()
@@ -476,11 +447,15 @@ class QuranActivity : AppCompatActivity() {
                 allSuraAuthors.add(o.getString("author")); suraInfoMap[o.getString("author")] = o
             }
             filteredSura = ArrayList(suraList)
-        } catch (e: Exception) { e.printStackTrace(); android.util.Log.e("QuranActivity", "Failed to load sura.json: ${e.message}"); copyBlankReasonToClipboard("Exception loading sura.json: ${e.message} - File: $fileName - Check assets/sura.json exists"); suraList = ArrayList(); filteredSura = ArrayList() }
-        // Ensure adapter shows data
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("QuranActivity", "Failed to load sura.json: ${e.message}")
+            copyBlankReasonToClipboard("Exception loading $fileName: ${e.message}")
+            suraList = ArrayList(); filteredSura = ArrayList()
+        }
         if (filteredSura.isEmpty() && suraList.isNotEmpty()) { filteredSura = ArrayList(suraList) }
         if (suraList.isEmpty()) {
-            copyBlankReasonToClipboard("suraList is empty after load - sura.json might be missing from assets or empty array")
+            copyBlankReasonToClipboard("suraList empty after load - $fileName missing from assets")
         }
     }
 
@@ -522,7 +497,7 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun getSuraNumberFromAuthor(author: String): Int {
-        return suraInfoMap[author]?.optString("bookid")?.toIntOrNull() ?: try {
+        return suraInfoMap[author]?.optString("bookid")?.toIntOrNull()?: try {
             val input = resources.assets.open("sura.json")
             val arr = JSONArray(String(input.readBytes(), Charsets.UTF_8)); input.close()
             for (i in 0 until arr.length()) if (arr.getJSONObject(i).getString("author") == author) return arr.getJSONObject(i).getString("bookid").toInt()
@@ -530,7 +505,6 @@ class QuranActivity : AppCompatActivity() {
         } catch (e: Exception) { 1 }
     }
 
-    // Audio EveryAyah
     fun getFormattedSSSAAA(suraNumber: Int, ayahNumber: Int): String = String.format("%03d%03d", suraNumber, ayahNumber)
     fun getEveryAyahUrl(qariCode: String, sssaaa: String): String = "https://everyayah.com/data/$qariCode/$sssaaa.mp3"
 
@@ -538,7 +512,7 @@ class QuranActivity : AppCompatActivity() {
         if (index >= filteredAya.size) { stopCurrentPlaying(); return }
         currentIndex = index
         val currentItem = filteredAya[currentIndex]
-        val ayahNum = currentItem.optString("verses", "${index+1}").toIntOrNull() ?: (index+1)
+        val ayahNum = currentItem.optString("verses", "${index+1}").toIntOrNull()?: (index+1)
         val sssaaa = getFormattedSSSAAA(currentSuraNumber, ayahNum)
         val audioUrl = getEveryAyahUrl(selectedQariCode, sssaaa)
         val fileName = "${selectedQariCode}_${sssaaa}.mp3"
@@ -571,7 +545,7 @@ class QuranActivity : AppCompatActivity() {
         val input = BufferedInputStream(connection.inputStream)
         val output = FileOutputStream(file)
         val data = ByteArray(1024); var count: Int
-        while (input.read(data).also { count = it } != -1) output.write(data, 0, count)
+        while (input.read(data).also { count = it }!= -1) output.write(data, 0, count)
         output.flush(); output.close(); input.close()
     }
 
@@ -579,7 +553,7 @@ class QuranActivity : AppCompatActivity() {
         Thread {
             for (i in startIndex until filteredAya.size) {
                 val currentItem = filteredAya[i]
-                val ayahNum = currentItem.optString("verses", "${i+1}").toIntOrNull() ?: (i+1)
+                val ayahNum = currentItem.optString("verses", "${i+1}").toIntOrNull()?: (i+1)
                 val sssaaa = getFormattedSSSAAA(currentSuraNumber, ayahNum)
                 val audioUrl = getEveryAyahUrl(selectedQariCode, sssaaa)
                 val fileName = "${selectedQariCode}_${sssaaa}.mp3"
@@ -617,7 +591,7 @@ class QuranActivity : AppCompatActivity() {
     fun playme(item: JSONObject) {
         val id = item.optString("_id")
         for (i in filteredAya.indices) if (filteredAya[i].optString("_id") == id) { currentIndex = i; break }
-        if (mediaPlayer != null && currentPlayingId == id) {
+        if (mediaPlayer!= null && currentPlayingId == id) {
             if (mediaPlayer!!.isPlaying) { mediaPlayer?.pause(); playAudioIv.setImageResource(R.drawable.play) } else { mediaPlayer?.start(); playAudioIv.setImageResource(R.drawable.pause) }
             notifyAyaList(); return
         }
@@ -636,7 +610,6 @@ class QuranActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(share, "শেয়ার করুন"))
     }
 
-    // Bookmark
     fun toggleBookmark(item: JSONObject) {
         val prefsBm = getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
         val jsonStr = prefsBm.getString("bookmarks_json", "[]")
@@ -656,7 +629,6 @@ class QuranActivity : AppCompatActivity() {
             Toast.makeText(this, "বুকমার্ক যোগ হয়েছে", Toast.LENGTH_SHORT).show()
         }
         notifyAyaList()
-        if (currentMode == Mode.GLOBAL_SEARCH) (listView1.adapter as? GlobalSearchAdapter)?.notifyDataSetChanged()
     }
     fun isBookmarked(_id: String, suraAuthor: String): Boolean {
         val prefsBm = getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
@@ -664,21 +636,6 @@ class QuranActivity : AppCompatActivity() {
         for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); if (o.optString("_id") == _id && o.optString("suraAuthor") == suraAuthor) return true }
         return false
     }
-
-    private fun copyBlankReasonToClipboard(reason: String) {
-        try {
-            val fullReason = "QuranActivity Blank Reason:\n$reason\n\nMode: $currentMode\nSuraList size: ${suraList.size}\nFilteredSura size: ${filteredSura.size}\nAyaList size: ${ayaList.size}\nFilteredAya size: ${filteredAya.size}\nGlobalList size: ${globalList.size}\nBookmarkList size: ${bookmarkList.size}\nAssets sura.json exists: ${checkAssetExists("sura.json")}\nFile tried: ${intent.getStringExtra("booklist") ?: "sura.json"}"
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("blank_reason", fullReason))
-            android.util.Log.e("QuranActivity", fullReason)
-            Toast.makeText(this, "Blank reason copied to clipboard: $reason", Toast.LENGTH_LONG).show()
-        } catch (e: Exception) { e.printStackTrace() }
-    }
-
-    private fun checkAssetExists(fileName: String): Boolean {
-        return try { resources.assets.open(fileName).close(); true } catch (e: Exception) { false }
-    }
-
     private fun loadBookmarksAndSwitch() {
         val prefsBm = getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
         val arr = try { JSONArray(prefsBm.getString("bookmarks_json", "[]")) } catch (e: Exception) { JSONArray() }
@@ -689,51 +646,47 @@ class QuranActivity : AppCompatActivity() {
 
     private fun performGlobalSearch(query: String) {
         globalList.clear(); progressBar.progress = 0; progressText.text = "⏳ সার্চ চলছে... ০ টি পাওয়া গেছে"
-        lifecycleScope.launch {
+        Thread {
             var found = 0; var scanned = 0; val total = allSuraAuthors.size
             for (author in allSuraAuthors) {
                 scanned++
-                val matches = withContext(Dispatchers.IO) {
-                    val list = ArrayList<JSONObject>()
-                    try {
-                        val f = resources.assets.open("$author.json")
-                        val arr = JSONArray(String(f.readBytes(), Charsets.UTF_8)); f.close()
-                        for (j in 0 until arr.length()) {
-                            val obj = arr.getJSONObject(j)
-                            val name = obj.optString("name",""); val names = obj.optString("names",""); val tafsir = obj.optString("author","")
-                            if (name.contains(query, true) || names.contains(query, true) || tafsir.contains(query, true)) {
-                                val suraInfo = suraInfoMap[author]
-                                obj.put("suraName", suraInfo?.optString("name") ?: author); obj.put("suraAuthor", author); obj.put("suraNumber", suraInfo?.optString("bookid") ?: "1")
-                                list.add(obj)
-                            }
+                val matches = ArrayList<JSONObject>()
+                try {
+                    val f = resources.assets.open("$author.json")
+                    val arr = JSONArray(String(f.readBytes(), Charsets.UTF_8)); f.close()
+                    for (j in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(j)
+                        val name = obj.optString("name",""); val names = obj.optString("names",""); val tafsir = obj.optString("author","")
+                        if (name.contains(query, true) || names.contains(query, true) || tafsir.contains(query, true)) {
+                            val suraInfo = suraInfoMap[author]
+                            obj.put("suraName", suraInfo?.optString("name")?: author); obj.put("suraAuthor", author); obj.put("suraNumber", suraInfo?.optString("bookid")?: "1")
+                            matches.add(obj)
                         }
-                    } catch (e: Exception) {}
-                    list
-                }
+                    }
+                } catch (e: Exception) {}
                 found += matches.size; globalList.addAll(matches)
-                withContext(Dispatchers.Main) {
-                    progressBar.progress = scanned * 100 / total
-                    progressText.text = "⏳ সার্চ চলছে... $scanned/$total স্ক্যান - $found টি আয়াত পাওয়া গেছে"
+                val scannedFinal = scanned; val foundFinal = found
+                runOnUiThread {
+                    progressBar.progress = scannedFinal * 100 / total
+                    progressText.text = "⏳ সার্চ চলছে... $scannedFinal/$total স্ক্যান - $foundFinal টি আয়াত পাওয়া গেছে"
                     nores.visibility = if (globalList.isEmpty()) View.VISIBLE else View.GONE
                     listView1.adapter = GlobalSearchAdapter(this@QuranActivity, ArrayList(globalList))
                 }
             }
-            progressText.text = "✅ $found টি আয়াত পাওয়া গেছে"
-        }
+            runOnUiThread { progressText.text = "✅ $found টি আয়াত পাওয়া গেছে" }
+        }.start()
     }
 
     private fun showPageJumpDialog() {
         val input = EditText(this).apply { hint = "আয়াত নম্বর লিখুন"; inputType = android.text.InputType.TYPE_CLASS_NUMBER }
         AlertDialog.Builder(this).setTitle("আয়াতে যান").setView(input)
-            .setPositiveButton("যান") { _, _ ->
+           .setPositiveButton("যান") { _, _ ->
                 val num = input.text.toString().toIntOrNull()
-                if (num != null) for (i in filteredAya.indices) if (filteredAya[i].optString("verses").toIntOrNull() == num) { listView1.setSelection(i); break }
+                if (num!= null) for (i in filteredAya.indices) if (filteredAya[i].optString("verses").toIntOrNull() == num) { listView1.setSelection(i); break }
             }.setNegativeButton("বাতিল", null).show()
     }
 
     override fun onDestroy() { super.onDestroy(); mediaPlayer?.release(); mediaPlayer = null }
-
-    // ============== ADAPTERS INNER ==============
 
     inner class QuranAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
@@ -771,8 +724,6 @@ class QuranActivity : AppCompatActivity() {
                 number.text = if (bookid1.startsWith("০") || bookid1.startsWith("0")) bookid1.drop(1) else bookid1
                 ayaNumTv.text = "মোট আয়াত : ${replaceArabicNumber(list[position].getString("verses"))}"
             } catch (e: JSONException) { e.printStackTrace() }
-            val animation = android.view.animation.ScaleAnimation(0f,1f,0f,1f, android.view.animation.ScaleAnimation.RELATIVE_TO_SELF,0f, android.view.animation.ScaleAnimation.RELATIVE_TO_SELF,1f).apply { fillAfter=true; duration=300 }
-            lmain.startAnimation(animation)
             return itemView
         }
     }
@@ -789,19 +740,15 @@ class QuranActivity : AppCompatActivity() {
             val linear11 = LinearLayout(ctx).apply { layoutParams = LinearLayout.LayoutParams((50*d).toInt(), (50*d).toInt()); gravity = Gravity.CENTER; try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) {} }
             val number = TextView(ctx).apply { layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); textSize = 11f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, android.graphics.Typeface.BOLD) }
             linear11.addView(number)
-            val spacer0 = LinearLayout(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, 0f) }
             val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
             val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
             val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
             val bookmarkBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; text = "📑"; textSize = 20f; gravity = Gravity.CENTER; isFocusable = false }
-            val linear3 = LinearLayout(ctx).apply { layoutParams = LinearLayout.LayoutParams(0, 0); try { background = ContextCompat.getDrawable(ctx, R.drawable.baseline_content_copy_24) } catch (e: Exception) {} }
-            linear4.addView(linear11); linear4.addView(spacer0); linear4.addView(playBtn); linear4.addView(shareBtn); linear4.addView(copyBtn); linear4.addView(bookmarkBtn); linear4.addView(linear3)
+            linear4.addView(linear11); linear4.addView(playBtn); linear4.addView(shareBtn); linear4.addView(copyBtn); linear4.addView(bookmarkBtn)
             val ayaArabic = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; textSize = 28f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {} }
-            val kanzul = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; text = "কানযুল ঈমান"; setBackgroundColor(Color.parseColor("#E0F2F1")); setTextColor(Color.parseColor("#009688")); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()) }
             val nameTv = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; textSize = 16f; setTextColor(Color.BLACK) }
-            val irfan = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; text = "ইরফানুল কুরআন"; setBackgroundColor(Color.parseColor("#E3F2FD")); setTextColor(Color.parseColor("#1E88E5")); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()) }
             val ayaNumber = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; textSize = 16f; setTextColor(Color.BLACK) }
-            lmain.addView(linear4); lmain.addView(ayaArabic); lmain.addView(kanzul); lmain.addView(nameTv); lmain.addView(irfan); lmain.addView(ayaNumber)
+            lmain.addView(linear4); lmain.addView(ayaArabic); lmain.addView(nameTv); lmain.addView(ayaNumber)
             root.addView(lmain)
             val item = list[position]
             val itemId = item.optString("_id")
@@ -822,7 +769,7 @@ class QuranActivity : AppCompatActivity() {
                 ayaNumber.text = replaceArabicNumber(list[position].getString("author"))
                 number.text = replaceArabicNumber(list[position].getString("verses"))
             } catch (e: JSONException) { e.printStackTrace() }
-            playBtn.setOnClickListener { playme(item); if (isAudioPlaying()) playAudioIv.setImageResource(R.drawable.pause) else playAudioIv.setImageResource(R.drawable.play) }
+            playBtn.setOnClickListener { playme(item) }
             copyBtn.setOnClickListener { copyme(item) }
             shareBtn.setOnClickListener { shareme(item) }
             bookmarkBtn.setOnClickListener { toggleBookmark(item) }
@@ -835,14 +782,14 @@ class QuranActivity : AppCompatActivity() {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context; val d = ctx.resources.displayMetrics.density
             val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
-            val suraHeader = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()) }; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
+            val suraHeader = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()) }; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD) }
             val lmain = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE) }
             val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (50*d).toInt()) }
             val num = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams((50*d).toInt(), (50*d).toInt()); gravity = Gravity.CENTER; try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) {}; textSize = 11f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, android.graphics.Typeface.BOLD) }
-            val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
-            val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
-            val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
-            val bookmarkBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; text = "📑"; textSize = 20f; gravity = Gravity.CENTER; isFocusable = false }
+            val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
+            val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
+            val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
+            val bookmarkBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); text = "📑"; textSize = 20f; gravity = Gravity.CENTER }
             topRow.addView(num); topRow.addView(playBtn); topRow.addView(copyBtn); topRow.addView(shareBtn); topRow.addView(bookmarkBtn)
             val ayaArabic = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; textSize = 24f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {} }
             val nameTv = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; textSize = 16f; setTextColor(Color.BLACK) }
@@ -851,38 +798,21 @@ class QuranActivity : AppCompatActivity() {
             val item = list[position]
             suraHeader.text = "${item.optString("suraName")} - আয়াত ${item.optString("verses")}"
             num.text = item.optString("verses"); ayaArabic.text = replaceArabicNumber(item.optString("names")); nameTv.text = replaceArabicNumber(item.optString("name"))
-            // bookmark state
-            val prefsBm = ctx.getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
-            val arr = try { JSONArray(prefsBm.getString("bookmarks_json","[]")) } catch (e: Exception) { JSONArray() }
-            var isBm = false; for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); if (o.optString("_id")==item.optString("_id") && o.optString("suraAuthor")==item.optString("suraAuthor")) { isBm=true; break } }
-            bookmarkBtn.text = if (isBm) "🔖" else "📑"
-            playBtn.setOnClickListener {
-                currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
-                loadAyaList("${currentSuraAuthor}.json"); switchMode(Mode.AYA_LIST)
-                listView1.postDelayed({ val target = item.optString("verses"); for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == target) { listView1.setSelection(i); break } }, 300)
-            }
-            copyBtn.setOnClickListener { val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager; clipboard.setPrimaryClip(ClipData.newPlainText("ayah", "${item.optString("names")}\n${item.optString("name")}")); Toast.makeText(ctx, "কপি হয়েছে", Toast.LENGTH_SHORT).show() }
-            shareBtn.setOnClickListener { val share = Intent(Intent.ACTION_SEND); share.type = "text/plain"; share.putExtra(Intent.EXTRA_TEXT, "${item.optString("names")}\n${item.optString("name")}\n${item.optString("suraName")}"); ctx.startActivity(Intent.createChooser(share, "শেয়ার")) }
-            bookmarkBtn.setOnClickListener { toggleBookmark(item); val isNow = isBookmarked(item.optString("_id"), item.optString("suraAuthor")); bookmarkBtn.text = if (isNow) "🔖" else "📑" }
-            val drawable = GradientDrawable().apply { setStroke(d.toInt(), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*d }
-            lmain.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), drawable, null); lmain.elevation = 6f*d
             return root
         }
     }
 
     inner class BookmarkAdapter(context: Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
-        fun getItemAt(pos: Int): JSONObject? = if (pos < list.size) list[pos] else null
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context; val d = ctx.resources.displayMetrics.density
             val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = android.widget.AbsListView.LayoutParams(android.widget.AbsListView.LayoutParams.MATCH_PARENT, android.widget.AbsListView.LayoutParams.WRAP_CONTENT); setBackgroundColor(Color.WHITE) }
-            val header = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()) }; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD); try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {} }
+            val header = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (5*d).toInt(), (10*d).toInt(), (2*d).toInt()) }; textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, android.graphics.Typeface.BOLD) }
             val lmain = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; setPadding((8*d).toInt(), (8*d).toInt(), (8*d).toInt(), (8*d).toInt()); elevation = 4f*d; setBackgroundColor(Color.WHITE) }
             val topRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (50*d).toInt()) }
-            // ONLY ❌ is TextView, rest drawable
-            val cancelBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; text = "❌"; textSize = 20f; gravity = Gravity.CENTER; isFocusable = false }
-            val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
-            val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
-            val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()) }; setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; isFocusable = false; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
+            val cancelBtn = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); text = "❌"; textSize = 20f; gravity = Gravity.CENTER }
+            val playBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
+            val copyBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
+            val shareBtn = ImageView(ctx).apply { layoutParams = LinearLayout.LayoutParams((40*d).toInt(), ViewGroup.LayoutParams.MATCH_PARENT); setPadding((5*d).toInt(), (5*d).toInt(), (5*d).toInt(), (5*d).toInt()); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.share_round) } catch (e: Exception) {} }
             topRow.addView(cancelBtn); topRow.addView(playBtn); topRow.addView(copyBtn); topRow.addView(shareBtn)
             val ayaArabic = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; textSize = 24f; setTextColor(Color.BLACK); gravity = Gravity.RIGHT; textDirection = View.TEXT_DIRECTION_RTL; layoutDirection = View.LAYOUT_DIRECTION_RTL; try { typeface = ResourcesCompat.getFont(ctx, R.font.noorehuda) } catch (e: Exception) {} }
             val nameTv = TextView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins((10*d).toInt(), (10*d).toInt(), (10*d).toInt(), (10*d).toInt()) }; textSize = 16f; setTextColor(Color.BLACK) }
@@ -893,33 +823,17 @@ class QuranActivity : AppCompatActivity() {
             ayaArabic.text = replaceArabicNumber(item.optString("names")); nameTv.text = replaceArabicNumber(item.optString("name"))
             cancelBtn.setOnClickListener {
                 val prefs = ctx.getSharedPreferences("quran_bookmarks", Context.MODE_PRIVATE)
-                val jsonStr = prefs.getString("bookmarks_json","[]")
-                val arr = try { JSONArray(jsonStr) } catch (e: Exception) { JSONArray() }
+                val arr = try { JSONArray(prefs.getString("bookmarks_json","[]")) } catch (e: Exception) { JSONArray() }
                 val newArr = JSONArray(); for (i in 0 until arr.length()) { val o = arr.getJSONObject(i); if (!(o.optString("_id")==item.optString("_id") && o.optString("suraAuthor")==item.optString("suraAuthor"))) newArr.put(o) }
                 prefs.edit().putString("bookmarks_json", newArr.toString()).apply()
                 list.removeAt(position); notifyDataSetChanged()
                 Toast.makeText(ctx, "বুকমার্ক থেকে বাতিল করা হয়েছে", Toast.LENGTH_SHORT).show()
-                if (list.isEmpty()) nores.visibility = View.VISIBLE
             }
-            playBtn.setOnClickListener {
-                currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
-                loadAyaList("${currentSuraAuthor}.json"); switchMode(Mode.AYA_LIST)
-                listView1.postDelayed({ val target = item.optString("ayahNumber"); for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == target) { listView1.setSelection(i); break } }, 300)
-            }
-            copyBtn.setOnClickListener { val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager; clipboard.setPrimaryClip(ClipData.newPlainText("ayah", "${item.optString("names")}\n${item.optString("name")}")); Toast.makeText(ctx, "কপি হয়েছে", Toast.LENGTH_SHORT).show() }
-            shareBtn.setOnClickListener { val share = Intent(Intent.ACTION_SEND); share.type = "text/plain"; share.putExtra(Intent.EXTRA_TEXT, "${item.optString("names")}\n${item.optString("name")}\n${item.optString("suraName")}"); ctx.startActivity(Intent.createChooser(share, "শেয়ার")) }
-            val drawable = GradientDrawable().apply { setStroke(d.toInt(), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = 12f*d }
-            lmain.background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#01837A")), drawable, null); lmain.elevation = 6f*d
             return root
         }
     }
 
     private fun replaceArabicNumber(n: String): String {
         return n.replace("1","১").replace("2","২").replace("3","৩").replace("4","৪").replace("5","৫").replace("6","৬").replace("7","৭").replace("8","৮").replace("9","৯").replace("0","০")
-            .replace("<b>"," ").replace("</b>"," ").replace("(রহঃ)","(رحمة الله)").replace("(রাঃ)","(رضي الله عنه)")
-            .replace("(সাল্লাল্লাহু 'আলাইহি ওয়া সাল্লাম)","(ﷺ)").replace(" (সাল্লাল্লাহু 'আলাইহি ওয়া সাল্লাম)","(ﷺ)")
-            .replace("('আঃ)","(عليه السلام)").replace("[১]","").replace("[২]","").replace("[৩]","").replace("(রহ)","(رحمة الله)")
-            .replace("(রা)","(رضي الله عنه)").replace("(সা)","(ﷺ)").replace("('আ)","(عليه السلام)").replace("(সাঃ)","(ﷺ)").replace("(স)","(ﷺ)")
-            .replace("বিবিন্‌ত","বিন্‌ত").replace("বিন্ত","বিন্‌ত").replace("(সা.)","(ﷺ)").replace("(স.)","(ﷺ)")
     }
 }
