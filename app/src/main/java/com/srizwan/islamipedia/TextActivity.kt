@@ -7,11 +7,17 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -38,7 +44,6 @@ class TextActivity : AppCompatActivity() {
         GeminiHelper.createModel(BuildConfig.textapi)
     }
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_text_scan)
@@ -56,8 +61,17 @@ class TextActivity : AppCompatActivity() {
         }
         val byteArray = intent.getByteArrayExtra("screenshot")
         byteArray?.let {
+            // FIX: BitmapFactory downsampling - Play Console warning fix
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeByteArray(it, 0, it.size, options)
+            options.inSampleSize = calculateInSampleSize(options, 1024, 1024)
+            options.inJustDecodeBounds = false
+            options.inPreferredConfig = Bitmap.Config.RGB_565
+            
             val inputStream = ByteArrayInputStream(it)
-            screenshot = BitmapFactory.decodeStream(inputStream)
+            // Downsampled bitmap load
+            screenshot = BitmapFactory.decodeStream(inputStream, null, options) ?: BitmapFactory.decodeByteArray(it, 0, it.size)
             imageView.setImageBitmap(screenshot)
 
             // Extract text from screenshot
@@ -86,6 +100,19 @@ class TextActivity : AppCompatActivity() {
         }
     }
 
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height, width) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
+
     private fun extractTextFromScreenshot() {
         scope.launch {
             try {
@@ -109,11 +136,79 @@ class TextActivity : AppCompatActivity() {
                 e.printStackTrace()
                 runOnUiThread {
                     progress_bar.visibility = View.GONE
-                    editText.setText("Failed to extract text")
-                    Toast.makeText(applicationContext, "রিফ্রেশ ক্লিক করুন আবার চেষ্টা করুন।", Toast.LENGTH_SHORT).show()
+                    val errorMsg = e.message?.lowercase() ?: ""
+                    if (errorMsg.contains("429") || errorMsg.contains("quota") || errorMsg.contains("resource_exhausted") || errorMsg.contains("limit") || errorMsg.contains("exceeded")) {
+                        showDailyLimitDialogProgrammatically()
+                    } else {
+                        editText.setText("Failed to extract text")
+                        Toast.makeText(applicationContext, "রিফ্রেশ ক্লিক করুন আবার চেষ্টা করুন।", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
+    }
+
+    // Daily Limit Popup - Programmatically UI No XML
+    private fun showDailyLimitDialogProgrammatically() {
+        val builder = AlertDialog.Builder(this)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(60, 50, 60, 30)
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        val iconText = TextView(this).apply {
+            text = "⏳"
+            textSize = 48f
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 20)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        val title = TextView(this).apply {
+            text = "আজকের লিমিট শেষ!"
+            textSize = 20f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#D32F2F"))
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 15)
+        }
+        val message = TextView(this).apply {
+            text = "আজকের জন্য AI Text Scan এর ফ্রি কোটা শেষ হয়ে গেছে।\n\nGemini API এর দৈনিক লিমিট ২৪ ঘন্টা পর রিসেট হয়।\n\nআগামীকাল আবার চেষ্টা করুন, ইনশাআল্লাহ।"
+            textSize = 14f
+            setTextColor(Color.parseColor("#424242"))
+            gravity = Gravity.CENTER
+            setLineSpacing(8f, 1f)
+        }
+        val divider = View(this).apply {
+            setBackgroundColor(Color.parseColor("#EEEEEE"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2).apply {
+                setMargins(0, 25, 0, 25)
+            }
+        }
+        val okBtn = TextView(this).apply {
+            text = "ঠিক আছে"
+            textSize = 15f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#1976D2"))
+            setPadding(0, 30, 0, 30)
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(20, 0, 20, 0)
+            }
+        }
+        container.addView(iconText)
+        container.addView(title)
+        container.addView(message)
+        container.addView(divider)
+        container.addView(okBtn)
+        builder.setView(container)
+        builder.setCancelable(false)
+        val dialog = builder.create()
+        dialog.show()
+        okBtn.setOnClickListener { dialog.dismiss() }
+        dialog.window?.setBackgroundDrawableResource(android.R.drawable.dialog_holo_light_frame)
     }
 
     private fun isNetworkAvailable(): Boolean {
