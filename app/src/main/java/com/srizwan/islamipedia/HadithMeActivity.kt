@@ -89,8 +89,8 @@ object LastReadStore {
     private const val PREFS = "hadith_last_read"
     fun save(context: Context, bookId: Int, sectionId: Int, bookTitle: String, sectionTitle: String) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-           .putInt("bookId", bookId).putInt("sectionId", sectionId)
-           .putString("bookTitle", bookTitle).putString("sectionTitle", sectionTitle).apply()
+          .putInt("bookId", bookId).putInt("sectionId", sectionId)
+          .putString("bookTitle", bookTitle).putString("sectionTitle", sectionTitle).apply()
     }
     fun get(context: Context): Map<String, Any>? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -218,7 +218,6 @@ class HadithMeActivity : AppCompatActivity() {
         offlineIndicator.text = if (!isNetworkAvailable) "⚠ অফলাইন মোড - ইন্টারনেট সংযোগ নেই" else ""
     }
 
-    // --- NEW: Assets থেকে বই লোড ---
     private fun loadBooksFromAssets(): List<BookItem>? {
         return try {
             val jsonString = assets.open("hadithbook/book-title.json").bufferedReader().use { it.readText() }
@@ -230,7 +229,6 @@ class HadithMeActivity : AppCompatActivity() {
         }
     }
 
-    // --- NEW: কাস্টম আপডেট পপ-আপ ---
     private fun showUpdatePopup(newBooks: List<BookItem>, newJson: String) {
         val dialogView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -263,7 +261,6 @@ class HadithMeActivity : AppCompatActivity() {
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         btnLater.setOnClickListener { dialog.dismiss() }
         btnUpdate.setOnClickListener {
-            // ক্যাশে সেভ করে UI আপডেট
             cacheData("hadith_books_list", newJson)
             HadithCache.books = newBooks
             currentBooks = newBooks; filteredBooks = newBooks
@@ -275,7 +272,7 @@ class HadithMeActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // --- NEW: ডাউনলোড ছাড়া কিতাবের পপ-আপ ---
+    // UPDATED: এখন শুধু ডাউনলোড অপশন থাকবে
     private fun showBookActionPopup(book: BookItem) {
         val dialogView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -288,43 +285,33 @@ class HadithMeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         })
         dialogView.addView(TextView(this).apply {
-            text = "\"${book.titleEn}\" কিতাবটি ডাউনলোড করা নেই। আপনি কি অনলাইনে পড়বেন নাকি ডাউনলোড করে অফলাইনে পড়বেন?"; textSize = 14f
+            text = "\"${book.titleEn}\" কিতাবটি ডাউনলোড করা নেই। অফলাইনে পড়তে ডাউনলোড করুন।"; textSize = 14f
             typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#444444"))
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(20) }
         })
-        val btnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
-        val btnOnline = TextView(this).apply {
-            text = "🌐 অনলাইনে পড়ুন"; textSize = 13f; typeface = getBengaliTypeface(); setTextColor(Color.parseColor("#01837A"))
-            background = createRoundedBg(Color.WHITE, Color.parseColor("#01837A"), dp(1), dp(20))
-            setPadding(dp(16), dp(10), dp(16), dp(10))
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(8) }
-            gravity = Gravity.CENTER
-        }
+
         val btnDownload = TextView(this).apply {
-            text = "⬇ ডাউনলোড করুন"; textSize = 13f; typeface = getBengaliTypeface(); setTextColor(Color.WHITE)
+            text = "⬇ ডাউনলোড করুন"; textSize = 14f; typeface = getBengaliTypeface(); setTextColor(Color.WHITE)
             background = createRoundedSolid(Color.parseColor("#01837A"), dp(20))
-            setPadding(dp(16), dp(10), dp(16), dp(10))
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) }
+            setPadding(dp(16), dp(12), dp(16), dp(12))
             gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         }
-        btnRow.addView(btnOnline); btnRow.addView(btnDownload); dialogView.addView(btnRow)
+        dialogView.addView(btnDownload)
 
         val dialog = AlertDialog.Builder(this).setView(dialogView).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        btnOnline.setOnClickListener {
-            dialog.dismiss(); saveScrollPosition(); loadSections(book.id, book.titleEn)
-        }
         btnDownload.setOnClickListener {
-            dialog.dismiss(); startBookDownload(book)
+            dialog.dismiss()
+            startBookDownload(book)
             Toast.makeText(this, "${book.titleEn} ডাউনলোড শুরু হয়েছে", Toast.LENGTH_SHORT).show()
-            saveScrollPosition(); loadSections(book.id, book.titleEn)
         }
         dialog.show()
     }
 
+    // UPDATED: এখন শুধু ডাউনলোড করা থাকলেই ঢুকতে পারবে
     private fun handleBookClick(book: BookItem) {
-        if (!downloadedBookIds.contains(book.id) && getCachedData("sections_${book.id}") == null) {
-            // ক্যাশেও নাই + ডাউনলোডও নাই -> পপ-আপ দেখাও
+        if (!downloadedBookIds.contains(book.id)) {
             if (!isNetworkAvailable) {
                 showError("এই কিতাবটি অফলাইনে নেই। ডাউনলোড করতে ইন্টারনেট লাগবে।") { loadBooks() }
                 return
@@ -598,8 +585,8 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private fun saveFontSize() {
         getSharedPreferences("hadith_font_prefs", Context.MODE_PRIVATE).edit()
-           .putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize)
-           .putBoolean("night_mode", isNightMode).apply()
+          .putFloat("ar_size", arabicFontSize).putFloat("bn_size", banglaFontSize).putFloat("bn_title_size", banglaTitleSize)
+          .putBoolean("night_mode", isNightMode).apply()
     }
 
     private fun openBookmark() {
@@ -779,13 +766,11 @@ class HadithMeActivity : AppCompatActivity() {
             }
         }?: run { lastReadContainer.visibility = View.GONE }
 
-        // 1. INSTANT LOAD FROM ASSETS
         val assetsBooks = loadBooksFromAssets()
         if (assetsBooks!= null) {
             currentBooks = assetsBooks; filteredBooks = assetsBooks; HadithCache.books = assetsBooks
             recyclerView.adapter = BookAdapter(filteredBooks) { book -> handleBookClick(book) }
             showContentWithDelay(false)
-            // 2. BACKGROUND UPDATE CHECK
             scope.launch(Dispatchers.IO) {
                 try {
                     if (!isNetworkAvailable) return@launch
@@ -793,12 +778,10 @@ class HadithMeActivity : AppCompatActivity() {
                     conn.connectTimeout = 10000; conn.readTimeout = 10000
                     val remoteJson = conn.inputStream.bufferedReader().use { it.readText() }
                     val remoteBooks = parseBooks(remoteJson)
-                    // যদি রিমোটে বেশি বই থাকে বা হাদিস সংখ্যা বেশি হয়
                     val needsUpdate = remoteBooks.size > assetsBooks.size || remoteBooks.sumOf { it.totalHadith } > assetsBooks.sumOf { it.totalHadith }
                     if (needsUpdate) {
                         withContext(Dispatchers.Main) { showUpdatePopup(remoteBooks, remoteJson) }
                     } else {
-                        // ক্যাশে আপডেট করে রাখো, UI তে প্রভাব ফেলবে না
                         cacheData("hadith_books_list", remoteJson)
                     }
                 } catch (e: Exception) { Log.e("UPDATE_CHECK", e.message.toString()) }
@@ -806,7 +789,6 @@ class HadithMeActivity : AppCompatActivity() {
             return
         }
 
-        // Assets না থাকলে আগের মতো নেট থেকে লোড
         val gen = ++loadGeneration
         val memBooks = HadithCache.books
         if (memBooks!= null) {
@@ -1184,7 +1166,7 @@ class HadithMeActivity : AppCompatActivity() {
     data class GlobalSearchResult(val hadith: HadithItem, val bookTitle: String, val bookId: Int, val sectionTitle: String, val sectionId: Int)
     inner class BookmarkAdapter(private val items: List<BookmarkItem>, private val onCopy: (BookmarkItem) -> Unit, private val onShare: (BookmarkItem) -> Unit, private val onRemove: (BookmarkItem) -> Unit) : RecyclerView.Adapter<BookmarkAdapter.VH>() {
         inner class VH(val card: LinearLayout) : RecyclerView.ViewHolder(card)
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }; background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12)) })
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = VH(LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.VERTICAL; layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) }; background = createRoundedBg(if (isNightMode) Color.parseColor("#1E1E1E") else Color.WHITE, Color.parseColor("#01837A"), dp(2), dp(10)); elevation = dp(3).toFloat(); setPadding(dp(14), dp(12), dp(14), dp(12)) })
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = items[position]; val hadith = item.hadith; holder.card.removeAllViews()
             val headerRow = LinearLayout(this@HadithMeActivity).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT) }
