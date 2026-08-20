@@ -1402,7 +1402,7 @@ public class MainActivity2 extends AppCompatActivity {
 
     private String getEnglishDate() {
         Calendar calendar = Calendar.getInstance();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("EEEE, dd MMMM, yyyy", new Locale("bn"));
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMMM, yyyy", new Locale("bn"));
         String bengaliDate = dateFormat.format(calendar.getTime());
         return bengaliDate;
     }
