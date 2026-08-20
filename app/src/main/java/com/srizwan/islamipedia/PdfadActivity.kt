@@ -110,8 +110,11 @@ class PdfadActivity : AppCompatActivity() {
             R.id.action_scan_text -> {
                 val path = captureAndSaveScreenshot()
                 if (path != null) {
+                    // FIX: তোমার TextActivity ByteArray চায়, তাই File থেকে ByteArray বানিয়ে পাঠানো হলো
+                    val file = File(path)
+                    val bytes = file.readBytes()
                     val intent = Intent(this, TextActivity::class.java)
-                    intent.putExtra("screenshot_path", path)
+                    intent.putExtra("screenshot", bytes)
                     startActivity(intent)
                 } else {
                     Toast.makeText(this, "Screenshot নেওয়া সম্ভব হয়নি", Toast.LENGTH_SHORT).show()
