@@ -12,7 +12,7 @@ object GeminiHelper {
                 String::class.java, String::class.java
             )
             constructor.isAccessible = true // Private constructor কে অ্যাক্সেস করার অনুমতি দেওয়া
-            constructor.newInstance("gemini-2.0-flash", apiKey)
+            constructor.newInstance("gemini-3.5-flash-lite", apiKey)
         } catch (e: Exception) {
             e.printStackTrace()
             throw RuntimeException("Failed to create GenerativeModel")
