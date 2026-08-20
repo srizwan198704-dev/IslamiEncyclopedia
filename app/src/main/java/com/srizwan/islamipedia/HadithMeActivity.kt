@@ -31,7 +31,9 @@ import kotlinx.coroutines.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.net.URL
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 import java.security.MessageDigest
 import android.text.Spannable
 import android.text.SpannableString
@@ -113,6 +115,20 @@ class HadithMeActivity : AppCompatActivity() {
 
     private val cacheDirName = "hadith_data"
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val httpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .build()
+    }
+    private val httpClientLong: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
     private var isNetworkAvailable = true
     private var isCurrentlyLoading = false
     private var currentRequestJob: Job? = null
@@ -707,27 +723,42 @@ class HadithMeActivity : AppCompatActivity() {
     }
     private suspend fun fetchJson(url: String, cacheKey: String, isLongTimeout: Boolean = false): String {
         val diskCached = withContext(Dispatchers.IO) { getCachedData(cacheKey) }
-        if (diskCached!= null) { withContext(Dispatchers.Main) { offlineIndicator.visibility = View.GONE; isShowingCachedContent = true }; return diskCached }
+        if (diskCached != null) {
+            withContext(Dispatchers.Main) { offlineIndicator.visibility = View.GONE; isShowingCachedContent = true }
+            return diskCached
+        }
         if (!isNetworkAvailable) throw Exception("No internet and no cache for $cacheKey")
+
         return withContext(Dispatchers.IO) {
             var lastException: Exception? = null
+            val client = if (isLongTimeout) httpClientLong else httpClient
             repeat(3) { attempt ->
                 try {
-                    val connection = URL(url).openConnection() as java.net.HttpURLConnection
-                    val timeout = if(isLongTimeout) 30000 else 15000
-                    connection.connectTimeout = timeout; connection.readTimeout = timeout; connection.requestMethod = "GET"
-                    val text = connection.inputStream.bufferedReader().use { it.readText() }
-                    if (text.isBlank()) throw Exception("Empty")
-                    cacheData(cacheKey, text)
-                    withContext(Dispatchers.Main) { offlineIndicator.visibility = View.GONE; isShowingCachedContent = false; isNetworkAvailable = true }
-                    return@withContext text
-                } catch (e: Exception) { lastException = e; Thread.sleep((attempt + 1) * 1000L) }
+                    val request = Request.Builder().url(url).get().build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+                        val text = response.body?.string() ?: throw Exception("Empty body")
+                        if (text.isBlank()) throw Exception("Empty")
+                        cacheData(cacheKey, text)
+                        withContext(Dispatchers.Main) {
+                            offlineIndicator.visibility = View.GONE
+                            isShowingCachedContent = false
+                            isNetworkAvailable = true
+                        }
+                        return@withContext text
+                    }
+                } catch (e: Exception) {
+                    lastException = e
+                    Thread.sleep((attempt + 1) * 1000L)
+                }
             }
             val cached = getCachedData(cacheKey)
-            if (cached!= null) {
+            if (cached != null) {
                 withContext(Dispatchers.Main) { offlineIndicator.visibility = View.VISIBLE; isShowingCachedContent = true }
                 return@withContext cached
-            } else { throw lastException?: Exception("Network failed") }
+            } else {
+                throw lastException ?: Exception("Network failed")
+            }
         }
     }
     private fun toBangla(num: Int): String { val d = charArrayOf('০','১','২','৩','৪','৫','৬','৭','৮','৯'); return num.toString().map { if (it.isDigit()) d[it - '0'] else it }.joinToString("") }
@@ -774,9 +805,11 @@ class HadithMeActivity : AppCompatActivity() {
             scope.launch(Dispatchers.IO) {
                 try {
                     if (!isNetworkAvailable) return@launch
-                    val conn = URL("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/book-title.json").openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 10000; conn.readTimeout = 10000
-                    val remoteJson = conn.inputStream.bufferedReader().use { it.readText() }
+                    val request = Request.Builder().url("https://cdn.jsdelivr.net/gh/SunniPedia/sunnipedia@main/hadith-books/book/book-title.json").get().build()
+                    val remoteJson = httpClient.newCall(request).execute().use { resp ->
+                        if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
+                        resp.body?.string() ?: throw Exception("Empty")
+                    }
                     val remoteBooks = parseBooks(remoteJson)
                     val needsUpdate = remoteBooks.size > assetsBooks.size || remoteBooks.sumOf { it.totalHadith } > assetsBooks.sumOf { it.totalHadith }
                     if (needsUpdate) {
