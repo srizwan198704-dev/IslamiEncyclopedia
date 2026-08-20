@@ -1,245 +1,678 @@
 package com.srizwan.islamipedia
 
-import android.Manifest
+import android.app.AlertDialog
+import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
-import com.jakewharton.threetenabp.AndroidThreeTen
-import org.threeten.bp.format.DateTimeFormatter
-import org.threeten.bp.chrono.HijrahDate
+import kotlin.concurrent.thread
+
 class NamazActivity : AppCompatActivity() {
-    private lateinit var back: ImageView
-    private lateinit var date: LinearLayout
-    private lateinit var book1: LinearLayout
-    private lateinit var book2: LinearLayout
-    private lateinit var book3: LinearLayout
-    private lateinit var book4: LinearLayout
-    private lateinit var book5: LinearLayout
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationRequest: LocationRequest
-    private lateinit var locationCallback: LocationCallback
 
-    private val locationRequestCode = 1000
+    private val CITIES_URL = "https://cdn.jsdelivr.net/gh/srizwan198704-dev/PrayertimePedia/BangladeshCities.json"
+    private val CITY_BASE = "https://cdn.jsdelivr.net/gh/srizwan198704-dev/PrayertimePedia@main/BD/"
 
-    private lateinit var fajrTextView: TextView
-    private lateinit var dhuhrTextView: TextView
-    private lateinit var asrTextView: TextView
-    private lateinit var maghribTextView: TextView
-    private lateinit var ishaTextView: TextView
+    private lateinit var prefs: SharedPreferences
+    private var selectedCityEn = "Dhaka"
+    private var selectedCityBn = "ঢাকা"
+    private var allCities = JSONArray()
+    private var allMonth = JSONArray()
+    private var todayData: JSONObject? = null
+    private var filterWaqt = "all"
 
-    private lateinit var sharedPreferences: SharedPreferences
+    // UI refs
+    private lateinit var cityTv: TextView
+    private lateinit var hijriTv: TextView
+    private lateinit var bengaliTv: TextView
+    private lateinit var todayBadge: TextView
+    private lateinit var prayerContainer: LinearLayout
+    private lateinit var forbiddenContainer: LinearLayout
+    private lateinit var naflContainer: LinearLayout
+    private lateinit var summaryContainer: LinearLayout
+    private lateinit var trackerCountTv: TextView
+    private lateinit var trackerMonthTv: TextView
+    private lateinit var dayContainer: LinearLayout
+    private lateinit var countIcon: TextView
+    private lateinit var countLabel: TextView
+    private lateinit var countPray: TextView
+    private lateinit var countCity: TextView
+    private lateinit var hTv: TextView
+    private lateinit var mTv: TextView
+    private lateinit var sTv: TextView
+    private lateinit var sunriseTv: TextView
+    private lateinit var sunsetTv: TextView
 
-    private lateinit var englishDateTextView: TextView
-    private lateinit var bengaliDateTextView: TextView
-    private lateinit var hijriDateTextView: TextView
+    private val handler = Handler(Looper.getMainLooper())
+    private val order = listOf(
+        Triple("fajr","🌙","ফজর"),
+        Triple("dhuhr","☀️","যুহর"),
+        Triple("asr","🌤️","আসর"),
+        Triple("maghrib","🌇","মাগরিব"),
+        Triple("isha","🌌","ইশা")
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_namaz)
-        AndroidThreeTen.init(this)
-        try {
-            // Initialize views
-            fajrTextView = findViewById(R.id.fajrTime)
-            dhuhrTextView = findViewById(R.id.dhuhrTime)
-            asrTextView = findViewById(R.id.asrTime)
-            maghribTextView = findViewById(R.id.maghribTime)
-            ishaTextView = findViewById(R.id.ishaTime)
+        prefs = getSharedPreferences("islamipedia_prefs", Context.MODE_PRIVATE)
+        selectedCityEn = prefs.getString("city_en","Dhaka")!!
+        selectedCityBn = prefs.getString("city_bn","ঢাকা")!!
 
-            book1 = findViewById(R.id.book1)
-            book2 = findViewById(R.id.book2)
-            book3 = findViewById(R.id.book3)
-            book4 = findViewById(R.id.book4)
-            book5 = findViewById(R.id.book5)
-            date = findViewById(R.id.date)
-            back = findViewById(R.id.back)
-            back.setOnClickListener {
-                finish()
-            }
+        val root = buildUiProgrammatically()
+        setContentView(root)
 
-            englishDateTextView = findViewById(R.id.englishDate)
-            bengaliDateTextView = findViewById(R.id.bengaliDate)
-            hijriDateTextView = findViewById(R.id.hijriDate)
+        loadCities()
+        loadCityData(selectedCityEn)
+        startAutoRefresh()
+    }
 
-            sharedPreferences = getSharedPreferences("NamazTimes", MODE_PRIVATE)
-            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+    private fun buildUiProgrammatically(): View {
+        val bgColor = Color.parseColor("#FDFBF6")
+        val green = Color.parseColor("#0E3B2E")
+        val gold = Color.parseColor("#C9A227")
 
-            locationRequest = LocationRequest.create().apply {
-                interval = 10000
-                fastestInterval = 5000
-                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-            }
+        val outer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(bgColor)
+        }
 
-            locationCallback = object : LocationCallback() {
-                override fun onLocationResult(locationResult: LocationResult) {
-                    locationResult.locations.forEach { location ->
-                        getPrayerTimes(location.latitude, location.longitude)
-                    }
+        // Scrollable content
+        val scroll = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(14), dp(14), dp(100))
+        }
+
+        // HEADER - Masjid inspired no drawable
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val gd = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.parseColor("#102E26"), Color.parseColor("#0A201A")))
+            gd.cornerRadii = floatArrayOf(0f,0f,0f,0f, dp(32).toFloat(), dp(32).toFloat(), dp(32).toFloat(), dp(32).toFloat())
+            background = gd
+            setPadding(dp(16), dp(16), dp(16), dp(20))
+        }
+        val topRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val appName = TextView(this).apply {
+            text = "ইসলামী বিশ্বকোষ ও আল হাদিস S2"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        val appSub = TextView(this).apply {
+            text = "নামাজের সময়সূচি • Masjid Edition"
+            setTextColor(Color.parseColor("#B0C4B8"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+        }
+        brand.addView(appName); brand.addView(appSub)
+
+        cityTv = TextView(this).apply {
+            text = "📍 $selectedCityBn ▼"
+            setTextColor(Color.WHITE)
+            setPadding(dp(12), dp(7), dp(12), dp(7))
+            val bg = GradientDrawable()
+            bg.setColor(Color.parseColor("#1A4536"))
+            bg.cornerRadius = dp(20).toFloat()
+            bg.setStroke(dp(1), Color.parseColor("#2A5A4A"))
+            background = bg
+            setOnClickListener { showCityDialog() }
+        }
+        topRow.addView(brand, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        topRow.addView(cityTv)
+
+        hijriTv = TextView(this).apply {
+            text = "লোড হচ্ছে..."
+            setTextColor(Color.parseColor("#FFF6C8"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, dp(18), 0, 0)
+        }
+        bengaliTv = TextView(this).apply {
+            setTextColor(Color.parseColor("#C8DDD6"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            gravity = Gravity.CENTER
+        }
+        // mosque line - text based
+        val mosqueLine = TextView(this).apply {
+            text = "▐  ⌒  ▐  |  ⌒  |  ▐  ⌒  ▐"
+            setTextColor(Color.parseColor("#C9A227"))
+            gravity = Gravity.CENTER
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            setPadding(0, dp(12), 0, 0)
+        }
+        val title = TextView(this).apply {
+            text = "নামাজের সময়সূচি"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, dp(8), 0, 0)
+        }
+        val sunRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        sunriseTv = TextView(this).apply { setTextColor(Color.parseColor("#FFF6C8")); text = "সূর্যোদয় --"; setTextSize(TypedValue.COMPLEX_UNIT_SP,11f) }
+        sunsetTv = TextView(this).apply { setTextColor(Color.parseColor("#FFF6C8")); text = "সূর্যাস্ত --"; setTextSize(TypedValue.COMPLEX_UNIT_SP,11f); setPadding(dp(20),0,0,0) }
+        sunRow.addView(sunriseTv); sunRow.addView(sunsetTv)
+
+        header.addView(topRow); header.addView(hijriTv); header.addView(bengaliTv); header.addView(mosqueLine); header.addView(title); header.addView(sunRow)
+
+        // Prayer card
+        val prayerCard = createCard()
+        val prayerHead = createCardHead("আজকের ওয়াক্ত", "আজ")
+        todayBadge = prayerHead.second
+        prayerCard.addView(prayerHead.first)
+        prayerContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8),dp(8),dp(8),dp(8)) }
+        prayerCard.addView(prayerContainer)
+
+        // Forbidden + Nafl
+        val sideRow = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(14),0,0) }
+        val forbCard = createCard()
+        forbCard.addView(createCardHead("নামাজের নিষিদ্ধ সময়সূচী", null).first)
+        forbiddenContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8),dp(8),dp(8),dp(8)) }
+        forbCard.addView(forbiddenContainer)
+
+        val naflCard = createCard()
+        naflCard.addView(createCardHead("নফল নামাজের সময়সূচী", null).first)
+        naflContainer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(8),dp(8),dp(8),dp(8)) }
+        naflCard.addView(naflContainer)
+
+        sideRow.addView(forbCard); sideRow.addView(createSpace()); sideRow.addView(naflCard)
+
+        // Tracker card
+        val trackerCard = createCard()
+        val trackerHead = createCardHead("সম্পূর্ণ মাসের নামাজের ট্র্যাকার", null)
+        trackerMonthTv = TextView(this).apply { text="—"; setTextSize(TypedValue.COMPLEX_UNIT_SP,10f); val bg=GradientDrawable(); bg.setColor(Color.parseColor("#FFF6C8")); bg.cornerRadius=dp(10).toFloat(); background=bg; setPadding(dp(8),dp(4),dp(8),dp(4)) }
+        trackerCountTv = TextView(this).apply { text="0/0"; setTextSize(TypedValue.COMPLEX_UNIT_SP,10f); val bg=GradientDrawable(); bg.setColor(Color.parseColor("#ECFDF5")); bg.cornerRadius=dp(10).toFloat(); background=bg; setPadding(dp(8),dp(4),dp(8),dp(4)) }
+        val badgeRow = LinearLayout(this).apply { addView(trackerMonthTv); addView(trackerCountTv) }
+        (trackerHead.first as LinearLayout).addView(badgeRow)
+        trackerCard.addView(trackerHead.first)
+
+        summaryContainer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(8),dp(8),dp(8),dp(8)) }
+        val hScroll = HorizontalScrollView(this).apply { addView(summaryContainer) }
+        trackerCard.addView(hScroll)
+
+        val filterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(8),dp(8),dp(8),dp(8)) }
+        listOf("all" to "সব", "fajr" to "🌙 ফজর","dhuhr" to "☀️ যুহর","asr" to "🌤️ আসর","maghrib" to "🌇 মাগরিব","isha" to "🌌 ইশা").forEach { (k,lbl)->
+            val chip = TextView(this).apply {
+                text = lbl; tag = k
+                setPadding(dp(10),dp(6),dp(10),dp(6))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP,11f)
+                val bg = GradientDrawable(); bg.cornerRadius=dp(20).toFloat()
+                if(k==filterWaqt){ bg.setColor(green); setTextColor(Color.WHITE) } else { bg.setColor(Color.WHITE); bg.setStroke(1, Color.parseColor("#EFE5C8")); setTextColor(Color.BLACK) }
+                background = bg
+                setOnClickListener {
+                    filterWaqt = k
+                    filterRow.children.forEach { c-> (c as TextView).apply {
+                        val b = background as GradientDrawable
+                        if(tag==filterWaqt){ b.setColor(green); setTextColor(Color.WHITE) } else { b.setColor(Color.WHITE); setTextColor(Color.BLACK) }
+                    } }
+                    renderTracker()
                 }
             }
+            filterRow.addView(chip, LinearLayout.LayoutParams(-2,-2).apply { setMargins(dp(4),0,dp(4),0) })
+        }
+        trackerCard.addView(filterRow)
 
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                    locationRequestCode
-                )
-            } else {
-                startLocationUpdates()
-            }
+        dayContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8),dp(8),dp(8),dp(8)) }
+        trackerCard.addView(dayContainer)
 
-            loadSavedPrayerTimes()
-            setDates()
+        content.addView(header)
+        content.addView(prayerCard, LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(14) })
+        content.addView(sideRow)
+        content.addView(trackerCard, LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(14) })
 
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(this, "", Toast.LENGTH_LONG).show()
+        scroll.addView(content)
+        outer.addView(scroll)
+
+        // Bottom countdown - fixed
+        val countBox = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val bg = GradientDrawable(); bg.setColor(Color.parseColor("#0E3B2E")); bg.cornerRadius=dp(20).toFloat(); bg.setStroke(1, Color.parseColor("#2A5A4A"))
+            background = bg
+            setPadding(dp(12),dp(12),dp(12),dp(12))
+            elevation = dp(12).toFloat()
+        }
+        countIcon = TextView(this).apply {
+            text="🕌"; setTextSize(TypedValue.COMPLEX_UNIT_SP,18f)
+            val bg=GradientDrawable(); bg.setColor(Color.parseColor("#FFF1A0")); bg.cornerRadius=dp(12).toFloat(); background=bg
+            setPadding(dp(10),dp(8),dp(10),dp(8))
+        }
+        val countMid = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(10),0,0,0) }
+        countLabel = TextView(this).apply { text="পরবর্তী নামাজ"; setTextColor(Color.parseColor("#A0C4B8")); setTextSize(TypedValue.COMPLEX_UNIT_SP,9f) }
+        countPray = TextView(this).apply { text="যুহর"; setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP,15f); typeface=Typeface.DEFAULT_BOLD }
+        countCity = TextView(this).apply { text=selectedCityBn; setTextColor(Color.parseColor("#8AB0A0")); setTextSize(TypedValue.COMPLEX_UNIT_SP,10f) }
+        countMid.addView(countLabel); countMid.addView(countPray); countMid.addView(countCity)
+
+        val timeRow = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
+        hTv = createTimeTv(); mTv = createTimeTv(); sTv = createTimeTv()
+        timeRow.addView(hTv); timeRow.addView(createSmallTv(" ঘ ")); timeRow.addView(mTv); timeRow.addView(createSmallTv(" মি ")); timeRow.addView(sTv); timeRow.addView(createSmallTv(" সে"))
+
+        countBox.addView(countIcon); countBox.addView(countMid, LinearLayout.LayoutParams(0,-2,1f)); countBox.addView(timeRow)
+        outer.addView(countBox, LinearLayout.LayoutParams(-1,-2).apply { setMargins(dp(12),dp(8),dp(12),dp(12)) })
+
+        return outer
+    }
+
+    private fun createCard(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val bg = GradientDrawable(); bg.setColor(Color.WHITE); bg.cornerRadius=dp(24).toFloat(); bg.setStroke(1, Color.parseColor("#EFE5C8"))
+            background = bg
+            elevation = dp(2).toFloat()
         }
     }
-
-    private fun button(book: LinearLayout?) {
-        val sketchU = GradientDrawable().apply {
-            val d = applicationContext.resources.displayMetrics.density.toInt()
-            setStroke(d, 0xFF01837A.toInt())
-            cornerRadius = d * 5f
-            setColor(0xFFFFFFFF.toInt())
+    private fun createCardHead(title: String, badgeText: String?): Pair<LinearLayout, TextView> {
+        val row = LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL
+            setPadding(dp(14),dp(12),dp(14),dp(10))
         }
-
-        book?.apply {
-            elevation = 2f * resources.displayMetrics.density
-            background = sketchU
+        val tv = TextView(this).apply { text=title; setTextSize(TypedValue.COMPLEX_UNIT_SP,15f); typeface=Typeface.DEFAULT_BOLD }
+        row.addView(tv, LinearLayout.LayoutParams(0,-2,1f))
+        val badge = TextView(this).apply {
+            text=badgeText?:""
+            visibility = if(badgeText!=null) View.VISIBLE else View.GONE
+            setPadding(dp(8),dp(4),dp(8),dp(4))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP,10f)
+            val bg=GradientDrawable(); bg.setColor(Color.parseColor("#FFF6C8")); bg.cornerRadius=dp(10).toFloat(); background=bg
         }
+        row.addView(badge)
+        // dashed bottom line simulated
+        val line = View(this).apply { setBackgroundColor(Color.parseColor("#EFE5C8")); layoutParams=LinearLayout.LayoutParams(-1, dp(1)) }
+        val wrapper = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; addView(row); addView(line) }
+        return Pair(wrapper, badge)
+    }
+    private fun createTimeTv(): TextView = TextView(this).apply { text="00"; setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP,20f); typeface=Typeface.DEFAULT_BOLD }
+    private fun createSmallTv(t:String): TextView = TextView(this).apply { text=t; setTextColor(Color.parseColor("#A0C4B8")); setTextSize(TypedValue.COMPLEX_UNIT_SP,10f) }
+    private fun createSpace(): View = View(this).apply { layoutParams=LinearLayout.LayoutParams(-1, dp(12)) }
+
+    // ---- Networking no resource ----
+    private fun httpGet(urlStr: String): String {
+        val url = URL(urlStr)
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod="GET"
+        conn.setRequestProperty("Cache-Control","no-cache")
+        conn.connectTimeout=15000; conn.readTimeout=15000
+        conn.connect()
+        val code = conn.responseCode
+        if(code!=200) throw Exception("HTTP $code")
+        return conn.inputStream.bufferedReader().readText()
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == locationRequestCode && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startLocationUpdates()
-        } else {
-            Toast.makeText(this, "Location permission is required", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun startLocationUpdates() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-    }
-
-    private fun loadSavedPrayerTimes() {
-        val fajr = formatPrayerTimeTo12Hour(sharedPreferences.getString("Fajr", "N/A"))
-        val dhuhr = formatPrayerTimeTo12Hour(sharedPreferences.getString("Dhuhr", "N/A"))
-        val asr = formatPrayerTimeTo12Hour(sharedPreferences.getString("Asr", "N/A"))
-        val maghrib = formatPrayerTimeTo12Hour(sharedPreferences.getString("Maghrib", "N/A"))
-        val isha = formatPrayerTimeTo12Hour(sharedPreferences.getString("Isha", "N/A"))
-
-        fajrTextView.text = fajr
-        dhuhrTextView.text = dhuhr
-        asrTextView.text = asr
-        maghribTextView.text = maghrib
-        ishaTextView.text = isha
-    }
-
-    private fun getPrayerTimes(latitude: Double, longitude: Double) {
-        CoroutineScope(Dispatchers.IO).launch {
+    private fun loadCities(){
+        thread {
             try {
-                val response = RetrofitInstance.api.getPrayerTimes(latitude, longitude)
+                val txt = httpGet("$CITIES_URL?v=${System.currentTimeMillis()}")
+                allCities = JSONArray(txt)
+                handler.post { /* ready for dialog */ }
+            } catch(e:Exception){ allCities = JSONArray("[{\"name_en\":\"Dhaka\",\"name_bn\":\"ঢাকা\",\"division\":\"Dhaka\"}]") }
+        }
+    }
 
-                if (response.isSuccessful && response.body() != null) {
-                    val prayerTimes = response.body()?.data?.timings
-
-                    with(sharedPreferences.edit()) {
-                        putString("Fajr", prayerTimes?.Fajr)
-                        putString("Dhuhr", prayerTimes?.Dhuhr)
-                        putString("Asr", prayerTimes?.Asr)
-                        putString("Maghrib", prayerTimes?.Maghrib)
-                        putString("Isha", prayerTimes?.Isha)
-                        apply()
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        fajrTextView.text = formatPrayerTimeTo12Hour(prayerTimes?.Fajr)
-                        dhuhrTextView.text = formatPrayerTimeTo12Hour(prayerTimes?.Dhuhr)
-                        asrTextView.text = formatPrayerTimeTo12Hour(prayerTimes?.Asr)
-                        maghribTextView.text = formatPrayerTimeTo12Hour(prayerTimes?.Maghrib)
-                        ishaTextView.text = formatPrayerTimeTo12Hour(prayerTimes?.Isha)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@NamazActivity, "", Toast.LENGTH_SHORT).show()
-                    }
+    private fun loadCityData(en: String){
+        thread {
+            try {
+                val url = "$CITY_BASE${en}.json?v=${System.currentTimeMillis()}"
+                val txt = httpGet(url)
+                val arr = JSONArray(txt)
+                // check scraped_at
+                val newStamp = arr.optJSONObject(0)?.optJSONObject("meta")?.optString("scraped_at")?:""
+                val oldStamp = prefs.getString("last_scraped_$en","")?:""
+                if(oldStamp.isNotEmpty() && oldStamp!=newStamp){
+                    // updated
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@NamazActivity, "", Toast.LENGTH_SHORT).show()
-                }
+                prefs.edit().putString("last_scraped_$en", newStamp).putLong("last_fetch_$en", System.currentTimeMillis()).apply()
+                allMonth = arr
+                val cal = Calendar.getInstance()
+                val idx = (cal.get(Calendar.DAY_OF_MONTH)-1).coerceAtMost(arr.length()-1).coerceAtLeast(0)
+                todayData = arr.getJSONObject(idx)
+                handler.post { renderAll() }
+            } catch(e:Exception){
+                handler.post { Toast.makeText(this@NamazActivity, "লোড ব্যর্থ: ${e.message}", Toast.LENGTH_SHORT).show() }
             }
         }
     }
 
-    private fun setDates() {
-        val currentDate = Calendar.getInstance()
-
-        val englishDateFormat = SimpleDateFormat("dd MMMM yyyy", Locale.ENGLISH)
-        val englishDate = englishDateFormat.format(currentDate.time)
-        englishDateTextView.text = englishDate
-
-        val bengaliDateFormat = SimpleDateFormat("dd MMMM yyyy", Locale("bn", "BD"))
-        val bengaliDate = bengaliDateFormat.format(currentDate.time)
-        bengaliDateTextView.text = convertToBengaliNumerals(bengaliDate)
-        val hijrahDate = HijrahDate.now() // Get the current Hijri date
-        val hijriDateFormatter = DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("ar"))
-        val hijriDate = hijrahDate.format(hijriDateFormatter)
-        hijriDateTextView.text = convertToBengaliNumerals(hijriDate)
+    private fun startAutoRefresh(){
+        handler.postDelayed(object:Runnable{
+            override fun run(){
+                val last = prefs.getLong("last_fetch_$selectedCityEn",0)
+                if(System.currentTimeMillis()-last > 6*60*60*1000){
+                    loadCityData(selectedCityEn)
+                }
+                handler.postDelayed(this, 60*60*1000)
+            }
+        }, 60*60*1000)
     }
 
-    // Convert 24-hour format to 12-hour format and translate to Bengali numerals
-    private fun formatPrayerTimeTo12Hour(time: String?): String {
-        time?.let {
-            val sdf = SimpleDateFormat("HH:mm", Locale.ENGLISH)
-            val dateObj = sdf.parse(it)
-            val outputFormat = SimpleDateFormat("hh:mm a", Locale.ENGLISH)
-            return convertToBengaliNumerals(outputFormat.format(dateObj!!))
-        }
-        return "N/A"
+    private fun renderAll(){
+        val data = todayData ?: return
+        try {
+            val hijri = data.optJSONObject("date")?.optJSONObject("hijri")?.optString("bn") ?: data.optJSONObject("date")?.optJSONObject("full")?.optString("bn")?.split("•")?.getOrNull(0) ?: ""
+            val bengali = data.optJSONObject("date")?.optJSONObject("bengali")?.optString("bn") ?: data.optJSONObject("date")?.optJSONObject("full")?.optString("bn")?.split("•")?.getOrNull(1) ?: ""
+            hijriTv.text = hijri
+            bengaliTv.text = bengali
+            todayBadge.text = data.optJSONObject("meta")?.optJSONObject("location")?.optString("city_bn") ?: selectedCityBn
+            cityTv.text = "📍 ${data.optJSONObject("meta")?.optJSONObject("location")?.optString("city_bn") ?: selectedCityBn} ▼"
+            trackerMonthTv.text = data.optJSONObject("date")?.optJSONObject("full")?.optString("bn")?.take(42) ?: ""
+
+            val forb = data.optJSONObject("forbidden_times")
+            sunriseTv.text = "সূর্যোদয় ${forb?.optJSONObject("sunrise")?.optString("time_bn")?.split(" - ")?.getOrNull(0) ?: ""}"
+            sunsetTv.text = "সূর্যাস্ত ${forb?.optJSONObject("sunset")?.optString("time_bn")?.split(" - ")?.getOrNull(1) ?: ""}"
+
+            // prayer times
+            val prayerTimes = data.optJSONObject("prayer_times")
+            val nowM = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)*60 + Calendar.getInstance().get(Calendar.MINUTE)
+            var activeKey: String? = null
+            var activeIdx = -1
+            order.forEachIndexed { i, (k,_,_)->
+                val s = parseM(prayerTimes?.optJSONObject(k)?.optString("start"))
+                val e = parseM(prayerTimes?.optJSONObject(k)?.optString("end"))
+                if(s!=null && e!=null && nowM>=s && nowM<e){ activeKey=k; activeIdx=i }
+            }
+            var nextKey: String? = null
+            var nextTriple: Triple<String,String,String>? = null
+            if(activeKey==null){
+                for(o in order){
+                    val s = parseM(prayerTimes?.optJSONObject(o.first)?.optString("start"))
+                    if(s!=null && s>nowM){ nextKey=o.first; nextTriple=o; break }
+                }
+                if(nextKey==null){ nextKey=order[0].first; nextTriple=order[0] }
+            } else {
+                val nextIdx = (activeIdx+1) % order.size
+                nextKey = order[nextIdx].first; nextTriple = order[nextIdx]
+            }
+
+            prayerContainer.removeAllViews()
+            order.forEach { (k,ic,_) ->
+                val pt = prayerTimes?.optJSONObject(k) ?: return@forEach
+                val label = pt.optString("label_bn", k)
+                val timeBn = pt.optString("time_bn","")
+                val isActive = k==activeKey
+                val isNext = k==nextKey && !isActive
+                val row = LinearLayout(this).apply {
+                    orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL
+                    setPadding(dp(12),dp(12),dp(12),dp(12))
+                    val bg=GradientDrawable(); bg.cornerRadius=dp(14).toFloat()
+                    when {
+                        isActive->{ bg.setColor(Color.parseColor("#0E3B2E")); setBackgroundColor(Color.TRANSPARENT) }
+                        isNext->{ bg.setColor(Color.parseColor("#FFF3B8")); bg.setStroke(1, Color.parseColor("#C9A227")) }
+                        else->{ bg.setColor(Color.parseColor("#FFFCF0")); bg.setStroke(1, Color.parseColor("#EFE5C8")) }
+                    }
+                    background=bg
+                }
+                val icon = TextView(this).apply {
+                    text=ic; setTextSize(TypedValue.COMPLEX_UNIT_SP,20f)
+                    val b=GradientDrawable(); b.setColor(Color.parseColor("#FAF6E8")); b.cornerRadius=dp(12).toFloat(); b.setStroke(1, Color.parseColor("#EFE5C8"))
+                    background=b; setPadding(dp(8),dp(6),dp(8),dp(6))
+                }
+                val name = TextView(this).apply {
+                    text=label; setTextSize(TypedValue.COMPLEX_UNIT_SP,15f); typeface=Typeface.DEFAULT_BOLD
+                    if(isActive) setTextColor(Color.WHITE)
+                    setPadding(dp(10),0,0,0)
+                }
+                val time = TextView(this).apply {
+                    text=timeBn; // single time only - fixed duplicate issue
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP,14f); typeface=Typeface.DEFAULT_BOLD
+                    if(isActive) setTextColor(Color.parseColor("#FFF6C8")) else setTextColor(Color.BLACK)
+                    gravity=Gravity.END
+                }
+                row.addView(icon); row.addView(name, LinearLayout.LayoutParams(0,-2,1f)); row.addView(time)
+                prayerContainer.addView(row, LinearLayout.LayoutParams(-1,-2).apply { setMargins(0,dp(4),0,dp(4)) })
+            }
+
+            // forbidden
+            forbiddenContainer.removeAllViews()
+            listOf("sunrise","noon","sunset").forEach { fk->
+                val d = forb?.optJSONObject(fk) ?: return@forEach
+                val row = TextView(this).apply {
+                    text="🚫 ${d.optString("label_bn")} : ${d.optString("time_bn")}"
+                    setPadding(dp(10),dp(10),dp(10),dp(10))
+                    val bg=GradientDrawable(); bg.setColor(Color.parseColor("#FFFBEB")); bg.setStroke(1, Color.parseColor("#F8E9B0")); bg.cornerRadius=dp(12).toFloat(); background=bg
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP,12f)
+                }
+                forbiddenContainer.addView(row, LinearLayout.LayoutParams(-1,-2).apply { setMargins(0,dp(4),0,dp(4)) })
+            }
+
+            // nafl
+            naflContainer.removeAllViews()
+            val nafl = data.optJSONObject("nafl_times")
+            val naflItems = listOf(
+                "তাহাজ্জুদ" to (nafl?.optJSONObject("tahajjud")?.optString("time_bn") ?: "-"),
+                "সাহরী শেষ" to (nafl?.optJSONObject("tahajjud")?.optString("time_bn") ?: prayerTimes?.optJSONObject("fajr")?.optString("time_bn")?.split(" - ")?.getOrNull(0) ?: "-"),
+                "ইশরাক" to (nafl?.optJSONObject("ishraq")?.optString("time_bn") ?: "-"),
+                "চাশত" to (nafl?.optJSONObject("chasht")?.optString("time_bn") ?: "-")
+            )
+            naflItems.chunked(2).forEach { pair ->
+                val row = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+                pair.forEach { (lbl,time)->
+                    val card = LinearLayout(this).apply {
+                        orientation=LinearLayout.VERTICAL; setPadding(dp(10),dp(10),dp(10),dp(10))
+                        val bg=GradientDrawable(); bg.setColor(Color.WHITE); bg.setStroke(1, Color.parseColor("#EFE5C8")); bg.cornerRadius=dp(14).toFloat(); background=bg
+                    }
+                    val l = TextView(this).apply { text=lbl; setTextSize(TypedValue.COMPLEX_UNIT_SP,10f); setTextColor(Color.GRAY) }
+                    val t = TextView(this).apply { text=time; setTextSize(TypedValue.COMPLEX_UNIT_SP,16f); typeface=Typeface.DEFAULT_BOLD; setTextColor(Color.parseColor("#0E3B2E")) }
+                    card.addView(l); card.addView(t)
+                    row.addView(card, LinearLayout.LayoutParams(0,-2,1f).apply { setMargins(dp(4),dp(4),dp(4),dp(4)) })
+                }
+                naflContainer.addView(row)
+            }
+
+            renderTracker()
+            startCountdown(nextTriple, activeKey)
+
+        } catch(e:Exception){ e.printStackTrace() }
     }
 
-    // Convert numbers in string to Bengali numerals
-    private fun convertToBengaliNumerals(input: String): String {
-        val englishNumbers = arrayOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-        val bengaliNumbers = arrayOf('০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯')
-        var output = input
-        englishNumbers.forEachIndexed { index, c ->
-            output = output.replace(c, bengaliNumbers[index])
+    private fun renderTracker(){
+        dayContainer.removeAllViews()
+        summaryContainer.removeAllViews()
+        if(allMonth.length()==0) return
+        val store = prefs.getString("salat_tracker_v2","{}")?.let { JSONObject(it) } ?: JSONObject()
+        val todayIdx = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)-1
+        var totalDone=0
+        val per = mutableMapOf("fajr" to 0,"dhuhr" to 0,"asr" to 0,"maghrib" to 0,"isha" to 0)
+
+        // calc summary
+        val keys = store.keys()
+        while(keys.hasNext()){
+            val k = keys.next()
+            if(k.startsWith("${selectedCityEn}-")){
+                if(store.optBoolean(k,false)){
+                    totalDone++
+                    val wk = k.split("-").last()
+                    per[wk] = (per[wk]?:0)+1
+                }
+            }
         }
-        return output
+        val totalWaqt = allMonth.length()*5
+        trackerCountTv.text = "${toBn(totalDone)}/${toBn(totalWaqt)}"
+
+        // summary chips
+        listOf("মোট ${toBn(totalDone)}", "ফজর ${toBn(per["fajr"]?:0)}", "যুহর ${toBn(per["dhuhr"]?:0)}", "আসর ${toBn(per["asr"]?:0)}", "মাগরিব ${toBn(per["maghrib"]?:0)}", "ইশা ${toBn(per["isha"]?:0)}", "${if(totalWaqt>0) toBn((totalDone*100/totalWaqt))+"%" else "০%"} অগ্রগতি").forEach { txt->
+            val tv = TextView(this).apply {
+                text=txt; setPadding(dp(10),dp(6),dp(10),dp(6)); setTextSize(TypedValue.COMPLEX_UNIT_SP,11f)
+                val bg=GradientDrawable(); bg.setColor(Color.WHITE); bg.setStroke(1, Color.parseColor("#EFE5C8")); bg.cornerRadius=dp(12).toFloat(); background=bg
+            }
+            summaryContainer.addView(tv, LinearLayout.LayoutParams(-2,-2).apply { setMargins(dp(4),0,dp(4),0) })
+        }
+
+        // days
+        for(i in 0 until allMonth.length()){
+            val d = allMonth.getJSONObject(i)
+            val base = "${selectedCityEn}-$i"
+            val doneCount = order.count { (k,_,_) -> store.optBoolean("$base-$k", false) }
+            if(filterWaqt!="all" && !store.optBoolean("$base-$filterWaqt", false) && false){ /* show all still */ }
+
+            val dayCard = LinearLayout(this).apply {
+                orientation=LinearLayout.VERTICAL; setPadding(dp(10),dp(10),dp(10),dp(10))
+                val bg=GradientDrawable(); bg.setColor(Color.WHITE); bg.setStroke(1, if(i==todayIdx) Color.parseColor("#C9A227") else Color.parseColor("#EFE5C8")); bg.cornerRadius=dp(16).toFloat(); background=bg
+                if(i==todayIdx) elevation=dp(4).toFloat()
+            }
+            val head = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
+            val num = TextView(this).apply {
+                text=toBn(i+1); setTextColor(Color.WHITE); gravity=Gravity.CENTER
+                val bg=GradientDrawable(); bg.setColor(Color.parseColor("#0E3B2E")); bg.cornerRadius=dp(8).toFloat(); background=bg
+                setPadding(dp(6),dp(4),dp(6),dp(4))
+            }
+            val hijri = TextView(this).apply {
+                text="${d.optJSONObject("date")?.optJSONObject("hijri")?.optString("bn")?.split(",")?.getOrNull(0) ?: ""} • ${toBn(doneCount)}/৫"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP,10f); setTextColor(Color.GRAY); gravity=Gravity.END
+            }
+            head.addView(num); head.addView(hijri, LinearLayout.LayoutParams(0,-2,1f))
+            dayCard.addView(head)
+
+            order.forEach { (k,ic,bn) ->
+                if(filterWaqt!="all" && k!=filterWaqt) return@forEach
+                val key = "$base-$k"
+                val isDone = store.optBoolean(key,false)
+                val pt = d.optJSONObject("prayer_times")?.optJSONObject(k)
+                val time = pt?.optString("time_bn")?.split(" - ")?.getOrNull(0) ?: ""
+                val pill = LinearLayout(this).apply {
+                    orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL
+                    setPadding(dp(8),dp(6),dp(8),dp(6))
+                    val bg=GradientDrawable(); bg.cornerRadius=dp(10).toFloat()
+                    if(isDone){ bg.setColor(Color.parseColor("#E8F5E9")); bg.setStroke(1, Color.parseColor("#A7D8B0")) } else { bg.setColor(Color.parseColor("#FAF6EB")); bg.setStroke(1, Color.parseColor("#EFE5C8")) }
+                    background=bg
+                    setOnClickListener {
+                        val newStore = JSONObject(prefs.getString("salat_tracker_v2","{}") ?: "{}")
+                        if(newStore.optBoolean(key,false)) newStore.remove(key) else newStore.put(key,true)
+                        prefs.edit().putString("salat_tracker_v2", newStore.toString()).apply()
+                        renderTracker()
+                    }
+                }
+                val lbl = TextView(this).apply { text="$ic $bn $time"; setTextSize(TypedValue.COMPLEX_UNIT_SP,11f); if(isDone) typeface=Typeface.DEFAULT_BOLD }
+                val chk = TextView(this).apply {
+                    text=if(isDone) "✓" else ""; gravity=Gravity.CENTER
+                    val bg=GradientDrawable(); bg.cornerRadius=dp(6).toFloat()
+                    if(isDone){ bg.setColor(Color.parseColor("#0E3B2E")); setTextColor(Color.WHITE) } else { bg.setColor(Color.WHITE); bg.setStroke(1, Color.parseColor("#D6D0BA")) }
+                    background=bg; setPadding(dp(4),dp(2),dp(4),dp(2))
+                }
+                pill.addView(lbl, LinearLayout.LayoutParams(0,-2,1f)); pill.addView(chk)
+                dayCard.addView(pill, LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(4) })
+            }
+            dayContainer.addView(dayCard, LinearLayout.LayoutParams(-1,-2).apply { setMargins(0,dp(6),0,dp(6)) })
+        }
+    }
+
+    private var countdownRunnable: Runnable? = null
+    private fun startCountdown(nextTriple: Triple<String,String,String>?, activeKey: String?){
+        countdownRunnable?.let { handler.removeCallbacks(it) }
+        val runnable = object:Runnable{
+            override fun run(){
+                val data = todayData ?: return
+                val prayerTimes = data.optJSONObject("prayer_times")
+                val targetStr = if(activeKey!=null) prayerTimes?.optJSONObject(activeKey)?.optString("end") else prayerTimes?.optJSONObject(nextTriple?.first)?.optString("start")
+                if(targetStr.isNullOrEmpty()) return
+                val parts = targetStr.split(":")
+                if(parts.size<2) return
+                val th = parts[0].toIntOrNull() ?: 0
+                val tm = parts[1].toIntOrNull() ?: 0
+                val now = Calendar.getInstance()
+                val target = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, th); set(Calendar.MINUTE, tm); set(Calendar.SECOND,0) }
+                if(target.before(now) && activeKey==null){ target.add(Calendar.DAY_OF_YEAR,1) }
+                val diff = (target.timeInMillis - now.timeInMillis)/1000
+                val h = (diff/3600).coerceAtLeast(0)
+                val m = ((diff%3600)/60).coerceAtLeast(0)
+                val s = (diff%60).coerceAtLeast(0)
+                hTv.text = toBn(h.toInt().toString().padStart(2,'0'))
+                mTv.text = toBn(m.toInt().toString().padStart(2,'0'))
+                sTv.text = toBn(s.toInt().toString().padStart(2,'0'))
+                if(activeKey!=null){
+                    countLabel.text = "${prayerTimes?.optJSONObject(activeKey)?.optString("label_bn") ?: ""} শেষ হতে"
+                    countPray.text = prayerTimes?.optJSONObject(activeKey)?.optString("label_bn") ?: ""
+                    countIcon.text="⏳"
+                } else {
+                    countLabel.text="পরবর্তী নামাজ"
+                    countPray.text= prayerTimes?.optJSONObject(nextTriple?.first ?: "")?.optString("label_bn") ?: nextTriple?.third ?: ""
+                    countIcon.text= nextTriple?.second ?: "🕌"
+                }
+                countCity.text = "${prefs.getString("city_bn","ঢাকা")} • ${if(activeKey!=null) "চলছে" else "বাকি"}"
+                handler.postDelayed(this, 1000)
+            }
+        }
+        countdownRunnable = runnable
+        handler.post(runnable)
+    }
+
+    private fun parseM(t: String?): Int? {
+        if(t.isNullOrEmpty()) return null
+        val p = t.split(":"); if(p.size<2) return null
+        return (p[0].toIntOrNull()?:0)*60 + (p[1].toIntOrNull()?:0)
+    }
+    private fun toBn(n: Any): String = n.toString().replace(Regex("\\d")){ m-> "০১২৩৪৫৬৭৮৯"[m.value.toInt()].toString() }
+    private fun dp(v:Int): Int = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt()
+    private val ViewGroup.children: List<View> get() = (0 until childCount).map { getChildAt(it) }
+
+    // City dialog - programmatic no drawable
+    private fun showCityDialog(){
+        val dialogView = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(16),dp(16),dp(16),dp(16)) }
+        val title = TextView(this).apply { text="স্থান শনাক্ত করুন"; setTextSize(TypedValue.COMPLEX_UNIT_SP,17f); typeface=Typeface.DEFAULT_BOLD }
+        val sub = TextView(this).apply { text="নামাজের সময় এবং চাঁদের তারিখ দেখাতে আপনার অবস্থান জানা জরুরি।"; setTextSize(TypedValue.COMPLEX_UNIT_SP,12f); setTextColor(Color.GRAY) }
+        val searchEt = EditText(this).apply {
+            hint="শহর নির্বাচন করুন - যেমন ঢাকা"
+            setPadding(dp(12),dp(10),dp(12),dp(10))
+            val bg=GradientDrawable(); bg.setColor(Color.WHITE); bg.setStroke(1, Color.parseColor("#EFE5C8")); bg.cornerRadius=dp(12).toFloat(); background=bg
+        }
+        val listView = ListView(this).apply { layoutParams=LinearLayout.LayoutParams(-1, dp(300)) }
+        dialogView.addView(title); dialogView.addView(sub, LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(6) })
+        dialogView.addView(searchEt, LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(12) })
+        dialogView.addView(listView, LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(8) })
+
+        val adapterList = mutableListOf<JSONObject>()
+        for(i in 0 until allCities.length()) adapterList.add(allCities.getJSONObject(i))
+        var filtered = adapterList.toList()
+
+        fun updateList(q:String){
+            filtered = if(q.isEmpty()) adapterList else adapterList.filter { it.optString("name_bn").contains(q) || it.optString("name_en").lowercase().contains(q.lowercase()) }
+            val arr = filtered.map { "${it.optString("name_bn")} - ${it.optString("name_en")} (${it.optString("division")})" }.toTypedArray()
+            listView.adapter = ArrayAdapter(this@NamazActivity, android.R.layout.simple_list_item_1, arr)
+        }
+        updateList("")
+
+        searchEt.addTextChangedListener(object: TextWatcher{
+            override fun afterTextChanged(s: Editable?) {}
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { updateList(s.toString()) }
+        })
+
+        val dialog = AlertDialog.Builder(this).setView(dialogView).create()
+
+        listView.setOnItemClickListener { _, _, pos, _ ->
+            val obj = filtered[pos]
+            selectedCityEn = obj.optString("name_en")
+            selectedCityBn = obj.optString("name_bn")
+            prefs.edit().putString("city_en", selectedCityEn).putString("city_bn", selectedCityBn).apply()
+            cityTv.text = "📍 $selectedCityBn ▼"
+            dialog.dismiss()
+            loadCityData(selectedCityEn)
+        }
+        dialog.show()
     }
 }
