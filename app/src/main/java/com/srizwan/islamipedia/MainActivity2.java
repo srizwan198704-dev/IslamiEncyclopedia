@@ -477,7 +477,7 @@ public class MainActivity2 extends AppCompatActivity {
         textHizriDate.setText(hijriDate);
     }
     private String fetchDataFromAPI() {
-        String apiUrl = "https://www.dropbox.com/scl/fi/xq6324fzd2at0wqo7fhvn/hijridate.json?rlkey=a8ymsdtr3554sdnrxstpoc4wk&st=i739zrrs&dl=1";
+        String apiUrl = "https://cdn.jsdelivr.net/gh/srizwan198704-dev/PrayertimePedia@main/data/dhaka.json";
         String result = "";
 
         try {
