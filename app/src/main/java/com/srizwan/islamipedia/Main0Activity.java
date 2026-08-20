@@ -899,7 +899,7 @@ public class Main0Activity extends AppCompatActivity {
 
                                                     }
                                                     if (name.getText().toString().equals("নামাযের সময়")) {
-                                                        in.setClass(getApplicationContext(), MainActivity2.class);
+                                                        in.setClass(getApplicationContext(), NamazActivity.class);
                                                         startActivity(in);
                                                     }
                                                     else {
