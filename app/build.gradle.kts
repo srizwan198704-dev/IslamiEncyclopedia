@@ -22,9 +22,9 @@ android {
     defaultConfig {
         applicationId = "com.srizwan.islamipedia"
         minSdk = 21
-        targetSdk = 36
-        versionCode = 8
-        versionName = "8.0"
+        targetSdk = 37
+        versionCode = 9
+        versionName = "9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ✅ IMPORTANT: Only 64-bit ABI রাখছি (32-bit remove)
@@ -58,7 +58,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
