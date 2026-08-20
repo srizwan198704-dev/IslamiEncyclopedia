@@ -1242,7 +1242,7 @@ class QuranActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(dp(50), dp(50))
                 gravity = Gravity.CENTER
                 try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) { val g = GradientDrawable(); g.setColor(Color.parseColor("#E0F2F1")); g.cornerRadius = dpF(25f); background = g }
-                textSize = 12f; setTextColor(Color.parseColor("#607D8B")); setTypeface(null, Typeface.BOLD)
+textSize = 12f; setTextColor(Color.parseColor("#607D8B")); typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi)
             }
             val playBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins(dp(5), dp(5), dp(5), dp(5)); layoutParams = lp; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; try { setImageResource(R.drawable.play_circle) } catch (e: Exception) {} }
             val copyBtn = ImageView(ctx).apply { val lp = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.MATCH_PARENT); lp.setMargins(dp(5), dp(5), dp(5), dp(5)); layoutParams = lp; setPadding(dp(5), dp(5), dp(5), dp(5)); scaleType = ImageView.ScaleType.FIT_CENTER; rotation = 180f; scaleX = -1f; try { setImageResource(R.drawable.content_copy) } catch (e: Exception) {} }
