@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@anim/*,@array/*,@bool/*,@color/*,@dimen/*,@drawable/*,@font/*,@id/*,@integer/*,@layout/*,@menu/*,@mipmap/*,@plurals/*,@raw/*,@string/*,@style/*,@xml/*" />
