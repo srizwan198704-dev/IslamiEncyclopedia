@@ -104,6 +104,8 @@ class QuranActivity : AppCompatActivity() {
     private var allSuraAuthors: ArrayList<String> = ArrayList()
     private var suraInfoMap: MutableMap<String, JSONObject> = mutableMapOf()
 
+    @Volatile private var globalSearchVersion = 0
+
     private var mediaPlayer: MediaPlayer? = null
     private var currentIndex = 0
     private var currentPlayingId: String? = null
@@ -121,8 +123,8 @@ class QuranActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("quran_pref", Context.MODE_PRIVATE)
-        selectedQariName = prefs.getString("selected_qari_name", "মিশারী রাশিদ আল-আফাসী") ?: "মিশারী রাশিদ আল-আফাসী"
-        selectedQariCode = prefs.getString("selected_qari_code", "Alafasy_64kbps") ?: "Alafasy_64kbps"
+        selectedQariName = prefs.getString("selected_qari_name", "মিশারী রাশিদ আল-আফাসী")?: "মিশারী রাশিদ আল-আফাসী"
+        selectedQariCode = prefs.getString("selected_qari_code", "Alafasy_64kbps")?: "Alafasy_64kbps"
         qariMap = linkedMapOf(
             "মিশারী রাশিদ আল-আফাসী" to "Alafasy_64kbps",
             "আব্দুর রহমান আস-সুদাইস" to "Abdurrahmaan_As-Sudais_64kbps",
@@ -168,8 +170,7 @@ class QuranActivity : AppCompatActivity() {
                 }
                 if (searchView.visibility == View.VISIBLE) {
                     if (searchbox.text.toString().isEmpty()) searchView.visibility = View.GONE else searchbox.text.clear()
-                } else if (currentMode != Mode.SURA_LIST) {
-                    // Stop audio when exiting AYA_LIST
+                } else if (currentMode!= Mode.SURA_LIST) {
                     if (currentMode == Mode.AYA_LIST) {
                         mediaPlayer?.stop()
                         mediaPlayer?.release()
@@ -225,7 +226,7 @@ class QuranActivity : AppCompatActivity() {
             setHorizontallyScrolling(true)
             gravity = Gravity.CENTER_VERTICAL
             setTypeface(typeface, Typeface.BOLD)
-            text = intent.getStringExtra("sub") ?: "আল কুরআন"
+            text = intent.getStringExtra("sub")?: "আল কুরআন"
         }
         bookmarkViewBtn = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
@@ -513,7 +514,7 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        backIv.setOnClickListener { 
+        backIv.setOnClickListener {
             if (currentMode == Mode.AYA_LIST) {
                 mediaPlayer?.stop()
                 mediaPlayer?.release()
@@ -522,7 +523,7 @@ class QuranActivity : AppCompatActivity() {
                 currentIndex = 0
                 try { playAudioIv.setImageResource(R.drawable.play) } catch (e: Exception) {}
             }
-            if (currentMode != Mode.SURA_LIST) switchMode(Mode.SURA_LIST) else finish() 
+            if (currentMode!= Mode.SURA_LIST) switchMode(Mode.SURA_LIST) else finish()
         }
         bookmarkViewBtn.setOnClickListener { loadBookmarksAndSwitch() }
         searchIv.setOnClickListener { searchView.visibility = if (searchView.visibility == View.VISIBLE) View.GONE else View.VISIBLE; if (searchView.visibility == View.VISIBLE) searchbox.requestFocus() }
@@ -536,9 +537,18 @@ class QuranActivity : AppCompatActivity() {
             when (currentMode) {
                 Mode.SURA_LIST -> filterSuraList(q)
                 Mode.AYA_LIST -> filterAyaList(q)
-                Mode.GLOBAL_SEARCH -> { if (q.length >= 2) performGlobalSearch(q) else { globalList.clear(); listView1.adapter = GlobalSearchAdapter(this, globalList); progressText.text = "কমপক্ষে ২ অক্ষর লিখুন" } }
+                Mode.GLOBAL_SEARCH -> {
+                    if (q.length >= 2) performGlobalSearch(q)
+                    else {
+                        globalSearchVersion++
+                        globalList.clear()
+                        listView1.adapter = GlobalSearchAdapter(this, globalList)
+                        progressBar.progress = 0
+                        progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন"
+                        nores.visibility = View.GONE
+                    }
+                }
                 Mode.BOOKMARK -> filterBookmarkList(q)
-                else -> {}
             }
         }
 
@@ -550,7 +560,6 @@ class QuranActivity : AppCompatActivity() {
                         currentSuraBangla = selected.getString("name")
                         currentSuraAuthor = selected.getString("author")
                         currentSuraNumber = getSuraNumberFromAuthor(currentSuraAuthor)
-                        // Clear search box as requested
                         searchbox.text.clear()
                         searchView.visibility = View.GONE
                         loadAyaList("${currentSuraAuthor}.json")
@@ -562,7 +571,7 @@ class QuranActivity : AppCompatActivity() {
                     item?.let {
                         currentSuraAuthor = it.optString("suraAuthor")
                         currentSuraBangla = it.optString("suraName")
-                        currentSuraNumber = it.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
+                        currentSuraNumber = it.optString("suraNumber").toIntOrNull()?: getSuraNumberFromAuthor(currentSuraAuthor)
                         loadAyaList("${currentSuraAuthor}.json")
                         switchMode(Mode.AYA_LIST)
                         listView1.postDelayed({
@@ -576,7 +585,7 @@ class QuranActivity : AppCompatActivity() {
                     item?.let {
                         currentSuraAuthor = it.optString("suraAuthor")
                         currentSuraBangla = it.optString("suraName")
-                        currentSuraNumber = it.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
+                        currentSuraNumber = it.optString("suraNumber").toIntOrNull()?: getSuraNumberFromAuthor(currentSuraAuthor)
                         loadAyaList("${currentSuraAuthor}.json")
                         switchMode(Mode.AYA_LIST)
                         listView1.postDelayed({
@@ -592,7 +601,7 @@ class QuranActivity : AppCompatActivity() {
         previousLL.setOnClickListener { if (currentIndex > 0) currentIndex--; startPlayingFromIndex(currentIndex) }
         nextLL.setOnClickListener { if (currentIndex < filteredAya.size - 1) currentIndex++; startPlayingFromIndex(currentIndex) }
         stopLL.setOnClickListener {
-            if (mediaPlayer != null && mediaPlayer!!.isPlaying) {
+            if (mediaPlayer!= null && mediaPlayer!!.isPlaying) {
                 mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null; currentPlayingId = null; currentIndex = 0
                 playAudioIv.setImageResource(R.drawable.play); notifyAyaList()
                 Toast.makeText(this, "অডিও প্লে বন্ধ হয়েছে।", Toast.LENGTH_SHORT).show()
@@ -600,7 +609,7 @@ class QuranActivity : AppCompatActivity() {
         }
         playAudioLL.setOnClickListener { playAudioIv.performClick() }
         playAudioIv.setOnClickListener {
-            if (mediaPlayer != null) {
+            if (mediaPlayer!= null) {
                 if (mediaPlayer!!.isPlaying) { mediaPlayer?.pause(); notifyAyaList(); playAudioIv.setImageResource(R.drawable.play) }
                 else {
                     if (currentIndex >= filteredAya.size) { currentIndex = 0; startPlayingFromIndex(currentIndex); notifyAyaList(); playAudioIv.setImageResource(R.drawable.pause) }
@@ -616,13 +625,13 @@ class QuranActivity : AppCompatActivity() {
             qariMap.keys.forEach { popup.menu.add(it) }
             popup.setOnMenuItemClickListener { item ->
                 val banglaName = item.title.toString()
-                val code = qariMap[banglaName] ?: "Alafasy_64kbps"
+                val code = qariMap[banglaName]?: "Alafasy_64kbps"
                 selectedQariName = banglaName; selectedQariCode = code
                 prefs.edit().putString("selected_qari_name", banglaName).putString("selected_qari_code", code).apply()
                 selectedQariName = banglaName
                 qariSelectorTv.text = banglaName
                 Toast.makeText(this, "ক্বারী: $banglaName", Toast.LENGTH_SHORT).show()
-                if (mediaPlayer != null) { mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null; startPlayingFromIndex(currentIndex) }
+                if (mediaPlayer!= null) { mediaPlayer?.stop(); mediaPlayer?.release(); mediaPlayer = null; startPlayingFromIndex(currentIndex) }
                 true
             }
             popup.show()
@@ -633,7 +642,7 @@ class QuranActivity : AppCompatActivity() {
         currentMode = mode
         when (mode) {
             Mode.SURA_LIST -> {
-                headingTv.text = intent.getStringExtra("sub") ?: "আল কুরআন"
+                headingTv.text = intent.getStringExtra("sub")?: "আল কুরআন"
                 searchbox.hint = "সুরা সার্চ করুন"
                 audiotab.visibility = View.GONE; progressContainer.visibility = View.GONE; jumpIv.visibility = View.GONE
                 bookmarkViewBtn.visibility = View.VISIBLE
@@ -660,6 +669,7 @@ class QuranActivity : AppCompatActivity() {
                 searchView.visibility = View.VISIBLE; audiotab.visibility = View.GONE; jumpIv.visibility = View.GONE; progressContainer.visibility = View.VISIBLE; nores.visibility = View.GONE
                 bookmarkViewBtn.visibility = View.VISIBLE
                 fabGlobalSearch.visibility = View.GONE
+                globalSearchVersion++
                 globalList.clear()
                 listView1.adapter = GlobalSearchAdapter(this, globalList)
                 progressBar.progress = 0; progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন"
@@ -678,7 +688,7 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun loadSuraList() {
-        val fileName = intent.getStringExtra("booklist")?.takeIf { it.isNotEmpty() } ?: "sura.json"
+        val fileName = intent.getStringExtra("booklist")?.takeIf { it.isNotEmpty() }?: "sura.json"
         try {
             val input = resources.assets.open(fileName)
             val arr = JSONArray(String(input.readBytes(), Charsets.UTF_8)); input.close()
@@ -735,7 +745,7 @@ class QuranActivity : AppCompatActivity() {
     }
 
     private fun getSuraNumberFromAuthor(author: String): Int {
-        return suraInfoMap[author]?.optString("bookid")?.toIntOrNull() ?: try {
+        return suraInfoMap[author]?.optString("bookid")?.toIntOrNull()?: try {
             val input = resources.assets.open("sura.json")
             val arr = JSONArray(String(input.readBytes(), Charsets.UTF_8)); input.close()
             for (i in 0 until arr.length()) if (arr.getJSONObject(i).getString("author") == author) return arr.getJSONObject(i).getString("bookid").toInt()
@@ -750,7 +760,7 @@ class QuranActivity : AppCompatActivity() {
         if (index >= filteredAya.size) { stopCurrentPlaying(); return }
         currentIndex = index
         val currentItem = filteredAya[currentIndex]
-        val ayahNum = currentItem.optString("verses", "${index+1}").toIntOrNull() ?: (index+1)
+        val ayahNum = currentItem.optString("verses", "${index+1}").toIntOrNull()?: (index+1)
         val sssaaa = getFormattedSSSAAA(currentSuraNumber, ayahNum)
         val audioUrl = getEveryAyahUrl(selectedQariCode, sssaaa)
         val fileName = "${selectedQariCode}_${sssaaa}.mp3"
@@ -783,7 +793,7 @@ class QuranActivity : AppCompatActivity() {
         val input = BufferedInputStream(connection.inputStream)
         val output = FileOutputStream(file)
         val data = ByteArray(1024); var count: Int
-        while (input.read(data).also { count = it } != -1) output.write(data, 0, count)
+        while (input.read(data).also { count = it }!= -1) output.write(data, 0, count)
         output.flush(); output.close(); input.close()
     }
 
@@ -791,7 +801,7 @@ class QuranActivity : AppCompatActivity() {
         Thread {
             for (i in startIndex until filteredAya.size) {
                 val currentItem = filteredAya[i]
-                val ayahNum = currentItem.optString("verses", "${i+1}").toIntOrNull() ?: (i+1)
+                val ayahNum = currentItem.optString("verses", "${i+1}").toIntOrNull()?: (i+1)
                 val sssaaa = getFormattedSSSAAA(currentSuraNumber, ayahNum)
                 val audioUrl = getEveryAyahUrl(selectedQariCode, sssaaa)
                 val fileName = "${selectedQariCode}_${sssaaa}.mp3"
@@ -827,7 +837,7 @@ class QuranActivity : AppCompatActivity() {
     fun playme(item: JSONObject) {
         val id = item.optString("_id")
         for (i in filteredAya.indices) if (filteredAya[i].optString("_id") == id) { currentIndex = i; break }
-        if (mediaPlayer != null && currentPlayingId == id) {
+        if (mediaPlayer!= null && currentPlayingId == id) {
             if (mediaPlayer!!.isPlaying) { mediaPlayer?.pause(); playAudioIv.setImageResource(R.drawable.play) } else { mediaPlayer?.start(); playAudioIv.setImageResource(R.drawable.pause) }
             notifyAyaList(); return
         }
@@ -882,38 +892,82 @@ class QuranActivity : AppCompatActivity() {
         switchMode(Mode.BOOKMARK)
     }
 
+    // FIXED GLOBAL SEARCH - ONLY SHOW SEARCHED CARDS
     private fun performGlobalSearch(query: String) {
         lastQuery = query
-        globalList.clear(); progressBar.progress = 0; progressText.text = "⏳ সার্চ চলছে... ০ টি পাওয়া গেছে"
+        globalSearchVersion++
+        val myVersion = globalSearchVersion
+        val searchQuery = query.trim()
+
+        if (searchQuery.length < 2) {
+            globalList.clear()
+            listView1.adapter = GlobalSearchAdapter(this, globalList)
+            progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন"
+            nores.visibility = View.GONE
+            return
+        }
+
+        // Clear immediately to avoid showing old data
+        globalList.clear()
+        listView1.adapter = GlobalSearchAdapter(this, ArrayList())
+        progressBar.progress = 0
+        progressText.text = "⏳ সার্চ চলছে..."
+        nores.visibility = View.GONE
+
         Thread {
-            var found = 0; var scanned = 0; val total = allSuraAuthors.size
+            val localResults = ArrayList<JSONObject>()
+            var scanned = 0
+            val total = allSuraAuthors.size
+
             for (author in allSuraAuthors) {
+                if (myVersion!= globalSearchVersion) return@Thread
                 scanned++
-                val matches = ArrayList<JSONObject>()
                 try {
                     val f = resources.assets.open("$author.json")
-                    val arr = JSONArray(String(f.readBytes(), Charsets.UTF_8)); f.close()
+                    val arr = JSONArray(String(f.readBytes(), Charsets.UTF_8))
+                    f.close()
                     for (j in 0 until arr.length()) {
+                        if (myVersion!= globalSearchVersion) return@Thread
                         val obj = arr.getJSONObject(j)
-                        val name = obj.optString("name",""); val names = obj.optString("names",""); val tafsir = obj.optString("author","")
-                        if (name.contains(query, true) || names.contains(query, true) || tafsir.contains(query, true)) {
+                        val name = obj.optString("name", "")
+                        val names = obj.optString("names", "")
+                        val tafsir = obj.optString("author", "")
+                        // ONLY add if matches search query
+                        if (name.contains(searchQuery, true) || names.contains(searchQuery, true) || tafsir.contains(searchQuery, true)) {
                             val suraInfo = suraInfoMap[author]
                             val newObj = JSONObject(obj.toString())
-                            newObj.put("suraName", suraInfo?.optString("name") ?: author); newObj.put("suraAuthor", author); newObj.put("suraNumber", suraInfo?.optString("bookid") ?: "1")
-                            matches.add(newObj)
+                            newObj.put("suraName", suraInfo?.optString("name")?: author)
+                            newObj.put("suraAuthor", author)
+                            newObj.put("suraNumber", suraInfo?.optString("bookid")?: "1")
+                            localResults.add(newObj)
                         }
                     }
                 } catch (e: Exception) {}
-                found += matches.size; globalList.addAll(matches)
+
+                val sc = scanned
+                val fc = localResults.size
                 runOnUiThread {
-                    progressBar.progress = scanned * 100 / total
-                    progressText.text = "⏳ $scanned/$total স্ক্যান - $found টি আয়াত পাওয়া গেছে"
-                    listView1.adapter = GlobalSearchAdapter(this, ArrayList(globalList))
+                    if (myVersion!= globalSearchVersion || lastQuery!= query) return@runOnUiThread
+                    progressBar.progress = sc * 100 / total
+                    progressText.text = "⏳ $sc/$total স্ক্যান - $fc টি আয়াত পাওয়া গেছে"
                 }
             }
+
             runOnUiThread {
-                progressText.text = "✅ $found টি আয়াত পাওয়া গেছে"
-                if (globalList.isEmpty()) { nores.visibility = View.VISIBLE; noresTv.text = "“$query” এর জন্য কোন আয়াত পাওয়া যায়নি" } else nores.visibility = View.GONE
+                if (myVersion!= globalSearchVersion || lastQuery!= query) return@runOnUiThread
+                globalList.clear()
+                globalList.addAll(localResults)
+                progressBar.progress = 100
+                progressText.text = "✅ ${globalList.size} টি আয়াত পাওয়া গেছে"
+
+                if (globalList.isEmpty()) {
+                    nores.visibility = View.VISIBLE
+                    noresTv.text = "“$query” এর জন্য কোন আয়াত পাওয়া যায়নি"
+                } else {
+                    nores.visibility = View.GONE
+                }
+                // ONLY searched cards will be shown
+                listView1.adapter = GlobalSearchAdapter(this, ArrayList(globalList))
             }
         }.start()
     }
@@ -949,9 +1003,9 @@ class QuranActivity : AppCompatActivity() {
         }
         container.addView(header); container.addView(input)
         AlertDialog.Builder(this).setView(container)
-            .setPositiveButton("যান") { _, _ ->
+           .setPositiveButton("যান") { _, _ ->
                 val num = input.text.toString().toIntOrNull()
-                if (num != null) {
+                if (num!= null) {
                     var found = false
                     for (i in filteredAya.indices) if (filteredAya[i].optString("verses").toIntOrNull() == num) { listView1.setSelection(i); found = true; break }
                     if (!found) Toast.makeText(this, "আয়াত $num পাওয়া যায়নি", Toast.LENGTH_SHORT).show()
@@ -1043,7 +1097,7 @@ class QuranActivity : AppCompatActivity() {
                 val bookid1 = replaceArabicNumber(rawBookId)
                 val displayId = if (bookid1.startsWith("০") || bookid1.startsWith("0")) bookid1.drop(1) else bookid1
                 number.text = displayId
-                val typeBangla = getBanglaType(list[position].optString("type", suraType.getOrNull(position) ?: ""))
+                val typeBangla = getBanglaType(list[position].optString("type", suraType.getOrNull(position)?: ""))
                 val typeSuffix = if (typeBangla.isNotEmpty()) " | $typeBangla" else ""
                 val totalText = "মোট আয়াত : ${replaceArabicNumber(rawVerses)}$typeSuffix"
                 if (lastQuery.isNotEmpty() && currentMode == Mode.SURA_LIST) {
@@ -1077,7 +1131,7 @@ class QuranActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER
                 try { background = ContextCompat.getDrawable(ctx, R.drawable.ic_1_4) } catch (e: Exception) { val g = GradientDrawable(); g.setColor(Color.parseColor("#E0F2F1")); g.cornerRadius = dpF(25f); background = g }
             }
-            val number = TextView(ctx).apply { 
+            val number = TextView(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 textSize = 13f
                 setTextColor(Color.parseColor("#004D40"))
@@ -1258,7 +1312,7 @@ class QuranActivity : AppCompatActivity() {
                 irfanTv.text = replaceArabicNumber(rawIrfan)
             }
             playBtn.setOnClickListener {
-                currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
+                currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull()?: getSuraNumberFromAuthor(currentSuraAuthor)
                 loadAyaList("${currentSuraAuthor}.json"); switchMode(Mode.AYA_LIST)
                 listView1.postDelayed({ val target = item.optString("verses"); for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == target) { listView1.setSelection(i); break } }, 300)
             }
@@ -1367,7 +1421,7 @@ class QuranActivity : AppCompatActivity() {
                 if (list.isEmpty()) { nores.visibility = View.VISIBLE; noresTv.text = "কোন বুকমার্ক নেই\n⭐ আইকনে ক্লিক করে বুকমার্ক যোগ করুন" }
             }
             playBtn.setOnClickListener {
-                currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull() ?: getSuraNumberFromAuthor(currentSuraAuthor)
+                currentSuraAuthor = item.optString("suraAuthor"); currentSuraBangla = item.optString("suraName"); currentSuraNumber = item.optString("suraNumber").toIntOrNull()?: getSuraNumberFromAuthor(currentSuraAuthor)
                 loadAyaList("${currentSuraAuthor}.json"); switchMode(Mode.AYA_LIST)
                 listView1.postDelayed({ val target = item.optString("ayahNumber"); for (i in filteredAya.indices) if (filteredAya[i].optString("verses") == target) { listView1.setSelection(i); break } }, 300)
             }
@@ -1391,10 +1445,10 @@ class QuranActivity : AppCompatActivity() {
 
     private fun replaceArabicNumber(n: String): String {
         return n.replace("1","১").replace("2","২").replace("3","৩").replace("4","৪").replace("5","৫").replace("6","৬").replace("7","৭").replace("8","৮").replace("9","৯").replace("0","০")
-            .replace("<b>"," ").replace("</b>"," ").replace("(রহঃ)","(رحمة الله)").replace("(রাঃ)","(رضي الله عنه)")
-            .replace("(সাল্লাল্লাহু 'আলাইহি ওয়া সাল্লাম)","(ﷺ)").replace(" (সাল্লাল্লাহু 'আলাইহি ওয়া সাল্লাম)","(ﷺ)")
-            .replace("('আঃ)","(عليه السلام)").replace("[১]","").replace("[২]","").replace("[৩]","").replace("(রহ)","(رحمة الله)")
-            .replace("(রা)","(رضي الله عنه)").replace("(সা)","(ﷺ)").replace("('আ)","(عليه السلام)").replace("(সাঃ)","(ﷺ)").replace("(স)","(ﷺ)")
-            .replace("বিবিন্‌ত","বিন্‌ত").replace("বিন্ত","বিন্‌ত").replace("(সা.)","(ﷺ)").replace("(স.)","(ﷺ)")
+           .replace("<b>"," ").replace("</b>"," ").replace("(রহঃ)","(رحمة الله)").replace("(রাঃ)","(رضي الله عنه)")
+           .replace("(সাল্লাল্লাহু 'আলাইহি ওয়া সাল্লাম)","(ﷺ)").replace(" (সাল্লাল্লাহু 'আলাইহি ওয়া সাল্লাম)","(ﷺ)")
+           .replace("('আঃ)","(عليه السلام)").replace("[১]","").replace("[২]","").replace("[৩]","").replace("(রহ)","(رحمة الله)")
+           .replace("(রা)","(رضي الله عنه)").replace("(সা)","(ﷺ)").replace("('আ)","(عليه السلام)").replace("(সাঃ)","(ﷺ)").replace("(স)","(ﷺ)")
+           .replace("বিবিন্ত","বিন্ত").replace("বিন্ত","বিন্ত").replace("(সা.)","(ﷺ)").replace("(স.)","(ﷺ)")
     }
 }
