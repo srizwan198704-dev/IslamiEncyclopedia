@@ -113,43 +113,35 @@ class NamazActivity : AppCompatActivity() {
     private fun toBnNum(n: Int) = toBn(n.toString())
 
     // --- Font Loading from Internet (Google Fonts) ---
-    private fun loadGoogleFont(fontName: String, onResult: (Typeface?) -> Unit) {
-        try {
-            // Using Google Fonts Provider - Requires internet
-            val request = FontRequest(
-                "com.google.android.gms.fonts",
-                "com.google.android.gms",
-                fontName, // e.g. "Hind Siliguri"
-                R.array.com_google_android_gms_fonts_certs // you need certs array, fallback to direct download if fails
-            )
-            FontsContractCompat.requestFont(this, request, object : FontsContractCompat.FontRequestCallback() {
-                override fun onTypefaceRetrieved(typeface: Typeface?) { onResult(typeface) }
-                override fun onTypefaceRequestFailed(reason: Int) {
-                    // Fallback: download TTF manually
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        val tf = downloadFontDirect("https://github.com/google/fonts/raw/main/ofl/hindsiliguri/HindSiliguri-Regular.ttf")
-                        withContext(Dispatchers.Main) { onResult(tf) }
-                    }
-                }
-            }, Handler(Looper.getMainLooper()))
-        } catch (e: Exception) {
-            // Silent fallback
-            onResult(null)
+// --- Font Loading from Internet (No R.array needed) ---
+private fun loadGoogleFont(fontName: String, onResult: (Typeface?) -> Unit) {
+    lifecycleScope.launch(Dispatchers.IO) {
+        val url = if (fontName.contains("Hind", true)) {
+            "https://github.com/google/fonts/raw/main/ofl/hindsiliguri/HindSiliguri-Regular.ttf"
+        } else {
+            "https://github.com/google/fonts/raw/main/ofl/anekbangla/AnekBangla-Regular.ttf"
         }
+        val tf = downloadFontDirect(url)
+        withContext(Dispatchers.Main) { onResult(tf) }
     }
+}
 
-    private fun downloadFontDirect(urlStr: String): Typeface? {
-        return try {
-            val url = URL(urlStr)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.connect()
-            val input = conn.inputStream
-            val file = createTempFile("font", ".ttf", cacheDir)
-            file.outputStream().use { input.copyTo(it) }
-            Typeface.createFromFile(file)
-        } catch (e: Exception) { null }
+private fun downloadFontDirect(urlStr: String): Typeface? {
+    return try {
+        val url = URL(urlStr)
+        val conn = url.openConnection() as HttpURLConnection
+        conn.connectTimeout = 15000
+        conn.readTimeout = 15000
+        conn.connect()
+        val input = conn.inputStream
+        val file = java.io.File.createTempFile("font", ".ttf", cacheDir)
+        file.outputStream().use { input.copyTo(it) }
+        Typeface.createFromFile(file)
+    } catch (e: Exception) { 
+        e.printStackTrace()
+        null 
     }
-
+}
     // --- Network ---
     private suspend fun fetchJson(url: String): String = withContext(Dispatchers.IO) {
         val conn = URL(url).openConnection() as HttpURLConnection
