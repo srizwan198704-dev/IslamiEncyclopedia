@@ -15,7 +15,7 @@
         android:maxSdkVersion="35"
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.VIBRATE" />
-
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:name=".MyApplication"
         android:allowBackup="true"
