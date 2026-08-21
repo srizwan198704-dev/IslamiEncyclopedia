@@ -22,6 +22,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.*
@@ -29,7 +31,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -43,6 +44,7 @@ class NamazActivity : AppCompatActivity() {
     private val colLine = Color.parseColor("#EFE5C8")
     private val colMuted = Color.parseColor("#9B9B93")
     private val colText = Color.parseColor("#1D1D1B")
+    private val colStatus = Color.parseColor("#102E26") // Hero Top Color
 
     private lateinit var tvCurrentCityBn: TextView
     private lateinit var tvHijri: TextView
@@ -96,7 +98,6 @@ class NamazActivity : AppCompatActivity() {
     data class PrayerMeta(val k: String, val ic: String)
     data class PrayerInfo(val active: String?, val activeIdx: Int, val next: PrayerMeta?, val isTomorrow: Boolean)
 
-    // OkHttp Client - Single Instance
     private val okHttpClient by lazy {
         OkHttpClient.Builder()
            .connectTimeout(15, TimeUnit.SECONDS)
@@ -114,6 +115,17 @@ class NamazActivity : AppCompatActivity() {
     private fun toBnNum(n: Int) = toBn(n.toString())
     private fun getInner(card: MaterialCardView) = card.getChildAt(0) as LinearLayout
 
+    // --- FONT FIX: Local Font ---
+    private fun getSolaimanLipiTypeface(): Typeface? {
+        return try {
+            ResourcesCompat.getFont(this, R.font.solaimanlipi)
+        } catch (e: Exception) {
+            try {
+                ResourcesCompat.getFont(this, R.font.solaimainlipi)
+            } catch (_: Exception) { null }
+        }
+    }
+
     // --- OkHttp JSON Fetch ---
     private suspend fun fetchJson(url: String): String = withContext(Dispatchers.IO) {
         val request = Request.Builder()
@@ -124,28 +136,6 @@ class NamazActivity : AppCompatActivity() {
         okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
             response.body?.string()?: throw IOException("Empty body for $url")
-        }
-    }
-
-    // --- OkHttp Font Download ---
-    private fun downloadFontDirect(urlStr: String): Typeface? {
-        return try {
-            val request = Request.Builder().url(urlStr).build()
-            okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return null
-                val input = response.body?.byteStream()?: return null
-                val file = File.createTempFile("font", ".ttf", cacheDir)
-                file.outputStream().use { input.copyTo(it) }
-                Typeface.createFromFile(file)
-            }
-        } catch (e: Exception) { null }
-    }
-
-    private fun loadGoogleFont(fontName: String, onResult: (Typeface?) -> Unit) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val url = "https://github.com/google/fonts/raw/main/ofl/hindsiliguri/HindSiliguri-Regular.ttf"
-            val tf = downloadFontDirect(url)
-            withContext(Dispatchers.Main) { onResult(tf) }
         }
     }
 
@@ -163,6 +153,19 @@ class NamazActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // --- STATUSBAR / NAVBAR FIX ---
+        window.statusBarColor = colStatus
+        window.navigationBarColor = colBg
+        WindowCompat.setDecorFitsSystemWindows(window, true) // Overlay OFF
+        WindowCompat.getInsetsController(window, window.decorView)?.apply {
+            isAppearanceLightStatusBars = false // StatusBar dark so icon white
+            isAppearanceLightNavigationBars = true // NavBar light so icon dark
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+
         notifEnabled = prefs.getBoolean("azan_notif", false)
         prefs.getString("prayer_city_json", null)?.let {
             try { val o=JSONObject(it); selectedCity=City(o.getString("name_en"),o.getString("name_bn"),o.optString("division")) } catch (_:Exception){}
@@ -185,7 +188,10 @@ class NamazActivity : AppCompatActivity() {
         rootFrame.addView(modalOverlay, FrameLayout.LayoutParams(-1,-1))
 
         setContentView(rootFrame)
-        loadGoogleFont("Hind Siliguri") { tf -> tf?.let { applyFontToAll(rootFrame,it) } }
+
+        // --- APPLY LOCAL FONT ---
+        getSolaimanLipiTypeface()?.let { tf -> applyFontToAll(rootFrame, tf) }
+
         createNotificationChannel()
         lifecycleScope.launch {
             try { loadCities() } catch (_:Exception){}
@@ -193,7 +199,14 @@ class NamazActivity : AppCompatActivity() {
         }
     }
 
-    private fun applyFontToAll(v: View, tf: Typeface){ if(v is TextView) v.typeface=tf; if(v is ViewGroup) for(i in 0 until v.childCount) applyFontToAll(v.getChildAt(i),tf) }
+    private fun applyFontToAll(v: View, tf: Typeface){
+        if(v is TextView) {
+            // Keep Bold style if already bold
+            val style = if(v.typeface?.isBold == true) Typeface.BOLD else Typeface.NORMAL
+            v.typeface = Typeface.create(tf, style)
+        }
+        if(v is ViewGroup) for(i in 0 until v.childCount) applyFontToAll(v.getChildAt(i),tf)
+    }
 
     private fun createCard(): MaterialCardView {
         val inner = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; layoutParams=ViewGroup.LayoutParams(-1,-2) }
@@ -254,7 +267,6 @@ class NamazActivity : AppCompatActivity() {
 
     private fun buildContentSection(): LinearLayout {
         val container = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(14),dp(12),dp(14),dp(12)) }
-
         val prayerCard = createCard()
         val pInner = getInner(prayerCard)
         val header1 = createCardHeader("আজকের ওয়াক্ত")
