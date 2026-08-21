@@ -41,7 +41,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 📹 ONLY Screen Recording - No Activity Walkthrough
+      # 📹 2 Minute Screen Recording - MainActivity + NamazActivity
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       - name: Screen Record Test
         uses: reactivecircus/android-emulator-runner@v2
@@ -68,21 +68,23 @@ jobs:
             echo "✅ APK installed"
             sleep 2
 
-            echo "📹 Starting screen recording..."
-            adb shell screenrecord --time-limit 120 /sdcard/app_record.mp4 &
-            RECORD_PID=$!
-            sleep 2
+            echo "📹 Starting 2 MINUTE screen recording..."
+            adb shell screenrecord --bit-rate 4000000 --time-limit 120 /sdcard/app_record.mp4 &
+            sleep 3
 
-            echo "🚀 Launching App (MainActivity)..."
+            echo "🚀 Step 1: Launching MainActivity..."
             adb shell am start -n "${PKG}/.MainActivity"
-            sleep 15
+            echo "📱 MainActivity open for 20s..."
+            sleep 20
 
-            echo "📱 App is open, recording for 15s..."
-            sleep 15
+            echo "🚀 Step 2: Launching NamazActivity..."
+            adb shell am start -n "${PKG}/.NamazActivity"
+            echo "📱 NamazActivity open for 80s... (Total ~2 min record)"
+            sleep 80
 
             echo "⏹ Stopping recording..."
             adb shell pkill -2 screenrecord || true
-            sleep 5
+            sleep 7
             adb pull /sdcard/app_record.mp4 . || echo "❌ Video pull failed"
             ls -lh app_record.mp4
 
