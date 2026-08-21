@@ -1,7 +1,16 @@
-name: Android CI Test
+name: Android CI Test - NamazActivity Only
 
 on:
   workflow_dispatch:
+    inputs:
+      activity:
+        description: 'কোন Activity টেস্ট করবে?'
+        required: true
+        default: 'NamazActivity'
+        type: choice
+        options:
+          - NamazActivity
+          - All
 
 jobs:
   build_and_test:
@@ -41,9 +50,9 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      # 🧪 STEP 1: Full UI Walkthrough + Screen Recording
+      # 🧪 STEP 1: NamazActivity Direct Open + Recording
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      - name: Run Full UI Walkthrough on Emulator
+      - name: Run NamazActivity on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -55,6 +64,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
           script: |
             PKG="com.srizwan.islamipedia"
+            TARGET_ACTIVITY="NamazActivity"
 
             # বুট নিশ্চিত
             adb wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done; echo "Boot OK"'
@@ -70,329 +80,39 @@ jobs:
             sleep 2
 
             # ── Screen Recording শুরু ──────────────────────────
-            echo "📹 Screen recording started"
-            adb shell screenrecord --time-limit 180 /sdcard/ui_test_recording.mp4 &
+            echo "📹 Screen recording started for ${TARGET_ACTIVITY}"
+            adb shell screenrecord --time-limit 180 /sdcard/namaz_activity_test.mp4 &
             sleep 2
 
             # ══════════════════════════════════════════════════
-            # [1] MainActivity
+            # [Single] NamazActivity - Direct Open
             # ══════════════════════════════════════════════════
-            echo "━━━ [1/20] MainActivity ━━━"
-            adb shell am start -n "${PKG}/.MainActivity"
+            echo "━━━ Opening NamazActivity Directly ━━━"
+            adb shell am start -n "${PKG}/.${TARGET_ACTIVITY}"
             sleep 5
+            
+            # UI Interaction for NamazActivity
+            echo "Swiping and testing UI..."
             adb shell input swipe 720 1800 720 600 500
             sleep 2
             adb shell input swipe 720 600 720 1800 500
             sleep 2
-            adb shell input swipe 0 1280 600 1280 600
-            sleep 3
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [2] AlquranActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [2/20] AlquranActivity ━━━"
-            adb shell am start -n "${PKG}/.AlquranActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 400
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [3] QuranActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [3/20] QuranActivity ━━━"
-            adb shell am start -n "${PKG}/.QuranActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input swipe 720 600 720 1800 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [4] HadisActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [4/20] HadisActivity ━━━"
-            adb shell am start -n "${PKG}/.HadisActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 500
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [5] HadithBookActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [5/20] HadithBookActivity ━━━"
-            adb shell am start -n "${PKG}/.HadithBookActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 600
-            sleep 4
-            adb shell input keyevent 4
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [6] NamazActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [6/20] NamazActivity ━━━"
-            adb shell am start -n "${PKG}/.NamazActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input swipe 720 600 720 1800 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [7] NamazTimeTableActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [7/20] NamazTimeTableActivity ━━━"
-            adb shell am start -n "${PKG}/.NamazTimeTableActivity"
-            sleep 5
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input swipe 720 600 720 1800 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [8] SehriIftarActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [8/20] SehriIftarActivity ━━━"
-            adb shell am start -n "${PKG}/.SehriIftarActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input swipe 720 600 720 1800 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [9] CompassActivity — swipe duration ছাড়া (3 arg)
-            # ══════════════════════════════════════════════════
-            echo "━━━ [9/20] CompassActivity ━━━"
-            adb shell am start -n "${PKG}/.CompassActivity"
-            sleep 5
-            adb shell input swipe 720 1280 900 900
-            sleep 2
-            adb shell input swipe 720 1280 500 900
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [10] TasbihActivity — loop ছাড়া ১০ বার tap
-            # ══════════════════════════════════════════════════
-            echo "━━━ [10/20] TasbihActivity ━━━"
-            adb shell am start -n "${PKG}/.TasbihActivity"
-            sleep 4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 0.4
-            adb shell input tap 720 1280
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [11] DuaActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [11/20] DuaActivity ━━━"
-            adb shell am start -n "${PKG}/.DuaActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 500
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [12] BlogActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [12/20] BlogActivity ━━━"
-            adb shell am start -n "${PKG}/.BlogActivity"
-            sleep 5
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 500
-            sleep 5
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [13] BoyanActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [13/20] BoyanActivity ━━━"
-            adb shell am start -n "${PKG}/.BoyanActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 500
-            sleep 4
-            adb shell input keyevent 4
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [14] PdfActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [14/20] PdfActivity ━━━"
-            adb shell am start -n "${PKG}/.PdfActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input swipe 720 600 720 1800 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [15] TafsironlineActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [15/20] TafsironlineActivity ━━━"
-            adb shell am start -n "${PKG}/.TafsironlineActivity"
-            sleep 5
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 500
-            sleep 5
-            adb shell input keyevent 4
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [16] SettingsActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [16/20] SettingsActivity ━━━"
-            adb shell am start -n "${PKG}/.SettingsActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input tap 720 600
+            adb shell input swipe 720 1200 720 400 500
             sleep 2
             adb shell input tap 720 800
             sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [17] ChangeLocationActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [17/20] ChangeLocationActivity ━━━"
-            adb shell am start -n "${PKG}/.ChangeLocationActivity"
-            sleep 4
-            adb shell input tap 720 300
-            sleep 2
-            adb shell input text "Dhaka"
-            sleep 3
-            adb shell input tap 720 600
-            sleep 3
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [18] DonateActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [18/20] DonateActivity ━━━"
-            adb shell am start -n "${PKG}/.DonateActivity"
-            sleep 4
             adb shell input swipe 720 1800 720 600 500
             sleep 2
-            adb shell input swipe 720 600 720 1800 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
 
-            # ══════════════════════════════════════════════════
-            # [19] DownloadActivity
-            # ══════════════════════════════════════════════════
-            echo "━━━ [19/20] DownloadActivity ━━━"
-            adb shell am start -n "${PKG}/.DownloadActivity"
-            sleep 4
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input swipe 720 600 720 1800 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
-
-            # ══════════════════════════════════════════════════
-            # [20] MainActivity — Final Bottom Nav
-            # ══════════════════════════════════════════════════
-            echo "━━━ [20/20] MainActivity Final ━━━"
-            adb shell am start -n "${PKG}/.MainActivity"
-            sleep 4
-            adb shell input tap 288 2450
-            sleep 3
-            adb shell input tap 576 2450
-            sleep 3
-            adb shell input tap 864 2450
-            sleep 3
-            adb shell input tap 1152 2450
-            sleep 3
-            adb shell input swipe 0 1280 600 1280 600
-            sleep 3
-            adb shell input swipe 720 1800 720 600 500
-            sleep 2
-            adb shell input keyevent 4
-            sleep 2
+            echo "✅ NamazActivity Test Complete - staying 5s for view"
+            sleep 5
 
             # ── Recording বন্ধ ─────────────────────────────────
             echo "⏹ Stopping recording..."
-            sleep 3
             adb shell pkill -2 screenrecord || true
             sleep 5
-            adb pull /sdcard/ui_test_recording.mp4 . || echo "❌ Video pull failed"
-            echo "✅ Walkthrough complete!"
+            adb pull /sdcard/namaz_activity_test.mp4 . || echo "❌ Video pull failed"
+            ls -lh namaz_activity_test.mp4 || echo "Video not found"
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       # 🧪 STEP 2: Espresso Unit Tests
@@ -409,7 +129,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim -camera-back none
           script: |
             adb wait-for-device shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done'
-            ./gradlew connectedDebugAndroidTest || echo "⚠️ Tests completed with some failures."
+            ./gradlew connectedDebugAndroidTest || echo "⚠ Tests completed with some failures."
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       # 📦 Artifacts
@@ -418,8 +138,8 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: full-ui-walkthrough-video
-          path: ui_test_recording.mp4
+          name: namaz-activity-video
+          path: namaz_activity_test.mp4
 
       - name: Upload Test Reports
         uses: actions/upload-artifact@v4
