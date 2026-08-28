@@ -23,8 +23,8 @@ android {
         applicationId = "com.srizwan.islamipedia"
         minSdk = 21
         targetSdk = 37
-        versionCode = 9
-        versionName = "9.0"
+        versionCode = 10
+        versionName = "10.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ✅ IMPORTANT: Only 64-bit ABI রাখছি (32-bit remove)
