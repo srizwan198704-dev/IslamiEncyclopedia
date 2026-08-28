@@ -26,6 +26,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -117,11 +118,7 @@ class Main4Activity : AppCompatActivity() {
         searchbox.setHintTextColor(ColorStateList.valueOf(hintColor))
         cancel = findViewById(R.id.cancelme)
         cancel.setOnClickListener {
-            if (searchbox.text.toString() == "") {
-                searchView.visibility = View.GONE
-            } else {
-                searchbox.text.clear()
-            }
+            if (searchbox.text.toString() == "") searchView.visibility = View.GONE else searchbox.text.clear()
         }
 
         searchtop = findViewById(R.id.searchme)
@@ -133,15 +130,31 @@ class Main4Activity : AppCompatActivity() {
         Handler(Looper.getMainLooper()).postDelayed({
             if (intent?.hasExtra("get") == true) {
                 searchbox.text = Editable.Factory.getInstance().newEditable(intent.getStringExtra("get"))
-                select.visibility = View.GONE
-                searchtop.visibility = View.VISIBLE
-            } else {
-                searchbox.setText("")
-                select.visibility = View.GONE
-                searchtop.visibility = View.VISIBLE
-            }
+            } else searchbox.setText("")
+            select.visibility = View.GONE
+            searchtop.visibility = View.VISIBLE
         }, 10)
-        select.visibility = View.GONE
+
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            try {
+                window.statusBarColor = Color.parseColor(getString(R.string.color))
+                window.navigationBarColor = Color.parseColor(getString(R.string.color))
+            } catch (e: Exception) {
+                window.statusBarColor = Color.parseColor("#01837A")
+                window.navigationBarColor = Color.parseColor("#01837A")
+            }
+        }
+        listView1 = findViewById(R.id.listview1)
+        val jsonArray = getJSonData(intent.getStringExtra("booklist")?: "file.json")
+        listItems = getArrayListFromJSONArray(jsonArray)
+        filteredItems = ArrayList(listItems)
+        listView1.adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
+        listView1.isFastScrollEnabled = true
+        listView1.setOnItemClickListener { _, _, position, _ ->
+            if(currentMode == Mode.BOOK_LIST) handleListItemClick(position)
+        }
 
         searchbox.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {}
@@ -155,70 +168,38 @@ class Main4Activity : AppCompatActivity() {
                         globalSearchVersion++
                         globalList.clear()
                         listView1.adapter = GlobalSearchAdapter(this@Main4Activity, globalList)
-                        progressBar.progress = 0
-                        progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন"
+                        if(::progressBar.isInitialized){
+                            progressBar.progress = 0
+                            progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন"
+                        }
                         nores.visibility = View.GONE
                     }
-                } else {
-                    filterList(query)
-                }
+                } else filterList(query)
             }
         })
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            try {
-                window.statusBarColor = Color.parseColor(getString(R.string.color))
-                window.navigationBarColor = Color.parseColor(getString(R.string.color))
-            } catch (e: Exception) {
-                window.statusBarColor = Color.parseColor("#01837A")
-                window.navigationBarColor = Color.parseColor("#01837A")
-            }
-        }
-        listView1 = findViewById(R.id.listview1)
-
-        val jsonArray = getJSonData(intent.getStringExtra("booklist")?: "")
-        listItems = getArrayListFromJSONArray(jsonArray)
-        filteredItems = ArrayList(listItems)
-        val adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
-        listView1.adapter = adapter
-        listView1.isFastScrollEnabled = true
-
-        listView1.setOnItemClickListener { _, _, position, _ ->
-            if(currentMode == Mode.BOOK_LIST) handleListItemClick(position)
-        }
 
         addFabAndProgressOverlay()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if(currentMode == Mode.GLOBAL_SEARCH){
-                    if (searchView.visibility == View.VISIBLE && searchbox.text.toString().isEmpty()) {
-                        switchMode(Mode.BOOK_LIST, heading1)
-                    } else if (searchView.visibility == View.VISIBLE) {
-                        searchbox.text.clear()
-                    } else {
-                        switchMode(Mode.BOOK_LIST, heading1)
-                    }
+                    if (searchView.visibility == View.VISIBLE && searchbox.text.toString().isEmpty()) switchMode(Mode.BOOK_LIST, heading1)
+                    else if (searchView.visibility == View.VISIBLE) searchbox.text.clear()
+                    else switchMode(Mode.BOOK_LIST, heading1)
                     return
                 }
                 if (searchView.visibility == View.VISIBLE) {
-                    if (searchbox.text.toString().isEmpty()) {
-                        searchView.visibility = View.GONE
-                    } else {
-                        searchbox.text.clear()
-                    }
-                } else {
-                    finish()
-                }
+                    if (searchbox.text.toString().isEmpty()) searchView.visibility = View.GONE else searchbox.text.clear()
+                } else finish()
             }
         })
     }
 
     private fun addFabAndProgressOverlay(){
-        val rootView = findViewById<ViewGroup>(android.R.id.content)
-        val frame = rootView.getChildAt(0) as? ViewGroup?: return
+        val decor = window.decorView as ViewGroup
+        val rootContent = findViewById<ViewGroup>(android.R.id.content)
 
+        // Progress - top overlay
         progressContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -226,7 +207,7 @@ class Main4Activity : AppCompatActivity() {
             setPadding(dp(12), dp(8), dp(12), dp(8))
             val bg = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dpF(20f); setStroke(dp(1), Color.parseColor("#01837A")) }
             background = bg
-            elevation = dpF(4f)
+            elevation = dpF(10f)
         }
         progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             layoutParams = LinearLayout.LayoutParams(0, dp(6), 1f)
@@ -234,30 +215,32 @@ class Main4Activity : AppCompatActivity() {
             progressTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
         }
         progressText = TextView(this).apply {
-            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.leftMargin = dp(8)
-            layoutParams = lp
-            text = "⏳ সার্চ চলছে..."
-            textSize = 12f
-            setTextColor(Color.parseColor("#607D8B"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) }
+            text = "⏳ সার্চ চলছে..."; textSize = 12f; setTextColor(Color.parseColor("#607D8B"))
+            try{ typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi)} catch(e:Exception){}
         }
         progressContainer.addView(progressBar)
         progressContainer.addView(progressText)
-        val progressLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(125); leftMargin = dp(12); rightMargin = dp(12); gravity = Gravity.TOP
-        }
-        frame.addView(progressContainer, progressLp)
 
+        val progressLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(140); leftMargin = dp(12); rightMargin = dp(12); gravity = Gravity.TOP
+        }
+        rootContent.addView(progressContainer, progressLp)
+        progressContainer.bringToFront()
+
+        // FAB - always on top
         fabGlobalSearch = FloatingActionButton(this).apply {
             setImageResource(R.drawable.searchme)
             backgroundTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
             imageTintList = ColorStateList.valueOf(Color.WHITE)
             size = FloatingActionButton.SIZE_NORMAL
+            elevation = dpF(12f)
         }
         val fabLp = FrameLayout.LayoutParams(dp(56), dp(56)).apply {
-            gravity = Gravity.BOTTOM or Gravity.END; bottomMargin = dp(20); rightMargin = dp(16)
+            gravity = Gravity.BOTTOM or Gravity.END; bottomMargin = dp(24); rightMargin = dp(16)
         }
-        frame.addView(fabGlobalSearch, fabLp)
+        rootContent.addView(fabGlobalSearch, fabLp)
+        fabGlobalSearch.bringToFront()
 
         fabGlobalSearch.setOnClickListener {
             val heading1: TextView = findViewById(R.id.heading1)
@@ -274,43 +257,38 @@ class Main4Activity : AppCompatActivity() {
                 boxofsearch.hint = "বইয়ের বা লেখকের নাম লিখে সার্চ করুন"
                 progressContainer.visibility = View.GONE
                 fabGlobalSearch.visibility = View.VISIBLE
+                fabGlobalSearch.bringToFront()
                 nores.visibility = View.GONE
                 searchView.visibility = View.GONE
                 searchbox.text.clear()
                 listView1.adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
             }
             Mode.GLOBAL_SEARCH -> {
-                heading.text = "গ্লোবাল সার্চ"
+                heading.text = "গ্লোবাল সার্চ - সব কিতাব"
                 boxofsearch.hint = "সব কিতাবের ভিতরে সার্চ করুন"
                 searchView.visibility = View.VISIBLE
                 searchbox.requestFocus()
                 fabGlobalSearch.visibility = View.GONE
                 progressContainer.visibility = View.VISIBLE
+                progressContainer.bringToFront()
                 globalSearchVersion++
                 globalList.clear()
                 listView1.adapter = GlobalSearchAdapter(this, globalList)
                 progressBar.progress = 0
-                progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন"
+                progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন - ${allBookIds.size} টি কিতাব রেডি"
+                // show keyboard
+                searchView.postDelayed({ searchbox.requestFocus() }, 100)
             }
         }
     }
 
     private fun getJSonData(fileName: String): JSONArray? {
-        var jsonArray: JSONArray? = null
-        try {
+        return try {
             val inputStream: InputStream = resources.assets.open(fileName)
-            val size: Int = inputStream.available()
-            val data = ByteArray(size)
-            inputStream.read(data)
-            inputStream.close()
-            val json = String(data, Charsets.UTF_8)
-            jsonArray = JSONArray(json)
-        } catch (e: IOException) {
-            e.printStackTrace()
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
-        return jsonArray
+            val data = ByteArray(inputStream.available())
+            inputStream.read(data); inputStream.close()
+            JSONArray(String(data, Charsets.UTF_8))
+        } catch (e: Exception){ null }
     }
 
     private fun getArrayListFromJSONArray(jsonArray: JSONArray?): ArrayList<JSONObject> {
@@ -321,49 +299,53 @@ class Main4Activity : AppCompatActivity() {
                 author = Array(jsonArray.length()) { "" }
                 bookid = Array(jsonArray.length()) { "" }
                 subject = Array(jsonArray.length()) { "" }
-                allBookIds.clear()
-                bookInfoMap.clear()
+                allBookIds.clear(); bookInfoMap.clear()
                 for (i in 0 until jsonArray.length()) {
                     val jsonObject = jsonArray.getJSONObject(i)
                     jsonObject.put("original_index", i)
                     aList.add(jsonObject)
-                    name[i] = jsonObject.getString("name")
-                    author[i] = jsonObject.getString("author")
-                    bookid[i] = jsonObject.getString("bookid")
-                    subject[i] = jsonObject.getString("subject")
-                    allBookIds.add(jsonObject.getString("bookid"))
-                    bookInfoMap[jsonObject.getString("bookid")] = jsonObject
+                    name[i] = jsonObject.optString("name","")
+                    author[i] = jsonObject.optString("author","")
+                    bookid[i] = jsonObject.optString("bookid","")
+                    subject[i] = jsonObject.optString("subject","")
+                    val bId = jsonObject.optString("bookid","").trim()
+                    if(bId.isNotEmpty()){
+                        allBookIds.add(bId)
+                        bookInfoMap[bId] = jsonObject
+                    }
                 }
             }
-        } catch (je: JSONException) {
-            je.printStackTrace()
-        }
+        } catch (je: JSONException) { je.printStackTrace() }
         return aList
     }
 
     private fun filterList(query: String) {
         filteredItems.clear()
         for (i in name.indices) {
-            if (name[i].contains(query, ignoreCase = true) || author[i].contains(query, ignoreCase = true) || subject[i].contains(query, ignoreCase = true)) {
-                filteredItems.add(listItems[i])
-                nores.visibility = View.GONE
+            if (name[i].contains(query, true) || author[i].contains(query, true) || subject[i].contains(query, true)) {
+                filteredItems.add(listItems[i]); nores.visibility = View.GONE
             }
         }
-        if (filteredItems.isEmpty()) {
-            nores.visibility = View.VISIBLE
-        }
-        val adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
-        listView1.adapter = adapter
+        if (filteredItems.isEmpty()) nores.visibility = View.VISIBLE
+        listView1.adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
     }
 
     private fun readBookFile(bookId: String): String? {
-        val paths = listOf("books/$bookId", bookId, "books/$bookId.json", "$bookId.json")
-        for(p in paths){
+        // bookId = file.json এর bookid value, যেটাই ফাইল নাম
+        val tries = listOf(
+            "books/$bookId",
+            bookId,
+            "books/$bookId.json",
+            "$bookId.json",
+            "books/${bookId.trim()}",
+            bookId.trim()
+        )
+        for(p in tries){
             try{
                 val input = assets.open(p)
                 val str = String(input.readBytes(), Charsets.UTF_8)
                 input.close()
-                return str
+                if(str.trim().isNotEmpty()) return str
             } catch (e: Exception){ continue }
         }
         return null
@@ -381,6 +363,7 @@ class Main4Activity : AppCompatActivity() {
         progressBar.progress = 0
         progressText.text = "⏳ সার্চ চলছে..."
         nores.visibility = View.GONE
+        progressContainer.visibility = View.VISIBLE
 
         Thread {
             val localResults = ArrayList<JSONObject>()
@@ -411,8 +394,7 @@ class Main4Activity : AppCompatActivity() {
                         }
                     }
                 } catch (e: Exception){}
-                val sc = scanned
-                val fc = localResults.size
+                val sc = scanned; val fc = localResults.size
                 runOnUiThread {
                     if(myVersion!= globalSearchVersion || lastQuery!= query) return@runOnUiThread
                     progressBar.progress = sc * 100 / total
@@ -421,11 +403,16 @@ class Main4Activity : AppCompatActivity() {
             }
             runOnUiThread {
                 if(myVersion!= globalSearchVersion || lastQuery!= query) return@runOnUiThread
-                globalList.clear()
-                globalList.addAll(localResults)
+                globalList.clear(); globalList.addAll(localResults)
                 progressBar.progress = 100
-                progressText.text = "✅ ${globalList.size} টি রেজাল্ট"
+                progressText.text = "✅ ${globalList.size} টি রেজাল্ট - '${query}'"
                 nores.visibility = if(globalList.isEmpty()) View.VISIBLE else View.GONE
+                if(globalList.isEmpty()){
+                    val tv = nores.findViewById<TextView>(R.id.nores_text)
+                    // optional
+                } else {
+                    Toast.makeText(this, "${globalList.size} টি পাওয়া গেছে", Toast.LENGTH_SHORT).show()
+                }
                 listView1.adapter = GlobalSearchAdapter(this, ArrayList(globalList))
             }
         }.start()
@@ -435,12 +422,10 @@ class Main4Activity : AppCompatActivity() {
         val spannable = SpannableString(fullText)
         if (query.isEmpty()) return spannable
         try {
-            val lowerFull = fullText.lowercase()
-            val lowerQuery = query.lowercase()
-            var start = lowerFull.indexOf(lowerQuery)
+            var start = fullText.lowercase().indexOf(query.lowercase())
             while (start >= 0) {
                 spannable.setSpan(BackgroundColorSpan(Color.YELLOW), start, start + query.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                start = lowerFull.indexOf(lowerQuery, start + query.length)
+                start = fullText.lowercase().indexOf(query.lowercase(), start + query.length)
             }
         } catch (e: Exception) {}
         return spannable
@@ -452,44 +437,20 @@ class Main4Activity : AppCompatActivity() {
         val bookId = selectedBook.getString("bookid")
         val bookAuthor = selectedBook.getString("author")
         if (bookName == "সহীহ বুখারী") {
-            val hadisjson = Intent(applicationContext, HadisActivity::class.java).apply {
-                putExtra("sub", "সহীহ বুখারী")
-                putExtra("booklist", "bukhari")
-            }
-            startActivity(hadisjson)
+            startActivity(Intent(applicationContext, HadisActivity::class.java).apply {
+                putExtra("sub", "সহীহ বুখারী"); putExtra("booklist", "bukhari")
+            })
+        } else if (bookName == "সহীহ মুসলিম") {
+            startActivity(Intent(applicationContext, HadisviewActivity::class.java).apply {
+                putExtra("name", "সহীহ মুসলিম"); putExtra("booklist", "muslim")
+            })
         } else {
-            if (bookName == "সহীহ মুসলিম") {
-                val hadisjson = Intent(applicationContext, HadisviewActivity::class.java).apply {
-                    putExtra("name", "সহীহ মুসলিম")
-                    putExtra("booklist", "muslim")
-                }
-                startActivity(hadisjson)
-            } else {
-                val builder = AlertDialog.Builder(this)
-                builder.setTitle("নির্বাচন করুন")
-                val options = arrayOf("অধ্যায় ভিত্তিক কিতাব", "সম্পূর্ণ কিতাব")
-                builder.setItems(options) { _, which ->
-                    when (which) {
-                        0 -> {
-                            val json = Intent(applicationContext, ReadingActivity::class.java).apply {
-                                putExtra("name", bookName)
-                                putExtra("bookname", bookId)
-                                putExtra("author", bookAuthor)
-                            }
-                            startActivity(json)
-                        }
-                        1 -> {
-                            val json = Intent(applicationContext, FullbookreadActivity::class.java).apply {
-                                putExtra("name", bookName)
-                                putExtra("bookname", bookId)
-                                putExtra("author", bookAuthor)
-                            }
-                            startActivity(json)
-                        }
-                    }
-                }
-                builder.create().show()
-            }
+            AlertDialog.Builder(this).setTitle("নির্বাচন করুন").setItems(arrayOf("অধ্যায় ভিত্তিক কিতাব", "সম্পূর্ণ কিতাব")) { _, which ->
+                val cls = if(which==0) ReadingActivity::class.java else FullbookreadActivity::class.java
+                startActivity(Intent(applicationContext, cls).apply {
+                    putExtra("name", bookName); putExtra("bookname", bookId); putExtra("author", bookAuthor)
+                })
+            }.show()
         }
     }
 
@@ -506,29 +467,19 @@ class Main4Activity : AppCompatActivity() {
                 setPadding(dp(6), dp(6), dp(6), dp(6))
                 setBackgroundColor(Color.TRANSPARENT)
             }
-
             val bookHeader = TextView(ctx).apply {
-                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.setMargins(dp(10), dp(4), dp(10), dp(2))
-                layoutParams = lp
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(4), dp(10), dp(2)) }
                 text = "📚 ${item.optString("bookName")}"
-                textSize = 12f
-                setTextColor(Color.parseColor("#01837A"))
-                setTypeface(null, Typeface.BOLD)
+                textSize = 12f; setTextColor(Color.parseColor("#01837A")); setTypeface(null, Typeface.BOLD)
                 try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception){}
             }
-
             val card = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
-                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.setMargins(dp(4), dp(2), dp(4), dp(8))
-                layoutParams = lp
-                setPadding(dp(14), dp(12), dp(14), dp(12))
-                elevation = dpF(4f)
-                val drawable = GradientDrawable().apply { setStroke(dp(1), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = dpF(12f) }
-                background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#E0F2F1")), drawable, null)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(4), dp(2), dp(4), dp(8)) }
+                setPadding(dp(14), dp(12), dp(14), dp(12)); elevation = dpF(4f)
+                background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#E0F2F1")),
+                    GradientDrawable().apply { setStroke(dp(1), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = dpF(12f) }, null)
             }
-
             val titleRaw = item.optString("title","")
             val contentRaw = item.optString("content","")
             val displayContent = if(!isExpanded && contentRaw.length > 150) contentRaw.take(150) + "..." else contentRaw
@@ -539,37 +490,28 @@ class Main4Activity : AppCompatActivity() {
                 try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception){}
                 text = if(lastQuery.isNotEmpty()) getHighlightedText(titleRaw, lastQuery) else titleRaw
             }
-
             val contentTv = TextView(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 textSize = 14f; setTextColor(Color.parseColor("#333333"))
                 try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception){}
                 text = if(lastQuery.isNotEmpty()) getHighlightedText(displayContent, lastQuery) else displayContent
             }
-
             val hintTv = TextView(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
                 textSize = 11f; setTextColor(Color.parseColor("#FF5722")); gravity = Gravity.END
                 text = if(isExpanded) "▲ ছোট করুন" else "▼ পুরো লেখা দেখুন"
             }
-
-            card.addView(titleTv)
-            card.addView(contentTv)
-            if(contentRaw.length > 150) card.addView(hintTv)
-            root.addView(bookHeader)
-            root.addView(card)
+            card.addView(titleTv); card.addView(contentTv); if(contentRaw.length > 150) card.addView(hintTv)
+            root.addView(bookHeader); root.addView(card)
 
             card.setOnClickListener {
                 if(expandedIds.contains(uid)) expandedIds.remove(uid) else expandedIds.add(uid)
                 notifyDataSetChanged()
             }
-
             root.setOnLongClickListener {
-                val bName = item.optString("bookName")
-                val bId = item.optString("bookid")
-                val bAuthor = item.optString("bookAuthor")
-                val pos = item.optInt("pos", 0)
-                AlertDialog.Builder(ctx).setTitle(bName).setMessage("এই লেখায় যেতে চান?\nপজিশন: ${pos+1}")
+                val bName = item.optString("bookName"); val bId = item.optString("bookid")
+                val bAuthor = item.optString("bookAuthor"); val pos = item.optInt("pos", 0)
+                AlertDialog.Builder(ctx).setTitle(bName).setMessage("এই লেখায় যেতে চান? পজিশন: ${pos+1}")
                    .setPositiveButton("হ্যাঁ, যান"){_,_->
                         ctx.startActivity(Intent(ctx, ReadingActivity::class.java).apply {
                             putExtra("name", bName); putExtra("bookname", bId); putExtra("author", bAuthor)
