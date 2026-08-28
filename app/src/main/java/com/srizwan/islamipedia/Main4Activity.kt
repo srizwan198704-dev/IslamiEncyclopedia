@@ -196,10 +196,8 @@ class Main4Activity : AppCompatActivity() {
     }
 
     private fun addFabAndProgressOverlay(){
-        val decor = window.decorView as ViewGroup
         val rootContent = findViewById<ViewGroup>(android.R.id.content)
 
-        // Progress - top overlay
         progressContainer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -216,19 +214,18 @@ class Main4Activity : AppCompatActivity() {
         }
         progressText = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) }
-            text = "⏳ সার্চ চলছে..."; textSize = 12f; setTextColor(Color.parseColor("#607D8B"))
+            text = "⏳ সার্চ চলছে..."
+            textSize = 12f
+            setTextColor(Color.parseColor("#607D8B"))
             try{ typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi)} catch(e:Exception){}
         }
         progressContainer.addView(progressBar)
         progressContainer.addView(progressText)
-
-        val progressLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+        rootContent.addView(progressContainer, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(140); leftMargin = dp(12); rightMargin = dp(12); gravity = Gravity.TOP
-        }
-        rootContent.addView(progressContainer, progressLp)
+        })
         progressContainer.bringToFront()
 
-        // FAB - always on top
         fabGlobalSearch = FloatingActionButton(this).apply {
             setImageResource(R.drawable.searchme)
             backgroundTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
@@ -236,10 +233,9 @@ class Main4Activity : AppCompatActivity() {
             size = FloatingActionButton.SIZE_NORMAL
             elevation = dpF(12f)
         }
-        val fabLp = FrameLayout.LayoutParams(dp(56), dp(56)).apply {
+        rootContent.addView(fabGlobalSearch, FrameLayout.LayoutParams(dp(56), dp(56)).apply {
             gravity = Gravity.BOTTOM or Gravity.END; bottomMargin = dp(24); rightMargin = dp(16)
-        }
-        rootContent.addView(fabGlobalSearch, fabLp)
+        })
         fabGlobalSearch.bringToFront()
 
         fabGlobalSearch.setOnClickListener {
@@ -264,7 +260,7 @@ class Main4Activity : AppCompatActivity() {
                 listView1.adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
             }
             Mode.GLOBAL_SEARCH -> {
-                heading.text = "গ্লোবাল সার্চ - সব কিতাব"
+                heading.text = "গ্লোবাল সার্চ"
                 boxofsearch.hint = "সব কিতাবের ভিতরে সার্চ করুন"
                 searchView.visibility = View.VISIBLE
                 searchbox.requestFocus()
@@ -276,8 +272,6 @@ class Main4Activity : AppCompatActivity() {
                 listView1.adapter = GlobalSearchAdapter(this, globalList)
                 progressBar.progress = 0
                 progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন - ${allBookIds.size} টি কিতাব রেডি"
-                // show keyboard
-                searchView.postDelayed({ searchbox.requestFocus() }, 100)
             }
         }
     }
@@ -331,15 +325,8 @@ class Main4Activity : AppCompatActivity() {
     }
 
     private fun readBookFile(bookId: String): String? {
-        // bookId = file.json এর bookid value, যেটাই ফাইল নাম
-        val tries = listOf(
-            "books/$bookId",
-            bookId,
-            "books/$bookId.json",
-            "$bookId.json",
-            "books/${bookId.trim()}",
-            bookId.trim()
-        )
+        // শুধু extension ছাড়া ফাইল - bookId ই ফাইল নাম
+        val tries = listOf("books/$bookId", bookId)
         for(p in tries){
             try{
                 val input = assets.open(p)
@@ -405,12 +392,9 @@ class Main4Activity : AppCompatActivity() {
                 if(myVersion!= globalSearchVersion || lastQuery!= query) return@runOnUiThread
                 globalList.clear(); globalList.addAll(localResults)
                 progressBar.progress = 100
-                progressText.text = "✅ ${globalList.size} টি রেজাল্ট - '${query}'"
+                progressText.text = "✅ ${globalList.size} টি রেজাল্ট"
                 nores.visibility = if(globalList.isEmpty()) View.VISIBLE else View.GONE
-                if(globalList.isEmpty()){
-                    val tv = nores.findViewById<TextView>(R.id.nores_text)
-                    // optional
-                } else {
+                if(globalList.isNotEmpty()){
                     Toast.makeText(this, "${globalList.size} টি পাওয়া গেছে", Toast.LENGTH_SHORT).show()
                 }
                 listView1.adapter = GlobalSearchAdapter(this, ArrayList(globalList))
@@ -512,7 +496,7 @@ class Main4Activity : AppCompatActivity() {
                 val bName = item.optString("bookName"); val bId = item.optString("bookid")
                 val bAuthor = item.optString("bookAuthor"); val pos = item.optInt("pos", 0)
                 AlertDialog.Builder(ctx).setTitle(bName).setMessage("এই লেখায় যেতে চান? পজিশন: ${pos+1}")
-                   .setPositiveButton("হ্যাঁ, যান"){_,_->
+                  .setPositiveButton("হ্যাঁ, যান"){_,_->
                         ctx.startActivity(Intent(ctx, ReadingActivity::class.java).apply {
                             putExtra("name", bName); putExtra("bookname", bId); putExtra("author", bAuthor)
                             putExtra("jumpTo", pos); putExtra("highlight_query", lastQuery)
