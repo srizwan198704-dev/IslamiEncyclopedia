@@ -1,6 +1,9 @@
 package com.srizwan.islamipedia
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
@@ -30,6 +33,7 @@ import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -40,6 +44,7 @@ import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.concurrent.Executors
 
 class Main4Activity : AppCompatActivity() {
 
@@ -85,6 +90,10 @@ class Main4Activity : AppCompatActivity() {
     private lateinit var progressBarH: ProgressBar
     private lateinit var progressText: TextView
     private lateinit var fabGlobalSearch: FloatingActionButton
+    private lateinit var prefs: SharedPreferences
+
+    private val executor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private fun dp(i: Int): Int { return (i * resources.displayMetrics.density).toInt() }
     private fun dpF(f: Float): Float { return f * resources.displayMetrics.density }
@@ -92,6 +101,7 @@ class Main4Activity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main4)
+        prefs = getSharedPreferences("book_cache", Context.MODE_PRIVATE)
 
         select = findViewById(R.id.select)
         nores = findViewById(R.id.nores)
@@ -131,7 +141,7 @@ class Main4Activity : AppCompatActivity() {
             if (searchView.visibility == View.VISIBLE) searchbox.requestFocus()
         }
 
-        Handler(Looper.getMainLooper()).postDelayed({
+        mainHandler.postDelayed({
             if (intent?.hasExtra("get") == true) searchbox.text = Editable.Factory.getInstance().newEditable(intent.getStringExtra("get"))
             else searchbox.setText("")
             select.visibility = View.GONE; searchtop.visibility = View.VISIBLE
@@ -149,7 +159,7 @@ class Main4Activity : AppCompatActivity() {
         }
 
         listView1 = findViewById(R.id.listview1)
-        val jsonArray = getJSonData(intent.getStringExtra("booklist")?: "file.json")
+        val jsonArray = getCachedFileJson()
         listItems = getArrayListFromJSONArray(jsonArray)
         filteredItems = ArrayList(listItems)
         listView1.adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
@@ -188,6 +198,21 @@ class Main4Activity : AppCompatActivity() {
                 } else finish()
             }
         })
+    }
+
+    private fun getCachedFileJson(): JSONArray? {
+        return try {
+            val assetJson = assets.open("file.json").use { String(it.readBytes(), Charsets.UTF_8) }
+            val cached = prefs.getString("cached_file_json", null)
+            val cachedHash = prefs.getString("cached_hash", "")
+            val newHash = assetJson.hashCode().toString() + "_" + assetJson.length
+            if (cached == null || cachedHash!= newHash) {
+                prefs.edit().putString("cached_file_json", assetJson).putString("cached_hash", newHash).apply()
+                JSONArray(assetJson)
+            } else {
+                JSONArray(cached)
+            }
+        } catch (e: Exception) { getJSonData("file.json") }
     }
 
     private fun addFabAndProgressOverlay() {
@@ -234,9 +259,8 @@ class Main4Activity : AppCompatActivity() {
         val whiteBg = GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dpF(16f) }
 
         val root = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            background = whiteBg
-            setPadding(dp(16), dp(16), dp(16), dp(16))
+            orientation = LinearLayout.VERTICAL; background = whiteBg
+            setPadding(dp(16), dp(16), dp(16), dp(12))
         }
 
         val titleTv = TextView(ctx).apply {
@@ -261,9 +285,14 @@ class Main4Activity : AppCompatActivity() {
         inputLayout.addView(editText)
 
         val optionLabel = TextView(ctx).apply {
-            text = "কিতাব নির্বাচন করুন (মাল্টি সিলেক্ট)"; textSize = 13f; setTextColor(Color.BLACK); setTypeface(null, Typeface.BOLD)
+            text = "কিতাব নির্বাচন করুন"; textSize = 13f; setTextColor(Color.BLACK); setTypeface(null, Typeface.BOLD)
             try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
             setPadding(0, dp(12), 0, dp(6))
+        }
+
+        val loadingTv = TextView(ctx).apply {
+            text = "⏳ কিতাব লোড হচ্ছে..."; setTextColor(Color.GRAY); gravity = Gravity.CENTER; textSize = 12f
+            setPadding(0, dp(20), 0, dp(20))
         }
 
         val optionBox = LinearLayout(ctx).apply {
@@ -272,110 +301,95 @@ class Main4Activity : AppCompatActivity() {
             setPadding(dp(8), dp(8), dp(8), dp(8))
         }
 
-        val scroll = ScrollView(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(220))
-        }
+        val scroll = ScrollView(ctx).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(240)) }
         val checkContainer = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-
-        val selectedIds = mutableSetOf<String>()
-        selectedIds.addAll(allBookIds) // default all
-
-        val allCheck = CheckBox(ctx).apply {
-            text = "★ সকল কিতাব"; textSize = 14f; setTextColor(Color.BLACK); isChecked = true
-            try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
-            buttonTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
-        }
-        checkContainer.addView(allCheck)
-
-        val bookChecks = ArrayList<CheckBox>()
-        for (bId in allBookIds) {
-            val bName = bookInfoMap[bId]?.optString("name")?: bId
-            val cb = CheckBox(ctx).apply {
-                text = bName; textSize = 13f; setTextColor(Color.BLACK); isChecked = true
-                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
-                buttonTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
-                setPadding(dp(4), dp(2), dp(4), dp(2))
-            }
-            bookChecks.add(cb)
-            checkContainer.addView(cb)
-        }
-
-        // Logic: All check
-        allCheck.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                selectedIds.clear(); selectedIds.addAll(allBookIds)
-                for (cb in bookChecks) cb.isChecked = true
-            } else {
-                if (bookChecks.all {!it.isChecked }) {
-                    // keep at least one? allow empty -> will show toast
-                }
-            }
-        }
-        for ((index, cb) in bookChecks.withIndex()) {
-            cb.setOnCheckedChangeListener { _, isChecked ->
-                val bId = allBookIds[index]
-                if (isChecked) selectedIds.add(bId) else selectedIds.remove(bId)
-                if (selectedIds.size == allBookIds.size) {
-                    allCheck.setOnCheckedChangeListener(null)
-                    allCheck.isChecked = true
-                    allCheck.setOnCheckedChangeListener { _, chk ->
-                        if (chk) {
-                            selectedIds.clear(); selectedIds.addAll(allBookIds)
-                            for (c in bookChecks) c.isChecked = true
-                        }
-                    }
-                } else {
-                    allCheck.setOnCheckedChangeListener(null)
-                    allCheck.isChecked = false
-                    allCheck.setOnCheckedChangeListener { _, chk ->
-                        if (chk) {
-                            selectedIds.clear(); selectedIds.addAll(allBookIds)
-                            for (c in bookChecks) { c.setOnCheckedChangeListener(null); c.isChecked = true; c.setOnCheckedChangeListener { _, ic ->
-                                if (ic) selectedIds.add(allBookIds[bookChecks.indexOf(c)]) else selectedIds.remove(allBookIds[bookChecks.indexOf(c)])
-                            }}
-                        }
-                    }
-                }
-            }
-        }
-
+        checkContainer.addView(loadingTv)
         scroll.addView(checkContainer)
         optionBox.addView(scroll)
         root.addView(titleTv); root.addView(inputLayout); root.addView(optionLabel); root.addView(optionBox)
 
-        val dialog = AlertDialog.Builder(ctx)
-           .setView(root)
-           .setPositiveButton("সার্চ করুন", null)
-           .setNegativeButton("বাতিল করুন") { d, _ -> d.dismiss() }
-           .create()
+        val dialog = AlertDialog.Builder(ctx).setView(root)
+         .setPositiveButton("সার্চ করুন", null)
+         .setNegativeButton("বাতিল করুন") { d, _ -> d.dismiss() }
+         .create()
 
-        dialog.setOnShowListener {
-            val btnSearch = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-            btnSearch.setTextColor(Color.parseColor("#01837A"))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.GRAY)
-            btnSearch.setOnClickListener {
-                val q = editText.text.toString().trim()
-                if (q.length < 2) {
-                    editText.error = "কমপক্ষে ২ অক্ষর লিখুন"
-                    return@setOnClickListener
-                }
-                if (selectedIds.isEmpty()) {
-                    android.widget.Toast.makeText(ctx, "অন্তত ১ টি কিতাব সিলেক্ট করুন", android.widget.Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                val heading1: TextView = findViewById(R.id.heading1)
-                switchMode(Mode.GLOBAL_SEARCH, heading1)
-                searchView.visibility = View.VISIBLE
-                searchbox.setText(q); searchbox.setSelection(q.length)
-                performGlobalSearch(q, ArrayList(selectedIds))
-                dialog.dismiss()
-            }
-        }
         dialog.show()
         dialog.window?.setBackgroundDrawable(GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dpF(16f) })
 
+        // Executor দিয়ে non-deprecated background load
+        executor.execute {
+            val ids = ArrayList(allBookIds)
+            val infos = HashMap(bookInfoMap)
+            mainHandler.post {
+                checkContainer.removeAllViews()
+                val selectedIds = mutableSetOf<String>()
+                selectedIds.addAll(ids)
+
+                val allCheck = CheckBox(ctx).apply {
+                    text = "★ সকল কিতাব"; textSize = 14f; setTextColor(Color.BLACK); isChecked = true
+                    try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+                    buttonTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
+                }
+                checkContainer.addView(allCheck)
+                val bookChecks = ArrayList<CheckBox>()
+
+                for (bId in ids) {
+                    val bName = infos[bId]?.optString("name")?: bId
+                    val cb = CheckBox(ctx).apply {
+                        text = bName; textSize = 13f; setTextColor(Color.BLACK); isChecked = true
+                        try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+                        buttonTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
+                    }
+                    bookChecks.add(cb); checkContainer.addView(cb)
+                }
+
+                var isProgrammatic = false
+                allCheck.setOnCheckedChangeListener { _, isChecked ->
+                    if (isProgrammatic) return@setOnCheckedChangeListener
+                    isProgrammatic = true
+                    if (isChecked) {
+                        selectedIds.clear(); selectedIds.addAll(ids)
+                        for (c in bookChecks) c.isChecked = true
+                    } else {
+                        selectedIds.clear()
+                        for (c in bookChecks) c.isChecked = false
+                    }
+                    isProgrammatic = false
+                }
+
+                for ((index, cb) in bookChecks.withIndex()) {
+                    cb.setOnCheckedChangeListener { _, isChecked ->
+                        if (isProgrammatic) return@setOnCheckedChangeListener
+                        val bId = ids[index]
+                        if (isChecked) selectedIds.add(bId) else selectedIds.remove(bId)
+                        isProgrammatic = true
+                        allCheck.isChecked = selectedIds.size == ids.size
+                        isProgrammatic = false
+                    }
+                }
+
+                val btnSearch = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                btnSearch.setTextColor(Color.parseColor("#01837A"))
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.GRAY)
+                btnSearch.setOnClickListener {
+                    val q = editText.text.toString().trim()
+                    if (q.length < 2) { editText.error = "কমপক্ষে ২ অক্ষর"; return@setOnClickListener }
+                    if (selectedIds.isEmpty()) {
+                        Toast.makeText(ctx, "অন্তত ১ টি কিতাব সিলেক্ট করুন", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                    val heading1: TextView = findViewById(R.id.heading1)
+                    switchMode(Mode.GLOBAL_SEARCH, heading1)
+                    searchView.visibility = View.VISIBLE
+                    searchbox.setText(q); searchbox.setSelection(q.length)
+                    performGlobalSearch(q, ArrayList(selectedIds))
+                    dialog.dismiss()
+                }
+            }
+        }
+
         editText.requestFocus()
-        Handler(Looper.getMainLooper()).postDelayed({
+        mainHandler.postDelayed({
             val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
         }, 200)
@@ -431,14 +445,6 @@ class Main4Activity : AppCompatActivity() {
                 globalList.clear(); displayedList.clear(); currentPage = 0
                 globalAdapter = GlobalSearchAdapter(this, displayedList)
                 listView1.adapter = globalAdapter
-                if (searchbox.text.toString().length >= 2) {
-                    performGlobalSearch(searchbox.text.toString(), allBookIds)
-                } else {
-                    progressContainer.visibility = View.VISIBLE
-                    progressBarCircle.visibility = View.GONE
-                    progressBarH.progress = 0
-                    progressText.text = "🔍 FAB থেকে কিতাব সিলেক্ট করে সার্চ করুন"
-                }
             }
         }
     }
@@ -511,17 +517,17 @@ class Main4Activity : AppCompatActivity() {
         nores.visibility = View.GONE
         progressContainer.bringToFront()
 
-        Thread {
+        executor.execute {
             var scanned = 0; val total = targetBookIds.size
             val batch = ArrayList<JSONObject>()
             for (bId in targetBookIds) {
-                if (myVersion!= globalSearchVersion) return@Thread
+                if (myVersion!= globalSearchVersion) return@execute
                 scanned++
                 try {
                     val jsonStr = readBookFile(bId)?: continue
                     val arr = JSONArray(jsonStr)
                     for (j in 0 until arr.length()) {
-                        if (myVersion!= globalSearchVersion) return@Thread
+                        if (myVersion!= globalSearchVersion) return@execute
                         val obj = arr.getJSONObject(j)
                         val title = obj.optString("1", "")
                         val content = obj.optString("2", "")
@@ -535,8 +541,8 @@ class Main4Activity : AppCompatActivity() {
                             batch.add(newObj)
                             if (batch.size >= 30) {
                                 val copy = ArrayList(batch); batch.clear()
-                                runOnUiThread {
-                                    if (myVersion!= globalSearchVersion) return@runOnUiThread
+                                mainHandler.post {
+                                    if (myVersion!= globalSearchVersion) return@post
                                     globalList.addAll(copy)
                                     if (displayedList.isEmpty()) {
                                         val end = minOf(pageSize, globalList.size)
@@ -549,21 +555,21 @@ class Main4Activity : AppCompatActivity() {
                     }
                 } catch (e: Exception) {}
                 val sc = scanned
-                runOnUiThread {
-                    if (myVersion!= globalSearchVersion || lastQuery!= query) return@runOnUiThread
+                mainHandler.post {
+                    if (myVersion!= globalSearchVersion || lastQuery!= query) return@post
                     progressBarH.progress = sc * 100 / total
-                    progressText.text = "⏳ $sc/$total কিতাব - ${globalList.size + batch.size} টি"
+                    progressText.text = "⏳ $sc/$total - ${globalList.size + batch.size} টি"
                 }
             }
             if (batch.isNotEmpty()) globalList.addAll(batch)
-            runOnUiThread {
-                if (myVersion!= globalSearchVersion || lastQuery!= query) return@runOnUiThread
+            mainHandler.post {
+                if (myVersion!= globalSearchVersion || lastQuery!= query) return@post
                 isSearching = false
                 if (globalList.isEmpty()) {
                     progressBarCircle.visibility = View.GONE; progressBarH.visibility = View.GONE
                     progressText.text = "❌ কোনো রেজাল্ট পাওয়া যায়নি"
                     nores.visibility = View.VISIBLE
-                    Handler(Looper.getMainLooper()).postDelayed({ progressContainer.visibility = View.GONE }, 2000)
+                    mainHandler.postDelayed({ progressContainer.visibility = View.GONE }, 2000)
                 } else {
                     progressBarCircle.visibility = View.GONE
                     progressBarH.progress = 100
@@ -573,10 +579,10 @@ class Main4Activity : AppCompatActivity() {
                         for (k in 0 until end) displayedList.add(globalList[k])
                         globalAdapter?.notifyDataSetChanged()
                     }
-                    Handler(Looper.getMainLooper()).postDelayed({ progressContainer.visibility = View.GONE }, 2500)
+                    mainHandler.postDelayed({ progressContainer.visibility = View.GONE }, 2500)
                 }
             }
-        }.start()
+        }
     }
 
     private fun getHighlightedText(fullText: String, query: String): SpannableString {
@@ -621,6 +627,7 @@ class Main4Activity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 setPadding(dp(6), dp(6), dp(6), dp(6))
+                isLongClickable = true
             }
             val bookHeader = TextView(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(10), dp(4), dp(10), dp(2)) }
@@ -631,7 +638,7 @@ class Main4Activity : AppCompatActivity() {
             val card = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(dp(4), dp(2), dp(4), dp(8)) }
-                setPadding(dp(14), dp(12), dp(14), dp(12)); elevation = dpF(4f)
+                setPadding(dp(14), dp(12), dp(14), dp(12)); elevation = dpF(4f); isLongClickable = true
                 background = RippleDrawable(ColorStateList.valueOf(Color.parseColor("#E0F2F1")),
                     GradientDrawable().apply { setStroke(dp(1), Color.parseColor("#01837A")); setColor(Color.WHITE); cornerRadius = dpF(12f) }, null)
             }
@@ -654,22 +661,63 @@ class Main4Activity : AppCompatActivity() {
                 textSize = 11f; setTextColor(Color.parseColor("#FF5722")); gravity = Gravity.END
                 text = if (isExpanded) "▲ ছোট করুন" else "▼ পুরো লেখা দেখুন"
             }
+            val toolbar = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+            }
+            val copyBtn = TextView(ctx).apply {
+                text = "📋 কপি"; textSize = 11f; setTextColor(Color.parseColor("#01837A"))
+                setPadding(dp(8), dp(4), dp(8), dp(4))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#E0F2F1")); cornerRadius = dpF(8f) }
+                try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            }
+            val shareBtn = TextView(ctx).apply {
+                text = "📤 শেয়ার"; textSize = 11f; setTextColor(Color.parseColor("#01837A"))
+                setPadding(dp(8), dp(4), dp(8), dp(4))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#E0F2F1")); cornerRadius = dpF(8f) }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(8) }
+            }
+            copyBtn.setOnClickListener {
+                val full = "${item.optString("title")}\n\n${item.optString("content")}\n\n- ${item.optString("bookName")}"
+                val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.text = full
+                Toast.makeText(ctx, "কপি করা হয়েছে", Toast.LENGTH_SHORT).show()
+            }
+            shareBtn.setOnClickListener {
+                val full = "${item.optString("title")}\n\n${item.optString("content")}\n\n- ${item.optString("bookName")}"
+                val share = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, full) }
+                ctx.startActivity(Intent.createChooser(share, "শেয়ার করুন"))
+            }
+            toolbar.addView(copyBtn); toolbar.addView(shareBtn)
+
             card.addView(titleTv); card.addView(contentTv); if (contentRaw.length > 150) card.addView(hintTv)
+            card.addView(toolbar)
             root.addView(bookHeader); root.addView(card)
+
             card.setOnClickListener {
                 if (expandedIds.contains(uid)) expandedIds.remove(uid) else expandedIds.add(uid); notifyDataSetChanged()
             }
-            root.setOnLongClickListener {
+
+            val longClickAction = View.OnLongClickListener {
                 val bName = item.optString("bookName"); val bId = item.optString("bookid")
                 val bAuthor = item.optString("bookAuthor"); val pos = item.optInt("pos", 0)
                 AlertDialog.Builder(ctx).setTitle(bName).setMessage("এই লেখায় যেতে চান? পজিশন: ${pos + 1}")
-                 .setPositiveButton("হ্যাঁ, যান") { _, _ ->
+               .setPositiveButton("হ্যাঁ, যান") { _, _ ->
                         ctx.startActivity(Intent(ctx, ReadingActivity::class.java).apply {
                             putExtra("name", bName); putExtra("bookname", bId); putExtra("author", bAuthor); putExtra("jumpTo", pos); putExtra("highlight_query", lastQuery)
                         })
-                    }.setNegativeButton("বাতিল", null).show(); true
+                    }.setNegativeButton("বাতিল", null).show()
+                true
             }
+            card.setOnLongClickListener(longClickAction)
+            root.setOnLongClickListener(longClickAction)
+
             return root
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        executor.shutdown()
     }
 }
