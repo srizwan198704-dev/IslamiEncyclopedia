@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
+import android.text.InputType
 import android.text.SpannableString
 import android.text.TextWatcher
 import android.text.style.BackgroundColorSpan
@@ -18,6 +19,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.AbsListView
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -75,6 +77,7 @@ class Main4Activity : AppCompatActivity() {
     private var pageSize = 20
     private var currentPage = 0
     private var isSearching = false
+    private var globalAdapter: GlobalSearchAdapter? = null
 
     private lateinit var progressContainer: LinearLayout
     private lateinit var progressBarCircle: ProgressBar
@@ -106,12 +109,9 @@ class Main4Activity : AppCompatActivity() {
         val heading1: TextView = findViewById(R.id.heading1)
         heading1.text = intent.getStringExtra("sub")
 
-        jump = findViewById(R.id.jump)
-        jump.visibility = View.GONE
+        jump = findViewById(R.id.jump); jump.visibility = View.GONE
         back = findViewById(R.id.back)
-        back.setOnClickListener {
-            if (currentMode == Mode.GLOBAL_SEARCH) switchMode(Mode.BOOK_LIST, heading1) else finish()
-        }
+        back.setOnClickListener { if (currentMode == Mode.GLOBAL_SEARCH) switchMode(Mode.BOOK_LIST, heading1) else finish() }
 
         boxofsearch = findViewById(R.id.boxofsearch)
         boxofsearch.setBoxCornerRadii(100f, 100f, 100f, 100f)
@@ -122,9 +122,7 @@ class Main4Activity : AppCompatActivity() {
         boxofsearch.hint = "বইয়ের বা লেখকের নাম লিখে সার্চ করুন"
         searchbox.setHintTextColor(ColorStateList.valueOf(hintColor))
         cancel = findViewById(R.id.cancelme)
-        cancel.setOnClickListener {
-            if (searchbox.text.toString() == "") searchView.visibility = View.GONE else searchbox.text.clear()
-        }
+        cancel.setOnClickListener { if (searchbox.text.toString() == "") searchView.visibility = View.GONE else searchbox.text.clear() }
 
         searchtop = findViewById(R.id.searchme)
         searchView = findViewById(R.id.searchView)
@@ -134,11 +132,9 @@ class Main4Activity : AppCompatActivity() {
         }
 
         Handler(Looper.getMainLooper()).postDelayed({
-            if (intent?.hasExtra("get") == true) {
-                searchbox.text = Editable.Factory.getInstance().newEditable(intent.getStringExtra("get"))
-            } else searchbox.setText("")
-            select.visibility = View.GONE
-            searchtop.visibility = View.VISIBLE
+            if (intent?.hasExtra("get") == true) searchbox.text = Editable.Factory.getInstance().newEditable(intent.getStringExtra("get"))
+            else searchbox.setText("")
+            select.visibility = View.GONE; searchtop.visibility = View.VISIBLE
         }, 10)
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
@@ -148,8 +144,7 @@ class Main4Activity : AppCompatActivity() {
                 window.statusBarColor = Color.parseColor(getString(R.string.color))
                 window.navigationBarColor = Color.parseColor(getString(R.string.color))
             } catch (e: Exception) {
-                window.statusBarColor = Color.parseColor("#01837A")
-                window.navigationBarColor = Color.parseColor("#01837A")
+                window.statusBarColor = Color.parseColor("#01837A"); window.navigationBarColor = Color.parseColor("#01837A")
             }
         }
 
@@ -159,31 +154,22 @@ class Main4Activity : AppCompatActivity() {
         filteredItems = ArrayList(listItems)
         listView1.adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
         listView1.isFastScrollEnabled = true
-        listView1.setOnItemClickListener { _, _, position, _ ->
-            if (currentMode == Mode.BOOK_LIST) handleListItemClick(position)
-        }
+        listView1.setOnItemClickListener { _, _, position, _ -> if (currentMode == Mode.BOOK_LIST) handleListItemClick(position) }
 
-        // Search listener
         searchbox.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {}
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val query = s.toString()
-                lastQuery = query
+                val query = s.toString(); lastQuery = query
                 if (currentMode == Mode.GLOBAL_SEARCH) {
                     if (query.length >= 2) performGlobalSearch(query)
                     else {
-                        globalSearchVersion++
-                        globalList.clear(); displayedList.clear()
-                        listView1.adapter = GlobalSearchAdapter(this@Main4Activity, displayedList)
-                        if (::progressText.isInitialized) {
-                            progressContainer.visibility = View.GONE
-                        }
-                        nores.visibility = View.GONE
+                        globalSearchVersion++; globalList.clear(); displayedList.clear()
+                        globalAdapter = GlobalSearchAdapter(this@Main4Activity, displayedList)
+                        listView1.adapter = globalAdapter
+                        progressContainer.visibility = View.GONE; nores.visibility = View.GONE
                     }
-                } else {
-                    filterList(query)
-                }
+                } else filterList(query)
             }
         })
 
@@ -195,8 +181,7 @@ class Main4Activity : AppCompatActivity() {
                 if (currentMode == Mode.GLOBAL_SEARCH) {
                     if (searchView.visibility == View.VISIBLE && searchbox.text.toString().isEmpty()) switchMode(Mode.BOOK_LIST, heading1)
                     else if (searchView.visibility == View.VISIBLE) searchbox.text.clear()
-                    else switchMode(Mode.BOOK_LIST, heading1)
-                    return
+                    else switchMode(Mode.BOOK_LIST, heading1); return
                 }
                 if (searchView.visibility == View.VISIBLE) {
                     if (searchbox.text.toString().isEmpty()) searchView.visibility = View.GONE else searchbox.text.clear()
@@ -208,41 +193,39 @@ class Main4Activity : AppCompatActivity() {
     private fun addFabAndProgressOverlay() {
         val rootContent = findViewById<ViewGroup>(android.R.id.content) as ViewGroup
 
-        // Progress Container - SearchBox এর নিচে Overlay কিন্তু fixed top 145dp
+        // Progress - স্ক্রিনের মাঝে
         progressContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             visibility = View.GONE
-            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setPadding(dp(16), dp(16), dp(16), dp(16))
             background = GradientDrawable().apply {
-                setColor(Color.WHITE); cornerRadius = dpF(12f); setStroke(dp(1), Color.parseColor("#01837A"))
+                setColor(Color.WHITE); cornerRadius = dpF(16f); setStroke(dp(1), Color.parseColor("#01837A"))
             }
-            elevation = dpF(8f)
+            elevation = dpF(12f)
         }
-        val topRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         progressBarCircle = ProgressBar(this).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
+            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply { gravity = Gravity.CENTER }
             indeterminateTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
         }
         progressBarH = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            layoutParams = LinearLayout.LayoutParams(0, dp(6), 1f).apply { leftMargin = dp(12) }
+            layoutParams = LinearLayout.LayoutParams(dp(200), dp(6)).apply { topMargin = dp(12); gravity = Gravity.CENTER }
             max = 100; progressTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
         }
         progressText = TextView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) }
-            text = "⏳ সার্চ চলছে..."; textSize = 12f; setTextColor(Color.parseColor("#607D8B")); gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8); gravity = Gravity.CENTER }
+            text = "⏳ সার্চ চলছে..."; textSize = 13f; setTextColor(Color.parseColor("#607D8B")); gravity = Gravity.CENTER
             try { typeface = ResourcesCompat.getFont(context, R.font.solaimanlipi) } catch (e: Exception) {}
         }
-        topRow.addView(progressBarCircle); topRow.addView(progressBarH)
-        progressContainer.addView(topRow); progressContainer.addView(progressText)
+        progressContainer.addView(progressBarCircle); progressContainer.addView(progressBarH); progressContainer.addView(progressText)
 
-        val progLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(145); leftMargin = dp(12); rightMargin = dp(12); gravity = Gravity.TOP
+        val progLp = FrameLayout.LayoutParams(dp(240), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            gravity = Gravity.CENTER; topMargin = dp(50)
         }
         rootContent.addView(progressContainer, progLp)
         progressContainer.bringToFront()
 
-        // FAB - উপরে তোলা
+        // FAB
         fabGlobalSearch = FloatingActionButton(this).apply {
             setImageResource(R.drawable.searchme)
             backgroundTintList = ColorStateList.valueOf(Color.parseColor("#01837A"))
@@ -255,11 +238,57 @@ class Main4Activity : AppCompatActivity() {
         }
         rootContent.addView(fabGlobalSearch, fabLp)
         fabGlobalSearch.bringToFront()
+        fabGlobalSearch.setOnClickListener { showGlobalSearchDialog() }
+    }
 
-        fabGlobalSearch.setOnClickListener {
-            val h: TextView = findViewById(R.id.heading1)
-            switchMode(Mode.GLOBAL_SEARCH, h)
+    private fun showGlobalSearchDialog() {
+        val ctx = this
+        val container = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(8))
         }
+        val titleTv = TextView(ctx).apply {
+            text = "সকল কিতাব সার্চ করুন"; textSize = 16f; setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.parseColor("#01837A")); gravity = Gravity.CENTER
+            try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            setPadding(0, 0, 0, dp(12))
+        }
+        val inputLayout = TextInputLayout(ctx).apply {
+            hint = "যেমন: দরুদ, নামাজ, রোজা..."; boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+            setBoxCornerRadii(dpF(12f), dpF(12f), dpF(12f), dpF(12f))
+            boxStrokeColor = Color.parseColor("#01837A")
+        }
+        val editText = EditText(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            inputType = InputType.TYPE_CLASS_TEXT; textSize = 14f
+            try { typeface = ResourcesCompat.getFont(ctx, R.font.solaimanlipi) } catch (e: Exception) {}
+            setText(lastQuery); setSelection(text.length)
+        }
+        inputLayout.addView(editText)
+        container.addView(titleTv); container.addView(inputLayout)
+
+        val dialog = AlertDialog.Builder(ctx)
+           .setView(container)
+           .setPositiveButton("সার্চ করুন") { d, _ ->
+                val q = editText.text.toString().trim()
+                if (q.length >= 2) {
+                    val heading1: TextView = findViewById(R.id.heading1)
+                    switchMode(Mode.GLOBAL_SEARCH, heading1)
+                    searchView.visibility = View.VISIBLE
+                    searchbox.setText(q); searchbox.setSelection(q.length)
+                    performGlobalSearch(q)
+                }
+                d.dismiss()
+            }
+           .setNegativeButton("বাতিল করুন") { d, _ -> d.dismiss() }
+           .create()
+        dialog.show()
+        // keyboard show
+        editText.requestFocus()
+        Handler(Looper.getMainLooper()).postDelayed({
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
+        }, 200)
     }
 
     private fun setupPaginationScroll() {
@@ -269,8 +298,10 @@ class Main4Activity : AppCompatActivity() {
                 if (currentMode!= Mode.GLOBAL_SEARCH) return
                 if (totalCount == 0) return
                 if (isSearching) return
-                if (firstVisible + visibleCount >= totalCount - 2) {
-                    if (displayedList.size < globalList.size) loadNextPage()
+                if (firstVisible + visibleCount >= totalCount - 3) {
+                    if (displayedList.size < globalList.size) {
+                        loadNextPage()
+                    }
                 }
             }
         })
@@ -284,8 +315,10 @@ class Main4Activity : AppCompatActivity() {
         if (end > globalList.size) end = globalList.size
         if (start >= end) return
         currentPage = nextPage
-        for (i in start until end) displayedList.add(globalList[i])
-        (listView1.adapter as? GlobalSearchAdapter)?.notifyDataSetChanged()
+        for (i in start until end) {
+            displayedList.add(globalList[i])
+        }
+        globalAdapter?.notifyDataSetChanged()
     }
 
     private fun switchMode(mode: Mode, heading1: TextView? = null) {
@@ -304,22 +337,21 @@ class Main4Activity : AppCompatActivity() {
                 listView1.adapter = ListAdapter(this, R.layout.list_layoutnew, filteredItems)
             }
             Mode.GLOBAL_SEARCH -> {
-                heading.text = "গ্লোবাল সার্চ - সব কিতাব"
+                heading.text = "গ্লোবাল সার্চ"
                 boxofsearch.hint = "সব কিতাবের ভিতরে সার্চ করুন"
                 searchView.visibility = View.VISIBLE
-                searchbox.requestFocus()
                 fabGlobalSearch.visibility = View.GONE
-                progressContainer.visibility = View.GONE
                 globalSearchVersion++
                 globalList.clear(); displayedList.clear(); currentPage = 0
-                listView1.adapter = GlobalSearchAdapter(this, displayedList)
-                // যদি আগে থেকেই কিছু লেখা থাকে
-                if (searchbox.text.toString().length >= 2) performGlobalSearch(searchbox.text.toString())
-                else {
+                globalAdapter = GlobalSearchAdapter(this, displayedList)
+                listView1.adapter = globalAdapter
+                if (searchbox.text.toString().length >= 2) {
+                    performGlobalSearch(searchbox.text.toString())
+                } else {
                     progressContainer.visibility = View.VISIBLE
                     progressBarCircle.visibility = View.GONE
                     progressBarH.progress = 0
-                    progressText.text = "🔍 কমপক্ষে ২ অক্ষর লিখুন - ${allBookIds.size} টি কিতাব রেডি"
+                    progressText.text = "🔍 পপআপ থেকে সার্চ করুন - ${allBookIds.size} টি কিতাব রেডি"
                 }
             }
         }
@@ -365,7 +397,6 @@ class Main4Activity : AppCompatActivity() {
     }
 
     private fun readBookFile(bookId: String): String? {
-        // file.json এর bookid = file name (extension ছাড়া)
         val tries = listOf("books/$bookId", bookId)
         for (p in tries) {
             try {
@@ -384,12 +415,15 @@ class Main4Activity : AppCompatActivity() {
         lastQuery = query; globalSearchVersion++; val myVersion = globalSearchVersion
         val searchQuery = query.trim(); if (searchQuery.length < 2) return
         isSearching = true; globalList.clear(); displayedList.clear(); currentPage = 0
-        listView1.adapter = GlobalSearchAdapter(this, displayedList)
+        globalAdapter = GlobalSearchAdapter(this, displayedList)
+        listView1.adapter = globalAdapter
         progressContainer.visibility = View.VISIBLE
         progressBarCircle.visibility = View.VISIBLE
+        progressBarH.visibility = View.VISIBLE
         progressBarH.progress = 0
         progressText.text = "⏳ সার্চ চলছে..."
         nores.visibility = View.GONE
+        progressContainer.bringToFront()
 
         Thread {
             var scanned = 0; val total = allBookIds.size
@@ -413,7 +447,7 @@ class Main4Activity : AppCompatActivity() {
                             newObj.put("bookAuthor", info?.optString("author")?: "")
                             newObj.put("bookid", bId); newObj.put("_unique_id", "${bId}_$j"); newObj.put("pos", j)
                             batch.add(newObj)
-                            if (batch.size >= 50) {
+                            if (batch.size >= 30) {
                                 val copy = ArrayList(batch); batch.clear()
                                 runOnUiThread {
                                     if (myVersion!= globalSearchVersion) return@runOnUiThread
@@ -421,7 +455,7 @@ class Main4Activity : AppCompatActivity() {
                                     if (displayedList.isEmpty()) {
                                         val end = minOf(pageSize, globalList.size)
                                         for (k in 0 until end) displayedList.add(globalList[k])
-                                        listView1.adapter = GlobalSearchAdapter(this, ArrayList(displayedList))
+                                        globalAdapter?.notifyDataSetChanged()
                                     }
                                 }
                             }
@@ -434,7 +468,6 @@ class Main4Activity : AppCompatActivity() {
                     progressBarH.progress = sc * 100 / total
                     progressText.text = "⏳ $sc/$total কিতাব - ${globalList.size + batch.size} টি"
                 }
-                if (scanned % 10 == 0) System.gc()
             }
             if (batch.isNotEmpty()) globalList.addAll(batch)
             runOnUiThread {
@@ -442,19 +475,20 @@ class Main4Activity : AppCompatActivity() {
                 isSearching = false
                 if (globalList.isEmpty()) {
                     progressBarCircle.visibility = View.GONE
+                    progressBarH.visibility = View.GONE
                     progressText.text = "❌ কোনো রেজাল্ট পাওয়া যায়নি"
                     nores.visibility = View.VISIBLE
                     Handler(Looper.getMainLooper()).postDelayed({ progressContainer.visibility = View.GONE }, 2000)
                 } else {
                     progressBarCircle.visibility = View.GONE
                     progressBarH.progress = 100
-                    progressText.text = "✅ ${globalList.size} টি পাওয়া গেছে"
+                    progressText.text = "✅ ${globalList.size} টি - নিচে স্ক্রল করলে আরো আসবে"
                     if (displayedList.isEmpty()) {
                         val end = minOf(pageSize, globalList.size)
                         for (k in 0 until end) displayedList.add(globalList[k])
+                        globalAdapter?.notifyDataSetChanged()
                     }
-                    listView1.adapter = GlobalSearchAdapter(this, ArrayList(displayedList))
-                    Handler(Looper.getMainLooper()).postDelayed({ progressContainer.visibility = View.GONE }, 2000)
+                    Handler(Looper.getMainLooper()).postDelayed({ progressContainer.visibility = View.GONE }, 2500)
                 }
             }
         }.start()
@@ -466,7 +500,7 @@ class Main4Activity : AppCompatActivity() {
         try {
             var start = fullText.lowercase().indexOf(query.lowercase())
             while (start >= 0) {
-                spannable.setSpan(android.text.style.BackgroundColorSpan(Color.YELLOW), start, start + query.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                spannable.setSpan(BackgroundColorSpan(Color.YELLOW), start, start + query.length, SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE)
                 start = fullText.lowercase().indexOf(query.lowercase(), start + query.length)
             }
         } catch (e: Exception) {}
@@ -491,6 +525,8 @@ class Main4Activity : AppCompatActivity() {
     }
 
     inner class GlobalSearchAdapter(context: android.content.Context, private val list: ArrayList<JSONObject>) : android.widget.ArrayAdapter<JSONObject>(context, 0, list) {
+        override fun getCount(): Int { return list.size }
+        override fun getItem(position: Int): JSONObject? { return list[position] }
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val ctx = context
             val item = list[position]
@@ -531,7 +567,7 @@ class Main4Activity : AppCompatActivity() {
             val hintTv = TextView(ctx).apply {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
                 textSize = 11f; setTextColor(Color.parseColor("#FF5722")); gravity = Gravity.END
-                text = if (isExpanded) "▲ ছোট করুন" else "▼ পুরো লেখা দেখুন"
+                text = if (isExpanded) "▲ ছোট করুন" else "▼ পুরো লেখা দেখুন - লং প্রেসে বইয়ে যান"
             }
             card.addView(titleTv); card.addView(contentTv); if (contentRaw.length > 150) card.addView(hintTv)
             root.addView(bookHeader); root.addView(card)
@@ -542,7 +578,7 @@ class Main4Activity : AppCompatActivity() {
                 val bName = item.optString("bookName"); val bId = item.optString("bookid")
                 val bAuthor = item.optString("bookAuthor"); val pos = item.optInt("pos", 0)
                 AlertDialog.Builder(ctx).setTitle(bName).setMessage("এই লেখায় যেতে চান? পজিশন: ${pos + 1}")
-                   .setPositiveButton("হ্যাঁ, যান") { _, _ ->
+                  .setPositiveButton("হ্যাঁ, যান") { _, _ ->
                         ctx.startActivity(Intent(ctx, ReadingActivity::class.java).apply {
                             putExtra("name", bName); putExtra("bookname", bId); putExtra("author", bAuthor); putExtra("jumpTo", pos); putExtra("highlight_query", lastQuery)
                         })
